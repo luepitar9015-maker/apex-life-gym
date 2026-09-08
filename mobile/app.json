@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Gym Fit AI",
+    "slug": "gym-fit-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#070a12"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gymfit.ai"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#070a12"
+      },
+      "package": "com.gymfit.ai"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permite a Gym Fit AI acceder a la cámara para el escaneo de acceso y análisis corporal biométrico."
+        }
+      ]
+    ]
+  }
+}

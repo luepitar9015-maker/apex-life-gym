@@ -1,0 +1,499 @@
+// Prisma Schema para Plataforma Integral de Gimnasio con IA Corporal y Nutrición
+// Motor: PostgreSQL
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  TRAINER
+  NUTRITIONIST
+  MEMBER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  PAUSED
+  CANCELLED
+  PENDING
+}
+
+enum PaymentStatus {
+  COMPLETED
+  PENDING
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  TRANSFER
+  QR_PAYMENT
+}
+
+enum MuscleGroup {
+  CHEST
+  BACK
+  LEGS_QUADRICEPS
+  LEGS_HAMSTRINGS
+  GLUTES
+  CALVES
+  SHOULDERS
+  BICEPS
+  TRICEPS
+  FOREARMS
+  CORE_ABS
+  FULL_BODY
+  CARDIO
+}
+
+enum EquipmentType {
+  BARBELL
+  DUMBBELL
+  KETTLEBELL
+  MACHINE
+  CABLE
+  BODYWEIGHT
+  RESISTANCE_BAND
+  SMITH_MACHINE
+  OTHER
+}
+
+enum RoutineDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ELITE
+}
+
+enum RoutineGoal {
+  HYPERTROPHY
+  STRENGTH
+  FAT_LOSS
+  ENDURANCE
+  FUNCTIONAL
+  REHABILITATION
+}
+
+enum MealType {
+  BREAKFAST
+  MORNING_SNACK
+  LUNCH
+  AFTERNOON_SNACK
+  PRE_WORKOUT
+  POST_WORKOUT
+  DINNER
+}
+
+// -------------------------------------------------------------
+// 1. USUARIOS, ROLES Y ACCESOS
+// -------------------------------------------------------------
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  documentId      String?        @unique // DNI o Cédula
+  phone           String?
+  role            Role           @default(MEMBER)
+  gender          Gender?
+  birthDate       DateTime?
+  avatarUrl       String?
+  
+  // Datos Médicos / Par-Q inicial
+  medicalConditions String?
+  injuriesHistory   String?
+  emergencyContact  String?
+  emergencyPhone    String?
+
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relaciones Administrativas
+  subscriptions    Subscription[]
+  payments         Payment[]
+  attendanceLogs   AttendanceLog[]
+
+  // Relaciones de Entrenamiento
+  assignedRoutines Routine[]       @relation("MemberRoutines")
+  createdRoutines  Routine[]       @relation("TrainerRoutines")
+  workoutLogs      WorkoutLog[]
+
+  // Relaciones de Diagnóstico y Biometría
+  bodyAssessments  BodyAssessment[] @relation("MemberAssessments")
+  conductedAssessments BodyAssessment[] @relation("TrainerAssessments")
+  aiBodyScans      AIBodyScan[]
+
+  // Relaciones de Nutrición
+  nutritionPlans   NutritionPlan[]  @relation("MemberNutritionPlans")
+  createdPlans     NutritionPlan[]  @relation("NutritionistPlans")
+
+  @@index([role])
+  @@index([email])
+}
+
+// -------------------------------------------------------------
+// 2. MEMBRESÍAS, PAGOS Y CONTROL DE ASISTENCIA
+// -------------------------------------------------------------
+
+model MembershipPlan {
+  id           String         @id @default(uuid())
+  name         String         // ej: "Plan Mensual Black", "Pase Anual VIP"
+  description  String?
+  durationDays Int            // ej: 30, 90, 365
+  price        Decimal        @db.Decimal(10, 2)
+  includesCoach Boolean       @default(false)
+  includesNutrition Boolean   @default(false)
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id               String           @id @default(uuid())
+  userId           String
+  membershipPlanId String
+  startDate        DateTime
+  endDate          DateTime
+  status           MembershipStatus @default(ACTIVE)
+  autoRenew        Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membershipPlan   MembershipPlan   @relation(fields: [membershipPlanId], references: [id])
+  payments         Payment[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Payment {
+  id             String         @id @default(uuid())
+  userId         String
+  subscriptionId String?
+  amount         Decimal        @db.Decimal(10, 2)
+  currency       String         @default("USD")
+  method         PaymentMethod  @default(CASH)
+  status         PaymentStatus  @default(COMPLETED)
+  invoiceNumber  String?        @unique
+  paidAt         DateTime       @default(now())
+
+  user           User           @relation(fields: [userId], references: [id])
+  subscription   Subscription?  @relation(fields: [subscriptionId], references: [id])
+
+  @@index([userId])
+}
+
+model AttendanceLog {
+  id          String   @id @default(uuid())
+  userId      String
+  checkInTime DateTime @default(now())
+  checkOutTime DateTime?
+  method      String   @default("QR_CODE") // QR_CODE, FINGERPRINT, MANUAL
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([checkInTime])
+}
+
+// -------------------------------------------------------------
+// 3. CATÁLOGO DE EJERCICIOS Y RUTINAS
+// -------------------------------------------------------------
+
+model Exercise {
+  id               String         @id @default(uuid())
+  name             String         @unique // ej: "Press de Banca Plano con Barra"
+  slug             String         @unique
+  description      String?
+  primaryMuscle    MuscleGroup
+  secondaryMuscles MuscleGroup[]
+  equipment        EquipmentType
+  mechanics        String?        // Compuesto / Aislamiento
+  videoUrl         String?        // Video demostrativo o animación 3D
+  thumbnailUrl     String?
+  instructions     String?        // Técnica paso a paso
+  createdAt        DateTime       @default(now())
+
+  routineExercises RoutineExercise[]
+  workoutSets      WorkoutSet[]
+
+  @@index([primaryMuscle])
+  @@index([equipment])
+}
+
+model Routine {
+  id          String            @id @default(uuid())
+  title       String            // ej: "Rutina Hipertrofia 4 Días - Empuje / Tirón / Pierna"
+  description String?
+  difficulty  RoutineDifficulty @default(INTERMEDIATE)
+  goal        RoutineGoal       @default(HYPERTROPHY)
+  isTemplate  Boolean           @default(false)
+  createdById String
+  memberId    String?           // Si es asignada a un cliente específico
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  creator     User              @relation("TrainerRoutines", fields: [createdById], references: [id])
+  member      User?             @relation("MemberRoutines", fields: [memberId], references: [id])
+  days        RoutineDay[]
+  workoutLogs WorkoutLog[]
+
+  @@index([memberId])
+  @@index([isTemplate])
+}
+
+model RoutineDay {
+  id          String            @id @default(uuid())
+  routineId   String
+  dayOrder    Int               // 1, 2, 3, 4...
+  name        String            // ej: "Día 1: Pecho, Hombro y Tríceps"
+  description String?
+
+  routine     Routine           @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exercises   RoutineExercise[]
+
+  @@index([routineId])
+}
+
+model RoutineExercise {
+  id           String      @id @default(uuid())
+  routineDayId String
+  exerciseId   String
+  orderIndex   Int         // Orden del ejercicio en la sesión
+  targetSets   Int         @default(4)
+  targetReps   String      @default("8-12") // Rango de repeticiones (ej: "10-12", "6-8")
+  targetRpe    Decimal?    @db.Decimal(3, 1) // Esfuerzo percibido (ej: 8.5)
+  restSeconds  Int         @default(90)     // Descanso sugerido
+  notes        String?     // ej: "Drop-set en la última serie"
+
+  routineDay   RoutineDay  @relation(fields: [routineDayId], references: [id], onDelete: Cascade)
+  exercise     Exercise    @relation(fields: [exerciseId], references: [id])
+
+  @@index([routineDayId])
+  @@index([exerciseId])
+}
+
+model WorkoutLog {
+  id          String       @id @default(uuid())
+  userId      String
+  routineId   String?
+  startedAt   DateTime     @default(now())
+  completedAt DateTime?
+  feelingRate Int?         // 1 a 5 (energía y sensación física)
+  notes       String?
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routine     Routine?     @relation(fields: [routineId], references: [id])
+  sets        WorkoutSet[]
+
+  @@index([userId])
+  @@index([startedAt])
+}
+
+model WorkoutSet {
+  id             String     @id @default(uuid())
+  workoutLogId   String
+  exerciseId     String
+  setNumber      Int
+  weightKg       Decimal    @db.Decimal(6, 2)
+  repsCompleted  Int
+  rpeActual      Decimal?   @db.Decimal(3, 1)
+  isWarmup       Boolean    @default(false)
+  isFailed       Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+
+  workoutLog     WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
+  exercise       Exercise   @relation(fields: [exerciseId], references: [id])
+
+  @@index([workoutLogId])
+  @@index([exerciseId])
+}
+
+// -------------------------------------------------------------
+// 4. DIAGNÓSTICO, ANTROPOMETRÍA Y ANÁLISIS DE IA CORPORAL
+// -------------------------------------------------------------
+
+model BodyAssessment {
+  id                String       @id @default(uuid())
+  userId            String
+  recordedById      String?      // Entrenador o el mismo usuario
+  assessmentDate    DateTime     @default(now())
+  
+  // Datos biométricos directos
+  weightKg          Decimal      @db.Decimal(5, 2)
+  heightCm          Decimal      @db.Decimal(5, 2)
+  bodyFatPercentage Decimal?     @db.Decimal(4, 2) // % Grasa
+  leanMassKg        Decimal?     @db.Decimal(5, 2) // Masa Muscular Magra
+  visceralFatScore  Int?
+  
+  // Medidas perimetrales (cm)
+  chestCm           Decimal?     @db.Decimal(5, 2)
+  waistCm           Decimal?     @db.Decimal(5, 2)
+  hipsCm            Decimal?     @db.Decimal(5, 2)
+  armLeftCm         Decimal?     @db.Decimal(5, 2)
+  armRightCm        Decimal?     @db.Decimal(5, 2)
+  thighLeftCm       Decimal?     @db.Decimal(5, 2)
+  thighRightCm      Decimal?     @db.Decimal(5, 2)
+  calfCm            Decimal?     @db.Decimal(5, 2)
+
+  // Fotos de evolución (almacenamiento encriptado o URLs firmadas)
+  frontPhotoUrl     String?
+  sidePhotoUrl      String?
+  backPhotoUrl      String?
+  notes             String?
+
+  user              User         @relation("MemberAssessments", fields: [userId], references: [id], onDelete: Cascade)
+  recordedBy        User?        @relation("TrainerAssessments", fields: [recordedById], references: [id])
+  aiBodyScans       AIBodyScan[]
+
+  @@index([userId])
+  @@index([assessmentDate])
+}
+
+model AIBodyScan {
+  id                   String          @id @default(uuid())
+  userId               String
+  assessmentId         String?
+  scanDate             DateTime        @default(now())
+  
+  // Entradas de imagen analizadas
+  frontImageUrl        String
+  sideImageUrl         String?
+
+  // Resultados calculados por Visión Artificial
+  estimatedFatPct      Decimal         @db.Decimal(4, 2) // % Grasa estimada por IA
+  estimatedLeanMassKg  Decimal         @db.Decimal(5, 2) // Masa Magra calculada
+  estimatedBmi         Decimal         @db.Decimal(4, 2) // IMC
+  somatotype           String?         // Ectomorfo, Mesomorfo, Endomorfo
+  
+  // Diagnóstico Postural y Biomecánico
+  postureAssessment    String?         // ej: "Hombro derecho elevado 2°, leve anteversión pélvica"
+  postureKeypointsJson Json?           // Coordenadas esqueléticas 2D/3D (MediaPipe / PoseNet)
+  visualMetricsJson    Json?           // Ratios cintura-cadera, simetría muscular
+  
+  // Recomendaciones generadas por IA
+  aiRecommendations    String?         // Sugerencias de entrenamiento y prevención de lesiones
+  confidenceScore      Decimal?        @db.Decimal(3, 2) // Nivel de certidumbre del modelo (0.00 a 1.00)
+
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessment           BodyAssessment? @relation(fields: [assessmentId], references: [id])
+
+  @@index([userId])
+  @@index([scanDate])
+}
+
+// -------------------------------------------------------------
+// 5. MÓDULO DE NUTRICIÓN Y ALIMENTACIÓN
+// -------------------------------------------------------------
+
+model FoodItem {
+  id                String         @id @default(uuid())
+  name              String         // ej: "Pechuga de Pollo cocida", "Avena en hojuelas"
+  brand             String?
+  servingGrams      Decimal        @default(100) @db.Decimal(6, 2)
+  calories          Decimal        @db.Decimal(6, 2) // Kcal por porción
+  proteinGrams      Decimal        @db.Decimal(6, 2)
+  carbsGrams        Decimal        @db.Decimal(6, 2)
+  fatGrams          Decimal        @db.Decimal(6, 2)
+  fiberGrams        Decimal?       @db.Decimal(6, 2)
+  category          String?        // Carnes, Granos, Verduras, Frutas, Lácteos, Suplementos
+
+  mealFoodItems     MealFoodItem[]
+
+  @@index([name])
+}
+
+model NutritionPlan {
+  id                 String     @id @default(uuid())
+  title              String     // ej: "Plan Definición 2200 kcal - Alta Proteína"
+  description        String?
+  userId             String
+  nutritionistId     String?
+  
+  dailyCaloriesTarget Decimal   @db.Decimal(6, 2)
+  targetProteinGrams Decimal   @db.Decimal(6, 2)
+  targetCarbsGrams   Decimal   @db.Decimal(6, 2)
+  targetFatGrams     Decimal   @db.Decimal(6, 2)
+
+  waterLitersTarget  Decimal?   @db.Decimal(3, 1) @default(2.5)
+  notes              String?
+  startDate          DateTime   @default(now())
+  endDate            DateTime?
+  isActive           Boolean    @default(true)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  user               User       @relation("MemberNutritionPlans", fields: [userId], references: [id], onDelete: Cascade)
+  nutritionist       User?      @relation("NutritionistPlans", fields: [nutritionistId], references: [id])
+  mealDays           MealDay[]
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model MealDay {
+  id              String        @id @default(uuid())
+  nutritionPlanId String
+  dayNumber       Int           // 1 = Lunes, 2 = Martes... o Día A / Día B
+  dayLabel        String        // ej: "Día de Entrenamiento", "Lunes"
+
+  nutritionPlan   NutritionPlan @relation(fields: [nutritionPlanId], references: [id], onDelete: Cascade)
+  meals           Meal[]
+
+  @@index([nutritionPlanId])
+}
+
+model Meal {
+  id          String         @id @default(uuid())
+  mealDayId   String
+  type        MealType       @default(BREAKFAST)
+  customName  String         // ej: "Desayuno Pre-Entreno"
+  timeHour    String?        // ej: "08:00 AM"
+  orderIndex  Int            @default(1)
+
+  mealDay     MealDay        @relation(fields: [mealDayId], references: [id], onDelete: Cascade)
+  foodItems   MealFoodItem[]
+
+  @@index([mealDayId])
+}
+
+model MealFoodItem {
+  id           String   @id @default(uuid())
+  mealId       String
+  foodItemId   String
+  portionGrams Decimal  @db.Decimal(6, 2) // ej: 150g de pechuga
+  customNotes  String?  // ej: "A la plancha sin aceite"
+
+  meal         Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  foodItem     FoodItem @relation(fields: [foodItemId], references: [id])
+
+  @@index([mealId])
+  @@index([foodItemId])
+}

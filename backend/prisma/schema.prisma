@@ -16,10 +16,17 @@ generator client {
 
 enum Role {
   SUPERADMIN
+  BUSINESS_ADMIN
   ADMIN
+  AFFILIATE
   TRAINER
   NUTRITIONIST
   MEMBER
+}
+
+enum BusinessType {
+  TLC
+  GYM
 }
 
 enum Gender {
@@ -109,6 +116,22 @@ enum MealType {
 // 1. USUARIOS, ROLES Y ACCESOS
 // -------------------------------------------------------------
 
+model Business {
+  id          String       @id @default(uuid())
+  name        String       // ej: "Total Life Changes - Sede Central", "Power Gym Fitness Club"
+  type        BusinessType @default(GYM)
+  address     String?
+  phone       String?
+  email       String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  users       User[]
+  products    TLCProduct[]
+  sales       TLCSale[]
+}
+
 model User {
   id              String         @id @default(uuid())
   email           String         @unique
@@ -121,6 +144,26 @@ model User {
   gender          Gender?
   birthDate       DateTime?
   avatarUrl       String?
+
+  // Relación con Negocio / Organización
+  businessId        String?
+  business          Business?      @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  // Para Afiliados / TLC
+  sponsorId         String?        // ID del afiliado patrocinador
+  sponsor           User?          @relation("SponsorAffiliates", fields: [sponsorId], references: [id])
+  sponsoredMembers  User[]         @relation("SponsorAffiliates")
+  affiliateRank     String?        // ej: "Afiliado", "Director", "Ejecutivo"
+  totalPvPoints     Int            @default(0)
+
+  // Relación con TLC
+  tlcProtocols      TLCWeightLossProtocol[] @relation("ClientProtocols")
+  supervisedProtocols TLCWeightLossProtocol[] @relation("AffiliateSupervisedProtocols")
+  sales             TLCSale[]       @relation("AffiliateSales")
+
+  // Relaciones de Entrenador Personal
+  trainerClients    TrainerClientAssignment[] @relation("TrainerAssignments")
+  clientTrainers    TrainerClientAssignment[] @relation("ClientAssignments")
   
   // Datos Médicos / Par-Q inicial
   medicalConditions String?
@@ -151,8 +194,13 @@ model User {
   nutritionPlans   NutritionPlan[]  @relation("MemberNutritionPlans")
   createdPlans     NutritionPlan[]  @relation("NutritionistPlans")
 
+  // Relaciones de TLC Contactos y Soporte Técnico
+  assignedContacts TLCContact[]     @relation("AffiliateAssignedContacts")
+  supportTickets   SupportTicket[]
+
   @@index([role])
   @@index([email])
+  @@index([businessId])
 }
 
 // -------------------------------------------------------------
@@ -496,4 +544,215 @@ model MealFoodItem {
 
   @@index([mealId])
   @@index([foodItemId])
+}
+
+// -------------------------------------------------------------
+// 6. TOTAL LIFE CHANGES (TLC) Y SISTEMA DE AFILIADOS
+// -------------------------------------------------------------
+
+model TLCProduct {
+  id             String    @id @default(uuid())
+  businessId     String?
+  name           String    // ej: "Iaso Tea Original", "Resolution Drops", "NRG Cápsulas", "NutraBurst Líquido"
+  sku            String    @unique
+  description    String?
+  category       String    // "DETOX", "WEIGHT_LOSS", "ENERGY", "NUTRITION", "KIT"
+  priceUsd       Decimal   @db.Decimal(10, 2)
+  pvPoints       Int       @default(40) // Puntos de volumen
+  commissionUsd  Decimal   @default(20.00) @db.Decimal(10, 2) // Comisión estándar del afiliado
+  imageUrl       String?
+  inStock        Int       @default(100)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  business       Business? @relation(fields: [businessId], references: [id])
+  saleItems      TLCSaleItem[]
+}
+
+model TLCWeightLossProtocol {
+  id                     String    @id @default(uuid())
+  clientId               String
+  affiliateId            String?   // Afiliado o patrocinador que supervisa
+  protocolType           String    @default("DETOX_30_DAYS") // "DETOX_15_DAYS", "DETOX_30_DAYS", "RESOLUTION_EXTREME"
+  startDate              DateTime  @default(now())
+  endDate                DateTime?
+  startWeightKg          Decimal   @db.Decimal(5, 2)
+  currentWeightKg        Decimal   @db.Decimal(5, 2)
+  targetWeightKg         Decimal   @db.Decimal(5, 2)
+  productsUsed           String?   // ej: "Iaso Tea + Gotas Resolution"
+  dailyWaterTargetLiters Decimal   @default(3.0) @db.Decimal(3, 1)
+  status                 String    @default("ACTIVE") // "ACTIVE", "COMPLETED", "PAUSED"
+  notes                  String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  client                 User      @relation("ClientProtocols", fields: [clientId], references: [id], onDelete: Cascade)
+  affiliate              User?     @relation("AffiliateSupervisedProtocols", fields: [affiliateId], references: [id])
+  dailyLogs              TLCProtocolDailyLog[]
+
+  @@index([clientId])
+  @@index([affiliateId])
+}
+
+model TLCProtocolDailyLog {
+  id             String   @id @default(uuid())
+  protocolId     String
+  logDate        DateTime @default(now())
+  weightKg       Decimal? @db.Decimal(5, 2)
+  tookTea        Boolean  @default(false)
+  tookResolution Boolean  @default(false)
+  waterLiters    Decimal? @db.Decimal(3, 1)
+  caloriesEaten  Int?
+  feelingScore   Int?     // 1 a 5
+  notes          String?
+
+  protocol       TLCWeightLossProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+
+  @@index([protocolId])
+}
+
+model TLCSale {
+  id             String        @id @default(uuid())
+  businessId     String?
+  affiliateId    String        // Quien vendió
+  customerName   String
+  customerPhone  String?
+  customerEmail  String?
+  totalUsd       Decimal       @db.Decimal(10, 2)
+  commissionUsd  Decimal       @db.Decimal(10, 2)
+  pointsPv       Int           @default(0)
+  status         PaymentStatus @default(COMPLETED)
+  createdAt      DateTime      @default(now())
+
+  business       Business?     @relation(fields: [businessId], references: [id])
+  affiliate      User          @relation("AffiliateSales", fields: [affiliateId], references: [id])
+  items          TLCSaleItem[]
+
+  @@index([affiliateId])
+}
+
+model TLCSaleItem {
+  id          String     @id @default(uuid())
+  saleId      String
+  productId   String
+  quantity    Int        @default(1)
+  unitPrice   Decimal    @db.Decimal(10, 2)
+
+  sale        TLCSale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     TLCProduct @relation(fields: [productId], references: [id])
+}
+
+// -------------------------------------------------------------
+// 7. ENTRENADORES PERSONALIZADOS (1-ON-1 COACHING)
+// -------------------------------------------------------------
+
+model TrainerClientAssignment {
+  id              String   @id @default(uuid())
+  trainerId       String
+  clientId        String
+  status          String   @default("ACTIVE") // "ACTIVE", "PAUSED", "COMPLETED"
+  goal            String?  // ej: "Preparación Maratón", "Aumento Masa Muscular 5kg"
+  notes           String?
+  sessionsPerWeek Int      @default(3)
+  startDate       DateTime @default(now())
+  endDate         DateTime?
+
+  trainer         User     @relation("TrainerAssignments", fields: [trainerId], references: [id], onDelete: Cascade)
+  client          User     @relation("ClientAssignments", fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, clientId])
+  @@index([trainerId])
+  @@index([clientId])
+}
+
+// -------------------------------------------------------------
+// 8. TLC CONTACTOS & PROSPECTOS (CUMPLIMIENTO LEY 1581 COLOMBIA)
+// -------------------------------------------------------------
+
+model TLCContact {
+  id                    String    @id @default(uuid())
+  firstName             String
+  lastName              String
+  documentType          String    @default("CC") // CC, CE, PASAPORTE, PPT, NIT
+  documentId            String
+  phone                 String    // WhatsApp de contacto
+  email                 String
+  department            String?   // Departamento de Colombia (ej: Antioquia, Cundinamarca)
+  city                  String?   // Municipio / Ciudad (ej: Medellín, Bogotá)
+  leadSource            String    @default("ORGANIC") // WHATSAPP, INSTAGRAM, FACEBOOK, REFERIDO, EVENTO, TIENDA_VIRTUAL
+  interestProduct       String?   // Iaso Tea Original, Gotas Resolution, NRG, NutraBurst, Kit Pérdida de Peso, Negocio TLC
+  notes                 String?
+  status                String    @default("NUEVO") // NUEVO, CONTACTADO, EN_SEGUIMIENTO, CLIENTE, DESCARTADO
+
+  // Cumplimiento estricto Ley 1581 de 2012 y Decreto 1377 de 2013 (Habeas Data Colombia)
+  dataPolicyAccepted    Boolean   @default(true)
+  acceptedAt            DateTime  @default(now())
+  ipAddress             String?
+  authorizationText     String    @db.Text
+  revocationRequested   Boolean   @default(false)
+  revocationDate        DateTime?
+
+  assignedAffiliateId   String?
+  assignedAffiliate     User?     @relation("AffiliateAssignedContacts", fields: [assignedAffiliateId], references: [id], onDelete: SetNull)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([email])
+  @@index([phone])
+  @@index([documentId])
+  @@index([status])
+  @@index([assignedAffiliateId])
+}
+
+// -------------------------------------------------------------
+// 9. SUPERUSUARIO: ACTIVADOR DE LICENCIAS Y PERMISOS DEL SISTEMA
+// -------------------------------------------------------------
+
+model SystemLicense {
+  id                 String    @id @default(uuid())
+  licenseKey         String    @unique // ej: TLC-ENT-2026-X892-COL
+  businessName       String    // Nombre de la Empresa / Sede / Gimnasio
+  contactEmail       String
+  contactPhone       String?
+  planType           String    @default("GYM_TLC_PRO") // TLC_GROWTH, GYM_STANDARD, GYM_TLC_PRO, ENTERPRISE_UNLIMITED
+  status             String    @default("ACTIVE") // ACTIVE, TRIAL, SUSPENDED, EXPIRED
+  maxUsers           Int       @default(100)
+  startDate          DateTime  @default(now())
+  expiresAt          DateTime
+  modulesAllowed     String    @db.Text // JSON string de permisos activados
+  activatedByUserId  String?
+  notes              String?
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([licenseKey])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// 10. MÓDULO DE SOPORTE TÉCNICO Y TICKETS
+// -------------------------------------------------------------
+
+model SupportTicket {
+  id             String    @id @default(uuid())
+  ticketNumber   String    @unique // ej: TK-2026-001
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject        String
+  category       String    @default("SISTEMA") // LICENCIA, PAGOS, SISTEMA, RUTINAS, TLC, OTRO
+  priority       String    @default("MEDIA")   // BAJA, MEDIA, ALTA, URGENTE
+  status         String    @default("ABIERTO") // ABIERTO, EN_PROCESO, ESPERANDO_CLIENTE, RESUELTO, CERRADO
+  description    String    @db.Text
+  adminResponse  String?   @db.Text
+  resolvedAt     DateTime?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
 }

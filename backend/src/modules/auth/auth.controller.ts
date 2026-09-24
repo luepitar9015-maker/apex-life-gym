@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../../config/prisma.js';
 import { AuthenticatedRequest } from '../../middlewares/auth.middleware.js';
-import { Role } from '@prisma/client';
+import { Role, BusinessType } from '@prisma/client';
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -14,6 +14,10 @@ const registerSchema = z.object({
   role: z.nativeEnum(Role).optional(),
   phone: z.string().optional(),
   documentId: z.string().optional(),
+  businessId: z.string().optional(),
+  businessType: z.nativeEnum(BusinessType).optional(),
+  sponsorId: z.string().optional(),
+  affiliateRank: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -37,6 +41,29 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(validatedData.password, salt);
 
+    let businessId = validatedData.businessId;
+
+    // Si especificó businessType pero no businessId, vincular o crear negocio predeterminado
+    if (!businessId && validatedData.businessType) {
+      const defaultName = validatedData.businessType === 'TLC' 
+        ? 'Total Life Changes - Global' 
+        : 'Gym Fitness Club - Sede Principal';
+
+      let business = await prisma.business.findFirst({
+        where: { type: validatedData.businessType },
+      });
+
+      if (!business) {
+        business = await prisma.business.create({
+          data: {
+            name: defaultName,
+            type: validatedData.businessType,
+          },
+        });
+      }
+      businessId = business.id;
+    }
+
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
@@ -46,6 +73,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         role: validatedData.role || Role.MEMBER,
         phone: validatedData.phone,
         documentId: validatedData.documentId,
+        businessId,
+        sponsorId: validatedData.sponsorId,
+        affiliateRank: validatedData.affiliateRank || (validatedData.role === Role.AFFILIATE ? 'Afiliado Activo' : undefined),
       },
       select: {
         id: true,
@@ -53,6 +83,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         firstName: true,
         lastName: true,
         role: true,
+        businessId: true,
+        sponsorId: true,
+        affiliateRank: true,
+        business: true,
         createdAt: true,
       },
     });
@@ -78,6 +112,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
+        business: true,
         subscriptions: {
           where: { status: 'ACTIVE' },
           include: { membershipPlan: true },
@@ -103,6 +138,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         userId: user.id,
         email: user.email,
         role: user.role,
+        businessId: user.businessId,
       },
       secret,
       { expiresIn: '7d' }
@@ -119,6 +155,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         lastName: user.lastName,
         role: user.role,
         avatarUrl: user.avatarUrl,
+        businessId: user.businessId,
+        business: user.business,
+        affiliateRank: user.affiliateRank,
         activeSubscription: user.subscriptions[0] || null,
       },
     });
@@ -137,19 +176,8 @@ export const getProfile = async (req: AuthenticatedRequest, res: Response): Prom
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        phone: true,
-        documentId: true,
-        gender: true,
-        birthDate: true,
-        avatarUrl: true,
-        medicalConditions: true,
-        injuriesHistory: true,
+      include: {
+        business: true,
         subscriptions: {
           include: { membershipPlan: true },
           orderBy: { createdAt: 'desc' },
@@ -163,8 +191,85 @@ export const getProfile = async (req: AuthenticatedRequest, res: Response): Prom
       return;
     }
 
-    res.status(200).json({ success: true, data: user });
+    const { passwordHash, ...userWithoutPassword } = user;
+
+    res.status(200).json({ success: true, data: userWithoutPassword });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Error al obtener perfil', error: error.message });
+  }
+};
+
+export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { role, businessType, businessId } = req.query;
+
+    const whereClause: any = {};
+    if (role && typeof role === 'string') {
+      whereClause.role = role as Role;
+    }
+    if (businessId && typeof businessId === 'string') {
+      whereClause.businessId = businessId;
+    } else if (businessType && typeof businessType === 'string') {
+      whereClause.business = { type: businessType as BusinessType };
+    }
+
+    const users = await prisma.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        phone: true,
+        documentId: true,
+        avatarUrl: true,
+        affiliateRank: true,
+        totalPvPoints: true,
+        isActive: true,
+        createdAt: true,
+        business: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        sponsor: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        subscriptions: {
+          where: { status: 'ACTIVE' },
+          include: { membershipPlan: true },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.status(200).json({ success: true, data: users });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al listar usuarios', error: error.message });
+  }
+};
+
+export const getBusinesses = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const businesses = await prisma.business.findMany({
+      include: {
+        _count: {
+          select: { users: true, products: true, sales: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.status(200).json({ success: true, data: businesses });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error al obtener negocios', error: error.message });
   }
 };

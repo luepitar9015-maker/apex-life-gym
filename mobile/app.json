@@ -18,14 +18,6 @@
         "backgroundColor": "#070a12"
       },
       "package": "com.gymfit.ai"
-    },
-    "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Permite a Gym Fit AI acceder a la cámara para el escaneo de acceso y análisis corporal biométrico."
-        }
-      ]
-    ]
+    }
   }
 }

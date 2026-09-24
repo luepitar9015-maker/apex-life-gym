@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { Sparkles, Camera, CheckCircle, AlertTriangle, Cpu, RotateCcw } from 'lucide-react-native';
-import { theme } from '../styles/theme';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { Sparkles, Camera, CheckCircle2, AlertTriangle, Cpu, RotateCcw, ShieldCheck } from 'lucide-react-native';
+import { useTheme } from '../styles/themeConfig';
 
 export const AIScanScreen: React.FC = () => {
+  const { colorTheme, envTheme } = useTheme();
+
   const [analyzing, setAnalyzing] = useState(false);
   const [photoType, setPhotoType] = useState<'FRONT' | 'SIDE'>('FRONT');
 
@@ -11,11 +13,11 @@ export const AIScanScreen: React.FC = () => {
     fatPct: 16.2,
     leanMass: 65.8,
     postureScore: 92,
-    somatotype: 'Mesomorfo',
+    somatotype: 'Mesomorfo Atlético',
     findings: [
       { title: 'Alineación Escapular', ok: false, text: 'Hombro derecho con leve elevación (1.2°)' },
       { title: 'Eje Pélvico', ok: true, text: 'Ángulo neutro saludable (2.1°)' },
-      { title: 'Simetría de Brazos', ok: true, text: '97.4% de balance de masa muscular' },
+      { title: 'Simetría de Brazos', ok: true, text: '97.4% de balance muscular entre bíceps' },
     ],
     recommendation: 'Aumentar trabajo de tracción horizontal (Face Pulls) para alinear hombros. Mantener ingesta de proteína a 165g.',
   });
@@ -24,25 +26,30 @@ export const AIScanScreen: React.FC = () => {
     setAnalyzing(true);
     setTimeout(() => {
       setAnalyzing(false);
-    }, 2000);
+    }, 1800);
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.tagRow}>
-          <View style={styles.aiTag}>
-            <Sparkles size={12} color="#10b981" />
-            <Text style={styles.aiTagText}>Visión Multimodal IA</Text>
+    <ScrollView style={[styles.container, { backgroundColor: envTheme.canvasBg }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Hero Banner Nexo Scan */}
+      <View style={[styles.heroBanner, { backgroundColor: envTheme.cardBg, borderColor: colorTheme.primary }]}>
+        <Text style={[styles.watermark, { color: colorTheme.primaryGlow }]}>SCAN-AI</Text>
+
+        <View style={styles.badgeRow}>
+          <View style={[styles.pillBadge, { backgroundColor: colorTheme.accentBg, borderColor: colorTheme.primary }]}>
+            <Sparkles size={12} color={colorTheme.primary} />
+            <Text style={[styles.pillBadgeText, { color: colorTheme.primary }]}>VISIÓN COMPUTACIONAL IA</Text>
           </View>
         </View>
-        <Text style={styles.title}>Escaneo Corporal & Postura</Text>
-        <Text style={styles.subtitle}>Captura 2 fotos para calcular tu composición corporal y alineación postural</Text>
+
+        <Text style={[styles.title, { color: envTheme.textMain }]}>Escaneo Corporal & Postura</Text>
+        <Text style={[styles.subtitle, { color: envTheme.textMuted }]}>
+          Análisis biomecánico en tiempo real para estimar grasa subcutánea y balance postural.
+        </Text>
       </View>
 
-      {/* Photo Preview Container */}
-      <View style={styles.photoCard}>
+      {/* Visor de Escaneo & Silueta */}
+      <View style={[styles.photoCard, { backgroundColor: envTheme.cardBg, borderColor: colorTheme.primary }]}>
         <Image
           source={{
             uri:
@@ -53,72 +60,91 @@ export const AIScanScreen: React.FC = () => {
           style={styles.athleteImage}
         />
 
-        {/* Photo Type Toggle */}
+        {/* Línea Láser de Escaneo */}
+        <View style={[styles.scanLine, { backgroundColor: colorTheme.primary }]} />
+
+        {/* Selector de Perspectiva Frontal / Lateral */}
         <View style={styles.toggleRow}>
           <TouchableOpacity
-            style={[styles.toggleBtn, photoType === 'FRONT' && styles.toggleBtnActive]}
+            style={[
+              styles.toggleBtn,
+              photoType === 'FRONT' && { backgroundColor: colorTheme.primary },
+            ]}
             onPress={() => setPhotoType('FRONT')}
           >
-            <Text style={[styles.toggleBtnText, photoType === 'FRONT' && styles.toggleBtnTextActive]}>Foto Frontal</Text>
+            <Text style={[styles.toggleBtnText, { color: photoType === 'FRONT' ? '#000' : '#fff' }]}>
+              Vista Frontal
+            </Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={[styles.toggleBtn, photoType === 'SIDE' && styles.toggleBtnActive]}
+            style={[
+              styles.toggleBtn,
+              photoType === 'SIDE' && { backgroundColor: colorTheme.primary },
+            ]}
             onPress={() => setPhotoType('SIDE')}
           >
-            <Text style={[styles.toggleBtnText, photoType === 'SIDE' && styles.toggleBtnTextActive]}>Foto Lateral</Text>
+            <Text style={[styles.toggleBtnText, { color: photoType === 'SIDE' ? '#000' : '#fff' }]}>
+              Vista Lateral
+            </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Botón de Disparo de Escaneo */}
+        <TouchableOpacity
+          style={[styles.scanActionBtn, { backgroundColor: colorTheme.primary }]}
+          onPress={handleRunScan}
+          disabled={analyzing}
+        >
+          {analyzing ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <>
+              <Camera size={16} color="#000" />
+              <Text style={styles.scanActionBtnText}>Escanear con Visión IA</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Resultados Métricos Biométricos */}
+      <View style={[styles.metricsGrid, { backgroundColor: envTheme.cardBg, borderColor: envTheme.border }]}>
+        <View style={styles.metricCol}>
+          <Text style={{ fontSize: 10, color: envTheme.textMuted }}>% Grasa</Text>
+          <Text style={[styles.metricVal, { color: colorTheme.primary }]}>{scanResult.fatPct}%</Text>
+        </View>
+        <View style={[styles.divider, { backgroundColor: envTheme.border }]} />
+        <View style={styles.metricCol}>
+          <Text style={{ fontSize: 10, color: envTheme.textMuted }}>Masa Magra</Text>
+          <Text style={[styles.metricVal, { color: '#38bdf8' }]}>{scanResult.leanMass} kg</Text>
+        </View>
+        <View style={[styles.divider, { backgroundColor: envTheme.border }]} />
+        <View style={styles.metricCol}>
+          <Text style={{ fontSize: 10, color: envTheme.textMuted }}>Postura</Text>
+          <Text style={[styles.metricVal, { color: '#f59e0b' }]}>{scanResult.postureScore}/100</Text>
         </View>
       </View>
 
-      {/* Action Scan Button */}
-      <TouchableOpacity style={styles.scanBtn} onPress={handleRunScan} disabled={analyzing}>
-        <Camera size={20} color="#fff" />
-        <Text style={styles.scanBtnText}>
-          {analyzing ? 'Procesando en Red Neuronal...' : 'Tomar Foto & Analizar con IA'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Calculated Results */}
-      <View style={styles.resultsCard}>
-        <Text style={styles.resultsTitle}>Tu Diagnóstico Biométrico</Text>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statVal}>{scanResult.fatPct}%</Text>
-            <Text style={styles.statSub}>% Grasa</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statVal}>{scanResult.leanMass} kg</Text>
-            <Text style={styles.statSub}>Masa Magra</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statVal}>{scanResult.postureScore}/100</Text>
-            <Text style={styles.statSub}>Postura</Text>
-          </View>
-        </View>
-
-        {/* Posture Findings */}
-        <View style={styles.findingsBox}>
-          {scanResult.findings.map((item, idx) => (
-            <View key={idx} style={styles.findingItem}>
-              {item.ok ? <CheckCircle size={16} color="#10b981" /> : <AlertTriangle size={16} color="#f59e0b" />}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.findingHeading}>{item.title}</Text>
-                <Text style={styles.findingSub}>{item.text}</Text>
-              </View>
+      {/* Diagnóstico Postural de IA */}
+      <View style={[styles.findingsCard, { backgroundColor: envTheme.cardBg, borderColor: envTheme.border }]}>
+        <Text style={[styles.findingsTitle, { color: colorTheme.primary }]}>Diagnóstico de Simetría Muscular</Text>
+        {scanResult.findings.map((f, i) => (
+          <View key={i} style={[styles.findingRow, { borderColor: 'rgba(255,255,255,0.05)' }]}>
+            {f.ok ? (
+              <CheckCircle2 size={16} color={colorTheme.primary} />
+            ) : (
+              <AlertTriangle size={16} color="#f59e0b" />
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: envTheme.textMain }}>{f.title}</Text>
+              <Text style={{ fontSize: 11, color: envTheme.textMuted }}>{f.text}</Text>
             </View>
-          ))}
-        </View>
-
-        {/* AI Recommendations */}
-        <View style={styles.recBox}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <Cpu size={14} color="#10b981" />
-            <Text style={styles.recHeading}>Prescripción de tu Entrenador & IA:</Text>
           </View>
-          <Text style={styles.recText}>{scanResult.recommendation}</Text>
+        ))}
+
+        <View style={[styles.recBox, { backgroundColor: colorTheme.accentBg, borderColor: colorTheme.primary }]}>
+          <Text style={{ fontSize: 10, color: colorTheme.primary, fontWeight: '800' }}>RECOMENDACIÓN DEL MODELO:</Text>
+          <Text style={{ fontSize: 11, color: envTheme.textMain, marginTop: 2 }}>{scanResult.recommendation}</Text>
         </View>
       </View>
     </ScrollView>
@@ -128,176 +154,146 @@ export const AIScanScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bgDark,
   },
   content: {
-    padding: theme.spacing.md,
-    paddingTop: 45,
-    paddingBottom: 60,
+    padding: 16,
+    paddingBottom: 90,
   },
-  header: {
-    marginBottom: theme.spacing.md,
+  heroBanner: {
+    position: 'relative',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    padding: 18,
+    marginBottom: 16,
+    overflow: 'hidden',
   },
-  tagRow: {
+  watermark: {
+    position: 'absolute',
+    top: 6,
+    right: 8,
+    fontSize: 40,
+    fontWeight: '900',
+    opacity: 0.12,
+  },
+  badgeRow: {
     flexDirection: 'row',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  aiTag: {
+  pillBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingVertical: 4,
+    gap: 5,
     paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
+    borderWidth: 1,
   },
-  aiTagText: {
-    color: '#34d399',
-    fontSize: 11,
+  pillBadgeText: {
+    fontSize: 9,
     fontWeight: '800',
   },
   title: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 19,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginBottom: 4,
   },
   subtitle: {
-    color: theme.colors.textMuted,
-    fontSize: 13,
-    marginTop: 4,
-    lineHeight: 18,
+    fontSize: 12,
   },
   photoCard: {
-    height: 320,
-    backgroundColor: theme.colors.bgCard,
-    borderRadius: theme.radius.lg,
-    overflow: 'hidden',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 12,
+    marginBottom: 14,
     position: 'relative',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    overflow: 'hidden',
   },
   athleteImage: {
     width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    height: 220,
+    borderRadius: 14,
+  },
+  scanLine: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: '45%',
+    height: 2,
+    opacity: 0.8,
   },
   toggleRow: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
     flexDirection: 'row',
-    gap: 6,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 999,
-    padding: 4,
+    gap: 8,
+    marginTop: 10,
   },
   toggleBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-  },
-  toggleBtnActive: {
-    backgroundColor: theme.colors.primary,
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   toggleBtnText: {
-    color: theme.colors.textMuted,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  toggleBtnTextActive: {
-    color: '#fff',
-  },
-  scanBtn: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radius.md,
-    paddingVertical: 14,
+  scanActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 10,
   },
-  scanBtnText: {
-    color: '#fff',
+  scanActionBtnText: {
+    color: '#000',
+    fontSize: 12,
     fontWeight: '800',
-    fontSize: 15,
   },
-  resultsCard: {
-    backgroundColor: theme.colors.bgCard,
-    borderRadius: theme.radius.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  resultsTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 14,
-  },
-  statsRow: {
+  metricsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  statBox: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 14,
     alignItems: 'center',
   },
-  statVal: {
-    color: theme.colors.primary,
-    fontSize: 20,
-    fontWeight: '800',
+  metricCol: {
+    flex: 1,
+    alignItems: 'center',
   },
-  statSub: {
-    color: theme.colors.textMuted,
-    fontSize: 11,
+  metricVal: {
+    fontSize: 18,
+    fontWeight: '900',
     marginTop: 2,
   },
-  statDivider: {
+  divider: {
     width: 1,
-    height: '100%',
-    backgroundColor: theme.colors.border,
+    height: 32,
   },
-  findingsBox: {
-    gap: 10,
-    marginBottom: 14,
-  },
-  findingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 10,
-    borderRadius: 8,
-  },
-  findingHeading: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  findingSub: {
-    color: theme.colors.textMuted,
-    fontSize: 11,
-  },
-  recBox: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderRadius: 8,
-    padding: 12,
+  findingsCard: {
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
+    padding: 14,
+    gap: 10,
   },
-  recHeading: {
-    color: '#34d399',
-    fontSize: 11,
+  findingsTitle: {
+    fontSize: 13,
     fontWeight: '800',
   },
-  recText: {
-    color: theme.colors.textMain,
-    fontSize: 12,
-    lineHeight: 16,
+  findingRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    paddingVertical: 6,
+    borderBottomWidth: 0.8,
+  },
+  recBox: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 4,
   },
 });

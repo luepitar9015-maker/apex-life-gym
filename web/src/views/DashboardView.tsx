@@ -1,259 +1,552 @@
-import React from 'react';
-import { Users, DollarSign, Activity, Sparkles, ArrowUpRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  Users, 
+  DollarSign, 
+  Activity, 
+  Sparkles, 
+  Download, 
+  Eye, 
+  Calendar, 
+  ChevronDown, 
+  FileSpreadsheet, 
+  CheckCircle2, 
+  XCircle, 
+  QrCode, 
+  TrendingUp,
+  Unlock,
+  Lock,
+  Dumbbell
+} from 'lucide-react';
+import { ColorTheme, getSavedTheme } from '../styles/themeConfig.js';
 
 interface DashboardViewProps {
   onNavigate: (view: string) => void;
+  currentTheme?: ColorTheme;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const stats = [
-    {
-      title: 'Socios Activos',
-      value: '342',
-      change: '+14% vs mes anterior',
-      positive: true,
-      icon: Users,
-      color: 'var(--primary)',
-      bgGlow: 'rgba(16, 185, 129, 0.12)'
-    },
-    {
-      title: 'Aforo en Tiempo Real',
-      value: '38 / 100',
-      change: 'Capacidad moderada (38%)',
-      positive: true,
-      icon: Activity,
-      color: 'var(--accent-cyan)',
-      bgGlow: 'rgba(6, 182, 212, 0.12)'
-    },
-    {
-      title: 'Facturación Mensual',
-      value: '$18,450',
-      change: '+18.2% incremento',
-      positive: true,
-      icon: DollarSign,
-      color: 'var(--accent-amber)',
-      bgGlow: 'rgba(245, 158, 11, 0.12)'
-    },
-    {
-      title: 'Escaneos Corporales IA',
-      value: '87',
-      change: '15 pendientes de revisión',
-      positive: true,
-      icon: Sparkles,
-      color: 'var(--accent-purple)',
-      bgGlow: 'rgba(139, 92, 246, 0.12)'
-    },
-  ];
+export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, currentTheme = getSavedTheme() }) => {
+  const [selectedStrategy, setSelectedStrategy] = useState('Plan Mensual & Anual');
+  const [dateRange, setDateRange] = useState('13/09/2026 - 19/09/2026');
+  const [selectedTerminal, setSelectedTerminal] = useState('Terminal Principal QR (T1)');
+  const [showEmptyNotice, setShowEmptyNotice] = useState(false);
 
-  const recentAccesses = [
+  const accesses = [
     {
+      id: 'ACC-81920',
+      login: '10987654',
       name: 'Juan Pérez',
       plan: 'Plan Black VIP + IA',
-      time: 'Hace 4 minutos',
-      status: 'ALLOWED',
+      method: 'QR Virtual',
+      amount: '$65.00',
+      status: 'PERMITIDO',
+      time: 'Sep 22, 2026, 07:14 PM',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop'
     },
     {
+      id: 'ACC-81919',
+      login: '98765432',
       name: 'Camila Gómez',
       plan: 'Plan Mensual Pro',
-      time: 'Hace 12 minutos',
-      status: 'ALLOWED',
+      method: 'QR Virtual',
+      amount: '$45.00',
+      status: 'PERMITIDO',
+      time: 'Sep 22, 2026, 06:52 PM',
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop'
     },
     {
+      id: 'ACC-81918',
+      login: '11223344',
       name: 'Mateo Silva',
-      plan: 'Plan Básico (VENCIDO)',
-      time: 'Hace 25 minutos',
-      status: 'DENIED',
+      plan: 'Plan Básico (Vencido)',
+      method: 'DNI Manual',
+      amount: '$0.00',
+      status: 'DENEGADO',
+      time: 'Sep 22, 2026, 06:30 PM',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop'
     },
     {
+      id: 'ACC-81917',
+      login: '55443322',
       name: 'Sofía Reyes',
       plan: 'Plan Black VIP + IA',
-      time: 'Hace 38 minutos',
-      status: 'ALLOWED',
+      method: 'QR Virtual',
+      amount: '$65.00',
+      status: 'PERMITIDO',
+      time: 'Sep 22, 2026, 05:45 PM',
       avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop'
     },
+    {
+      id: 'ACC-81916',
+      login: '77889900',
+      name: 'Carlos Mendoza',
+      plan: 'Pase Semanal Cross',
+      method: 'QR Virtual',
+      amount: '$20.00',
+      status: 'PERMITIDO',
+      time: 'Sep 22, 2026, 04:20 PM',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop'
+    }
   ];
 
+  const handleExportCSV = () => {
+    const headers = ['Access ID,Documento,Socio,Plan,Metodo,Valor,Estado,Hora'];
+    const rows = accesses.map(a => `${a.id},${a.login},"${a.name}","${a.plan}",${a.method},${a.amount},${a.status},"${a.time}"`);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+    const encoded = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encoded);
+    link.setAttribute('download', `Accesos_Gym_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Welcome Banner */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* ------------------------------------------------------------- */}
+      {/* HERO BANNER ESTILO NEXO: VIBRANTE + WIDGET FLOTANTE + GYM-AI */}
+      {/* ------------------------------------------------------------- */}
       <div style={{
-        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(6, 182, 212, 0.1) 100%)',
-        border: '1px solid rgba(16, 185, 129, 0.3)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '2rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        background: currentTheme.bannerGradient,
+        borderRadius: '18px',
+        padding: '2.5rem 3rem',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1.5rem',
+        boxShadow: `0 14px 40px ${currentTheme.primaryGlow}`,
       }}>
-        <div>
-          <span className="badge badge-active" style={{ marginBottom: '0.75rem' }}>
-            Plataforma Operativa
-          </span>
-          <h2 style={{ fontSize: '1.8rem', color: '#fff', marginBottom: '0.5rem' }}>
-            Centro de Control Gimnasio de Alto Rendimiento
-          </h2>
-          <p style={{ color: 'var(--text-muted)', maxWidth: '600px', fontSize: '0.95rem' }}>
-            Supervisa socios, valida accesos QR, programa rutinas con sobrecarga progresiva y realiza diagnósticos corporales con Inteligencia Artificial.
-          </p>
+        {/* Patrón geométrico diagonal cortado */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          opacity: 0.22,
+          backgroundImage: `
+            linear-gradient(135deg, rgba(255, 255, 255, 0.45) 25%, transparent 25%),
+            linear-gradient(225deg, rgba(255, 255, 255, 0.45) 25%, transparent 25%),
+            linear-gradient(315deg, rgba(255, 255, 255, 0.45) 25%, transparent 25%),
+            linear-gradient(45deg, rgba(255, 255, 255, 0.45) 25%, transparent 25%)
+          `,
+          backgroundSize: '90px 90px',
+          backgroundPosition: '0 0, 45px 0, 45px -45px, 0px 45px',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Título Izquierda */}
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <h1 style={{
+            fontSize: '3.4rem',
+            fontWeight: 900,
+            fontStyle: 'italic',
+            color: '#0a0f1d',
+            lineHeight: 1.02,
+            margin: 0,
+            letterSpacing: '-0.035em',
+          }}>
+            Gym Fit<br />Overview
+          </h1>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-primary" onClick={() => onNavigate('checkin')}>
-            Abrir Recepción QR
-          </button>
-          <button className="btn btn-secondary" onClick={() => onNavigate('aiscan')}>
-            <Sparkles size={16} color="var(--primary)" />
-            Nuevo Escaneo IA
-          </button>
+        {/* Widget Negro Inset: Aforo en Tiempo Real + Capacidad Desbloqueada */}
+        <div style={{
+          position: 'relative',
+          zIndex: 2,
+          background: '#070a12',
+          borderRadius: '16px',
+          padding: '1.2rem 1.65rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.6rem',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+        }}>
+          {/* Barra de progreso de Aforo */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', minWidth: '210px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>
+                # Aforo Ocupado en Sala
+              </span>
+              <span style={{ fontSize: '0.85rem', color: '#ffffff', fontWeight: 800 }}>
+                38/100 (38%)
+              </span>
+            </div>
+            <div style={{
+              width: '100%',
+              height: '6px',
+              background: '#1e293b',
+              borderRadius: '999px',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                width: '38%',
+                height: '100%',
+                background: currentTheme.primary,
+                boxShadow: `0 0 10px ${currentTheme.primary}`,
+                borderRadius: '999px',
+              }} />
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '42px', background: 'rgba(255, 255, 255, 0.1)' }} />
+
+          {/* Socios Activos */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: currentTheme.primary,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: `0 0 16px ${currentTheme.primaryGlow}`,
+            }}>
+              <Unlock size={20} color="#000000" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.15 }}>Socios<br />activos</div>
+            </div>
+            <div style={{ fontSize: '1.85rem', fontWeight: 900, color: '#ffffff', marginLeft: '0.2rem' }}>
+              342
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '42px', background: 'rgba(255, 255, 255, 0.1)' }} />
+
+          {/* Capacidad Libre */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: '#1a2234',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+            }}>
+              <Activity size={18} color="#64748b" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.15 }}>Cupos<br />libres</div>
+            </div>
+            <div style={{ fontSize: '1.85rem', fontWeight: 900, color: '#64748b', marginLeft: '0.2rem' }}>
+              62
+            </div>
+          </div>
+        </div>
+
+        {/* Branding Marca Derecha */}
+        <div style={{
+          position: 'relative',
+          zIndex: 2,
+          fontSize: '3.6rem',
+          fontWeight: 900,
+          fontStyle: 'italic',
+          color: '#ffffff',
+          letterSpacing: '-0.04em',
+          textShadow: '0 4px 15px rgba(0,0,0,0.12)',
+        }}>
+          GYM-AI
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-        gap: '1.25rem'
+      {/* ------------------------------------------------------------- */}
+      {/* PROFIT & REVENUE OVERVIEW CARD */}
+      {/* ------------------------------------------------------------- */}
+      <section style={{
+        background: '#ffffff',
+        borderRadius: '16px',
+        padding: '1.35rem 1.65rem',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 3px 12px rgba(0, 0, 0, 0.02)',
       }}>
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <div key={i} className="glass-card glass-card-glow" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                    {stat.title}
-                  </p>
-                  <h3 style={{ fontSize: '1.9rem', color: '#fff', marginTop: '0.25rem' }}>
-                    {stat.value}
-                  </h3>
-                </div>
-                <div style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  background: stat.bgGlow,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: `1px solid ${stat.color}30`
-                }}>
-                  <Icon size={22} color={stat.color} />
-                </div>
-              </div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          marginBottom: '1.25rem',
+        }}>
+          <div>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              Ingresos & Rendimiento Operativo
+            </h2>
+            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
+              Facturación de membresías y cuotas para el periodo {dateRange}
+            </p>
+          </div>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.42rem 0.85rem',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              fontSize: '0.8rem',
+              color: '#334155',
+              cursor: 'pointer',
+            }}>
+              <Calendar size={13} color="#64748b" />
+              <span>{selectedStrategy}</span>
+              <ChevronDown size={13} color="#64748b" />
+            </div>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              padding: '0.42rem 0.85rem',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              color: '#334155',
+              cursor: 'pointer',
+            }}>
+              <Calendar size={13} color="#64748b" />
+              <span>{dateRange}</span>
+            </div>
+
+            <button
+              onClick={handleExportCSV}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.42rem 0.9rem',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: '#0f172a',
+                cursor: 'pointer',
+              }}
+            >
+              <Download size={13} />
+              <span>Descargar Reporte</span>
+            </button>
+
+            <button
+              onClick={() => setShowEmptyNotice(!showEmptyNotice)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.42rem 0.9rem',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: '#0f172a',
+                cursor: 'pointer',
+              }}
+            >
+              <Eye size={13} />
+              <span>Ver Métricas</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Métricas en Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+          gap: '1rem',
+          padding: '1.25rem',
+          background: '#f8fafc',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+        }}>
+          <div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Facturación del Mes</span>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: currentTheme.primary }}>$18,450.00 USD</div>
+            <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 600 }}>+18.2% vs mes anterior</span>
+          </div>
+
+          <div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Planes Black VIP + IA</span>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>184 Socios</div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Membresía más vendida</span>
+          </div>
+
+          <div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Escaneos Corporales IA</span>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>87 Realizados</div>
+            <span style={{ fontSize: '0.72rem', color: currentTheme.primary, fontWeight: 600 }}>15 diagnósticos hoy</span>
+          </div>
+
+          <div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Check-ins de Hoy</span>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>142 Accesos</div>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>98.2% con QR Virtual</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------- */}
+      {/* ACCESS & TRANSACTION HISTORY CARD */}
+      {/* ------------------------------------------------------------- */}
+      <section style={{
+        background: '#ffffff',
+        borderRadius: '16px',
+        padding: '1.35rem 1.65rem',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 3px 12px rgba(0, 0, 0, 0.02)',
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          marginBottom: '1rem',
+        }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+            Historial de Check-In & Validaciones en Vivo
+          </h2>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', color: '#334155' }}>
+              <span style={{ color: '#64748b' }}>Terminal Activa:</span>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem',
-                fontSize: '0.78rem',
-                color: stat.positive ? 'var(--primary)' : 'var(--accent-rose)',
-                fontWeight: 600,
-                borderTop: '1px solid var(--border-subtle)',
-                paddingTop: '0.75rem'
+                gap: '0.35rem',
+                padding: '0.4rem 0.75rem',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontWeight: 700,
+                color: '#0f172a',
+                cursor: 'pointer',
               }}>
-                <ArrowUpRight size={14} />
-                <span>{stat.change}</span>
+                <span>{selectedTerminal}</span>
+                <ChevronDown size={13} />
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {/* 2 Column Section: Afluencia & Accesos Recientes */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '1.5rem' }}>
-        {/* Afluencia Horas Pico */}
-        <div className="glass-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div>
-              <h3 style={{ fontSize: '1.15rem', color: '#fff' }}>Afluencia de Socios por Horas</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Horas de mayor demanda en las instalaciones</p>
-            </div>
-            <span className="badge badge-cyan">Hoy en vivo</span>
-          </div>
-
-          {/* Gráfico de barras estilizado */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '180px', padding: '0 0.5rem' }}>
-            {[
-              { hour: '06:00', val: 75 },
-              { hour: '08:00', val: 90 },
-              { hour: '10:00', val: 40 },
-              { hour: '12:00', val: 35 },
-              { hour: '14:00', val: 25 },
-              { hour: '16:00', val: 60 },
-              { hour: '18:00', val: 95 },
-              { hour: '20:00', val: 80 },
-              { hour: '22:00', val: 30 },
-            ].map((bar, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-dark)' }}>{bar.val}%</span>
-                <div style={{
-                  width: '24px',
-                  height: `${bar.val * 1.3}px`,
-                  background: bar.val > 80 
-                    ? 'linear-gradient(180deg, #10b981 0%, #059669 100%)' 
-                    : 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: '6px 6px 0 0',
-                  boxShadow: bar.val > 80 ? '0 0 12px rgba(16, 185, 129, 0.4)' : 'none'
-                }} />
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{bar.hour}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Accesos Recientes */}
-        <div className="glass-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <div>
-              <h3 style={{ fontSize: '1.15rem', color: '#fff' }}>Últimos Check-ins</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Control de aforo en torniquete</p>
-            </div>
-            <button className="btn btn-secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }} onClick={() => onNavigate('checkin')}>
-              Ver todos
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {recentAccesses.map((acc, i) => (
-              <div key={i} style={{
+            <button
+              onClick={handleExportCSV}
+              style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0.75rem',
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid var(--border-subtle)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <img src={acc.avatar} alt={acc.name} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
-                  <div>
-                    <p style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff' }}>{acc.name}</p>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{acc.plan}</p>
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'right' }}>
-                  {acc.status === 'ALLOWED' ? (
-                    <span className="badge badge-active" style={{ fontSize: '0.7rem' }}>
-                      <CheckCircle2 size={12} /> Permitido
-                    </span>
-                  ) : (
-                    <span className="badge badge-expired" style={{ fontSize: '0.7rem' }}>
-                      <XCircle size={12} /> Denegado
-                    </span>
-                  )}
-                  <p style={{ fontSize: '0.68rem', color: 'var(--text-dark)', marginTop: '0.2rem' }}>{acc.time}</p>
-                </div>
-              </div>
-            ))}
+                gap: '0.45rem',
+                padding: '0.42rem 0.9rem',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: '#0f172a',
+                cursor: 'pointer',
+              }}
+            >
+              <FileSpreadsheet size={14} color="#16a34a" />
+              <span>Export to Excel</span>
+            </button>
           </div>
         </div>
-      </div>
+
+        {/* Tabla */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            textAlign: 'left',
+            fontSize: '0.82rem',
+          }}>
+            <thead>
+              <tr style={{
+                borderBottom: '1px solid #f1f5f9',
+                background: '#fafbfc',
+                color: '#64748b',
+                fontWeight: 600,
+              }}>
+                <th style={{ padding: '0.85rem 1rem' }}>Access ID</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Documento</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Socio</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Membresía</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Método</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Cuota ($)</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Estado</th>
+                <th style={{ padding: '0.85rem 1rem' }}>Hora Check-in</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accesses.map((acc) => (
+                <tr
+                  key={acc.id}
+                  style={{
+                    borderBottom: '1px solid #f8fafc',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ padding: '0.9rem 1rem', fontWeight: 800, color: '#0f172a' }}>
+                    {acc.id}
+                  </td>
+                  <td style={{ padding: '0.9rem 1rem', color: '#0f172a', fontWeight: 700 }}>
+                    {acc.login}
+                  </td>
+                  <td style={{ padding: '0.9rem 1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <img src={acc.avatar} alt={acc.name} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                      <span style={{ fontWeight: 700, color: '#0f172a' }}>{acc.name}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '0.9rem 1rem', color: '#334155' }}>
+                    {acc.plan}
+                  </td>
+                  <td style={{ padding: '0.9rem 1rem', color: '#64748b' }}>
+                    {acc.method}
+                  </td>
+                  <td style={{
+                    padding: '0.9rem 1rem',
+                    fontWeight: 800,
+                    color: currentTheme.primary,
+                  }}>
+                    {acc.amount}
+                  </td>
+                  <td style={{ padding: '0.9rem 1rem' }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '999px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      background: acc.status === 'PERMITIDO' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                      color: acc.status === 'PERMITIDO' ? '#10b981' : '#ef4444',
+                    }}>
+                      {acc.status === 'PERMITIDO' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                      {acc.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.9rem 1rem', color: '#64748b' }}>
+                    {acc.time}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };

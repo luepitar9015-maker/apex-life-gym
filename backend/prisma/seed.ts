@@ -1,9 +1,12 @@
 import { PrismaClient, Role, Gender, MembershipStatus, MuscleGroup, EquipmentType, RoutineDifficulty, RoutineGoal, MealType } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Iniciando carga de datos semilla (Seed)...');
+
+  const defaultPasswordHash = await bcrypt.hash('password123', 10);
 
   // 1. Limpiar datos existentes (orden seguro por restricciones de claves foráneas)
   await prisma.mealFoodItem.deleteMany();
@@ -17,7 +20,7 @@ async function main() {
   await prisma.routineDay.deleteMany();
   await prisma.routine.deleteMany();
   await prisma.exercise.deleteMany();
-  await prisma.aiBodyScan.deleteMany();
+  await prisma.aIBodyScan.deleteMany();
   await prisma.bodyAssessment.deleteMany();
   await prisma.attendanceLog.deleteMany();
   await prisma.payment.deleteMany();
@@ -29,7 +32,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       email: 'admin@gymfit.com',
-      passwordHash: '$2b$10$YourHashedPasswordHere',
+      passwordHash: defaultPasswordHash,
       firstName: 'Carlos',
       lastName: 'Administrador',
       documentId: 'ADM001',
@@ -42,7 +45,7 @@ async function main() {
   const trainer = await prisma.user.create({
     data: {
       email: 'coach.marcos@gymfit.com',
-      passwordHash: '$2b$10$YourHashedPasswordHere',
+      passwordHash: defaultPasswordHash,
       firstName: 'Marcos',
       lastName: 'Valenzuela',
       documentId: 'ENT002',
@@ -55,7 +58,7 @@ async function main() {
   const nutritionist = await prisma.user.create({
     data: {
       email: 'nutri.laura@gymfit.com',
-      passwordHash: '$2b$10$YourHashedPasswordHere',
+      passwordHash: defaultPasswordHash,
       firstName: 'Laura',
       lastName: 'Méndez',
       documentId: 'NUT003',
@@ -68,7 +71,7 @@ async function main() {
   const member = await prisma.user.create({
     data: {
       email: 'juan.perez@email.com',
-      passwordHash: '$2b$10$YourHashedPasswordHere',
+      passwordHash: defaultPasswordHash,
       firstName: 'Juan',
       lastName: 'Pérez',
       documentId: '1098765432',
@@ -252,7 +255,7 @@ async function main() {
     },
   });
 
-  await prisma.aiBodyScan.create({
+  await prisma.aIBodyScan.create({
     data: {
       userId: member.id,
       assessmentId: assessment.id,

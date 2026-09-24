@@ -27,7 +27,7 @@ export const createApp = (): Express => {
   app.get('/api/health', (req: Request, res: Response) => {
     res.status(200).json({
       status: 'online',
-      service: 'Gym Fit AI - Backend REST API (Multi-Tenant GYM & TLC)',
+      service: 'APEX LIFE - Backend REST API (Multi-Tenant GYM & TLC)',
       timestamp: new Date().toISOString(),
       version: '1.2.0',
     });

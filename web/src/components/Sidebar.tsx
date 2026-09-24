@@ -121,9 +121,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           color: '#ffffff',
         }}>
           {activeSystem === 'gym' ? (
-            <>GY<span style={{ color: currentTheme.primary }}>M</span> FIT</>
+            <>APEX <span style={{ color: currentTheme.primary }}>LIFE</span></>
           ) : (
-            <>TL<span style={{ color: currentTheme.primary }}>C</span> HUB</>
+            <>APEX <span style={{ color: currentTheme.primary }}>LIFE</span> <span style={{ fontSize: '0.75rem', color: currentTheme.primary }}>TLC</span></>
           )}
         </div>
         {!isCollapsed && (

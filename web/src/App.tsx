@@ -192,7 +192,7 @@ export const App: React.FC = () => {
       case 'profit_share':
         return { title: 'My Profit Share (Nexo)', subtitle: 'COPY-X Network & Historial de Comisiones con Tabla de Colores Personalizada' };
       default:
-        return { title: 'Gym Fit AI & TLC Multi-System', subtitle: 'Plataforma Integral' };
+        return { title: 'APEX LIFE & TLC Multi-System', subtitle: 'Plataforma Integral' };
     }
   };
 

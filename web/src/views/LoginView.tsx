@@ -133,10 +133,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </div>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            GYM FIT AI <span className="text-teal-400">&amp; TLC</span>
+            APEX LIFE <span className="text-teal-400">&amp; TLC</span>
           </h1>
           <p className="text-xs text-gray-400">
-            Plataforma Integral de Gestión de Gimnasio, Nutrición &amp; Red TLC
+            Plataforma Integral de Fitness, Nutrición &amp; Bienestar Integral
           </p>
         </div>
 

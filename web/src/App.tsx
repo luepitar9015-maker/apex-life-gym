@@ -314,6 +314,9 @@ export const App: React.FC = () => {
               portalName={portalName}
               onOpenCustomizer={() => setIsColorModalOpen(true)}
               onOpenAICopilot={() => setIsAIAgentModalOpen(true)}
+              onThemeChange={(newTheme) => setCurrentTheme(newTheme)}
+              onSymbolChange={(newSymbol) => setCurrentSymbol(newSymbol)}
+              onPortalNameChange={(newName) => setPortalName(newName)}
             />
           )}
 

@@ -45,7 +45,12 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Home,
-  BarChart3
+  BarChart3,
+  Upload,
+  Trash2,
+  Image as ImageIcon,
+  PackagePlus,
+  Edit3
 } from 'lucide-react';
 
 // ============================================================================
@@ -70,12 +75,13 @@ export interface Machine {
 export interface SupplementProduct {
   id: string;
   name: string;
-  category: 'Proteína' | 'Creatina' | 'Vitaminas' | 'Quemadores' | 'Pre-entrenos';
+  category: string;
   description: string;
   price: number;
   stock: number;
   imageUrl: string;
   badge?: string;
+  createdByAdmin?: boolean;
 }
 
 export interface FoodItem {
@@ -303,14 +309,133 @@ export const ApexLifeApp: React.FC = () => {
   // Subpestañas de cada rol
   const [adminSection, setAdminSection] = useState<'machines' | 'store' | 'branches'>('machines');
   const [coachSection, setCoachSection] = useState<'athletes' | 'diagnostic' | 'plan_builder'>('diagnostic');
-  const [clientSection, setClientSection] = useState<'hub' | 'scanner' | 'nutrition' | 'diary' | 'wellness_ai' | 'health_quiz'>('hub');
+  const [clientSection, setClientSection] = useState<'hub' | 'scanner' | 'nutrition' | 'diary' | 'wellness_ai' | 'health_quiz' | 'store'>('hub');
 
-  // Estados de datos
+  // Estados de datos y tienda
   const [machines] = useState<Machine[]>(INITIAL_MACHINES);
   const [machineCategoryFilter, setMachineCategoryFilter] = useState<string>('Todos');
-  const [supplements] = useState<SupplementProduct[]>(INITIAL_SUPPLEMENTS);
+  const [storeCategoryFilter, setStoreCategoryFilter] = useState<string>('Todos');
+  
+  // Productos de la tienda con persistencia en localStorage para cada administrador
+  const [supplements, setSupplements] = useState<SupplementProduct[]>(() => {
+    try {
+      const saved = localStorage.getItem('apex_life_admin_supplements');
+      return saved ? JSON.parse(saved) : INITIAL_SUPPLEMENTS;
+    } catch {
+      return INITIAL_SUPPLEMENTS;
+    }
+  });
+
+  // Modal para que el administrador cree sus propios productos
+  const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
+  const [productForm, setProductForm] = useState<{
+    name: string;
+    category: string;
+    description: string;
+    price: number;
+    stock: number;
+    badge: string;
+    imageUrl: string;
+  }>({
+    name: '',
+    category: 'Proteína',
+    description: '',
+    price: 49.99,
+    stock: 30,
+    badge: 'NUEVO',
+    imageUrl: ''
+  });
+
   const [athletes] = useState<AthleteClient[]>(INITIAL_ATHLETES);
   const [selectedAthlete, setSelectedAthlete] = useState<AthleteClient>(INITIAL_ATHLETES[0]);
+
+  // Guardar producto en la lista y en localStorage
+  const handleSaveNewProduct = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!productForm.name.trim()) {
+      alert('Por favor ingresa un nombre para el producto');
+      return;
+    }
+
+    const defaultImg = 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=600&auto=format&fit=crop';
+    const newProduct: SupplementProduct = {
+      id: 'prod-' + Date.now(),
+      name: productForm.name.trim(),
+      category: productForm.category,
+      description: productForm.description.trim() || 'Producto oficial registrado por el administrador del gimnasio.',
+      price: Number(productForm.price) || 29.99,
+      stock: Number(productForm.stock) || 10,
+      badge: productForm.badge.trim() || undefined,
+      imageUrl: productForm.imageUrl || defaultImg,
+      createdByAdmin: true
+    };
+
+    const updated = [newProduct, ...supplements];
+    setSupplements(updated);
+    try {
+      localStorage.setItem('apex_life_admin_supplements', JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Error guardando en localStorage:', err);
+    }
+
+    // Resetear formulario y cerrar modal
+    setProductForm({
+      name: '',
+      category: 'Proteína',
+      description: '',
+      price: 49.99,
+      stock: 30,
+      badge: 'NUEVO',
+      imageUrl: ''
+    });
+    setIsProductModalOpen(false);
+  };
+
+  // Cargar imagen desde el equipo local mediante FileReader
+  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (reader.result) {
+        setProductForm(prev => ({
+          ...prev,
+          imageUrl: reader.result as string
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Eliminar producto
+  const handleDeleteProduct = (id: string) => {
+    if (confirm('¿Estás seguro de retirar este producto del catálogo de la tienda?')) {
+      const updated = supplements.filter(p => p.id !== id);
+      setSupplements(updated);
+      try {
+        localStorage.setItem('apex_life_admin_supplements', JSON.stringify(updated));
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+  };
+
+  // Vender / Descontar stock
+  const handleSellProduct = (id: string, name: string) => {
+    const updated = supplements.map(p => {
+      if (p.id === id) {
+        return { ...p, stock: Math.max(0, p.stock - 1) };
+      }
+      return p;
+    });
+    setSupplements(updated);
+    try {
+      localStorage.setItem('apex_life_admin_supplements', JSON.stringify(updated));
+    } catch (err) {
+      console.warn(err);
+    }
+    alert(`¡Venta realizada con éxito! Se descontó 1 unidad de ${name} del inventario.`);
+  };
 
   // Diario del cliente
   const [waterGlasses, setWaterGlasses] = useState<number>(7);
@@ -843,37 +968,111 @@ export const ApexLifeApp: React.FC = () => {
             {/* SECCIÓN ADMIN: TIENDA DE SUPLEMENTOS & BASE NUTRICIONAL */}
             {adminSection === 'store' && (
               <div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff', marginBottom: '0.25rem' }}>
-                    Catálogo de Suplementación & Tienda Oficial
-                  </h2>
-                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
-                    Productos autorizados de nutrición deportiva, control de existencias e inventario en tiempo real.
-                  </p>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '1rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.35rem', fontWeight: 900, color: '#ffffff', marginBottom: '0.25rem' }}>
+                      Catálogo Comercial & Tienda Oficial del Gimnasio
+                    </h2>
+                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
+                      Cada administrador puede registrar sus propios productos, cargar fotografías desde su computadora y gestionar precios e inventario.
+                    </p>
+                  </div>
+
+                  {/* BOTÓN MAESTRO: CREAR PRODUCTO / CARGAR IMAGEN */}
+                  <button
+                    onClick={() => setIsProductModalOpen(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.65rem 1.25rem',
+                      backgroundColor: '#10b981',
+                      color: '#000000',
+                      border: 'none',
+                      borderRadius: '12px',
+                      fontWeight: 900,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 0 20px rgba(16, 185, 129, 0.45)',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <PackagePlus size={18} />
+                    <span>+ Crear Producto / Cargar Imagen</span>
+                  </button>
                 </div>
 
-                {/* Grid de Productos */}
+                {/* Filtros de Categorías de la Tienda */}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+                  {['Todos', 'Proteína', 'Creatina', 'Pre-entrenos', 'Vitaminas', 'Quemadores', 'Ropa & Accesorios'].map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setStoreCategoryFilter(cat)}
+                      style={{
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: '8px',
+                        border: storeCategoryFilter === cat ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.08)',
+                        backgroundColor: storeCategoryFilter === cat ? 'rgba(16, 185, 129, 0.15)' : 'rgba(15, 23, 42, 0.6)',
+                        color: storeCategoryFilter === cat ? '#10b981' : '#cbd5e1',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Grid de Productos con Imágenes Cargadas */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
                   gap: '1.25rem',
                   marginBottom: '2rem'
                 }}>
-                  {supplements.map((prod) => (
+                  {supplements
+                    .filter(p => storeCategoryFilter === 'Todos' ? true : (
+                      storeCategoryFilter === 'Ropa & Accesorios' 
+                        ? (p.category === 'Ropa deportiva' || p.category === 'Accesorios' || p.category === 'Ropa & Accesorios')
+                        : p.category.toLowerCase().includes(storeCategoryFilter.toLowerCase())
+                    ))
+                    .map((prod) => (
                     <div
                       key={prod.id}
                       style={{
-                        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                        border: prod.createdByAdmin ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
                         borderRadius: '16px',
                         overflow: 'hidden',
                         padding: '1.25rem',
                         display: 'flex',
                         flexDirection: 'column',
+                        position: 'relative',
+                        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)'
                       }}
                     >
-                      <div style={{ height: '140px', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem', position: 'relative' }}>
-                        <img src={prod.imageUrl} alt={prod.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {/* Imagen del Producto (Cargada desde archivo o URL) */}
+                      <div style={{
+                        height: '160px',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        marginBottom: '1rem',
+                        position: 'relative',
+                        backgroundColor: '#0a0f1d'
+                      }}>
+                        <img 
+                          src={prod.imageUrl} 
+                          alt={prod.name} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
                         {prod.badge && (
                           <span style={{
                             position: 'absolute',
@@ -881,12 +1080,29 @@ export const ApexLifeApp: React.FC = () => {
                             right: '8px',
                             backgroundColor: '#10b981',
                             color: '#000000',
-                            fontSize: '0.62rem',
+                            fontSize: '0.65rem',
                             fontWeight: 900,
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '5px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+                          }}>
+                            {prod.badge}
+                          </span>
+                        )}
+                        {prod.createdByAdmin && (
+                          <span style={{
+                            position: 'absolute',
+                            top: '8px',
+                            left: '8px',
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            color: '#38bdf8',
+                            border: '1px solid rgba(56, 189, 248, 0.4)',
+                            fontSize: '0.62rem',
+                            fontWeight: 800,
                             padding: '0.15rem 0.45rem',
                             borderRadius: '4px'
                           }}>
-                            {prod.badge}
+                            REGISTRADO POR TI
                           </span>
                         )}
                       </div>
@@ -894,10 +1110,10 @@ export const ApexLifeApp: React.FC = () => {
                       <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 800, textTransform: 'uppercase' }}>
                         {prod.category}
                       </div>
-                      <h4 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#ffffff', margin: '0.25rem 0 0.5rem 0' }}>
+                      <h4 style={{ fontSize: '1.02rem', fontWeight: 800, color: '#ffffff', margin: '0.25rem 0 0.4rem 0' }}>
                         {prod.name}
                       </h4>
-                      <p style={{ fontSize: '0.75rem', color: '#94a3b8', flex: 1, marginBottom: '0.75rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: '#94a3b8', flex: 1, marginBottom: '0.85rem', lineHeight: '1.4' }}>
                         {prod.description}
                       </p>
 
@@ -909,24 +1125,48 @@ export const ApexLifeApp: React.FC = () => {
                         borderTop: '1px solid rgba(255, 255, 255, 0.06)'
                       }}>
                         <div>
-                          <span style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff' }}>${prod.price.toFixed(2)}</span>
-                          <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Stock: {prod.stock} uds</span>
+                          <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff' }}>${prod.price.toFixed(2)}</span>
+                          <span style={{ fontSize: '0.7rem', color: prod.stock > 0 ? '#64748b' : '#ef4444', display: 'block', fontWeight: 700 }}>
+                            {prod.stock > 0 ? `Stock: ${prod.stock} uds` : 'AGOTADO'}
+                          </span>
                         </div>
-                        <button
-                          onClick={() => alert(`Venta simulada de 1 unidad de ${prod.name}`)}
-                          style={{
-                            padding: '0.45rem 0.85rem',
-                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                            border: '1px solid #10b981',
-                            color: '#10b981',
-                            borderRadius: '8px',
-                            fontWeight: 800,
-                            fontSize: '0.75rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Vender / Facturar
-                        </button>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <button
+                            onClick={() => handleSellProduct(prod.id, prod.name)}
+                            disabled={prod.stock <= 0}
+                            style={{
+                              padding: '0.45rem 0.85rem',
+                              backgroundColor: prod.stock > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                              border: prod.stock > 0 ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.1)',
+                              color: prod.stock > 0 ? '#10b981' : '#64748b',
+                              borderRadius: '8px',
+                              fontWeight: 800,
+                              fontSize: '0.75rem',
+                              cursor: prod.stock > 0 ? 'pointer' : 'not-allowed'
+                            }}
+                          >
+                            Vender (-1)
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteProduct(prod.id)}
+                            title="Eliminar producto del catálogo"
+                            style={{
+                              padding: '0.45rem',
+                              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              color: '#ef4444',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1519,6 +1759,25 @@ export const ApexLifeApp: React.FC = () => {
                     }}
                   >
                     Cuestionario Salud
+                  </button>
+                  <button
+                    onClick={() => setClientSection('store')}
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      fontWeight: 800,
+                      backgroundColor: clientSection === 'store' ? '#10b981' : 'rgba(0, 0, 0, 0.4)',
+                      color: clientSection === 'store' ? '#000000' : '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <ShoppingBag size={14} />
+                    <span>Tienda del Gym</span>
                   </button>
                 </div>
               </div>
@@ -2283,9 +2542,480 @@ export const ApexLifeApp: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* SECCIÓN CLIENTE: TIENDA OFICIAL DEL GYM */}
+            {clientSection === 'store' && (
+              <div style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '20px',
+                padding: '1.75rem'
+              }}>
+                <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#10b981', letterSpacing: '0.06em' }}>
+                      TIENDA OFICIAL DE TU GIMNASIO • PRODUCTOS AUTORIZADOS
+                    </span>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ffffff', margin: '0.25rem 0' }}>
+                      Suplementación Deportiva & Equipamiento
+                    </h2>
+                    <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
+                      Catálogo seleccionado y registrado por el administrador de APEX LIFE. Compra con entrega inmediata en recepción.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Grid de Productos para el Cliente */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gap: '1.25rem'
+                }}>
+                  {supplements.map((prod) => (
+                    <div
+                      key={prod.id}
+                      style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        padding: '1.25rem',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
+                    >
+                      <div style={{ height: '160px', borderRadius: '12px', overflow: 'hidden', marginBottom: '1rem', position: 'relative', backgroundColor: '#0a0f1d' }}>
+                        <img src={prod.imageUrl} alt={prod.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {prod.badge && (
+                          <span style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            backgroundColor: '#10b981',
+                            color: '#000000',
+                            fontSize: '0.65rem',
+                            fontWeight: 900,
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '5px'
+                          }}>
+                            {prod.badge}
+                          </span>
+                        )}
+                      </div>
+
+                      <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 800, textTransform: 'uppercase' }}>
+                        {prod.category}
+                      </span>
+                      <h4 style={{ fontSize: '1.02rem', fontWeight: 800, color: '#ffffff', margin: '0.25rem 0 0.4rem 0' }}>
+                        {prod.name}
+                      </h4>
+                      <p style={{ fontSize: '0.75rem', color: '#94a3b8', flex: 1, marginBottom: '0.85rem', lineHeight: '1.4' }}>
+                        {prod.description}
+                      </p>
+
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingTop: '0.75rem',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.06)'
+                      }}>
+                        <div>
+                          <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#ffffff' }}>${prod.price.toFixed(2)}</span>
+                          <span style={{ fontSize: '0.7rem', color: prod.stock > 0 ? '#10b981' : '#ef4444', display: 'block', fontWeight: 700 }}>
+                            {prod.stock > 0 ? `En Stock (${prod.stock} uds)` : 'Agotado'}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => alert(`¡Solicitud enviada! Has reservado 1 unidad de ${prod.name}. Retíralo en la recepción del gimnasio presentando tu pase QR.`)}
+                          disabled={prod.stock <= 0}
+                          style={{
+                            padding: '0.5rem 0.95rem',
+                            backgroundColor: prod.stock > 0 ? '#10b981' : 'rgba(255, 255, 255, 0.05)',
+                            color: prod.stock > 0 ? '#000000' : '#64748b',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 900,
+                            fontSize: '0.78rem',
+                            cursor: prod.stock > 0 ? 'pointer' : 'not-allowed',
+                            boxShadow: prod.stock > 0 ? '0 0 14px rgba(16, 185, 129, 0.35)' : 'none'
+                          }}
+                        >
+                          Pedir / Comprar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         )}
       </main>
+
+      {/* ==================================================================== */}
+      {/* MODAL MAESTRO: CREACIÓN DE PRODUCTOS Y CARGA DE IMÁGENES (ADMIN) */}
+      {/* ==================================================================== */}
+      {isProductModalOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.88)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999,
+          padding: '1rem',
+          overflowY: 'auto'
+        }}>
+          <div style={{
+            backgroundColor: '#0d1424',
+            border: '1px solid rgba(16, 185, 129, 0.4)',
+            borderRadius: '24px',
+            padding: '2rem',
+            maxWidth: '680px',
+            width: '100%',
+            position: 'relative',
+            boxShadow: '0 0 40px rgba(16, 185, 129, 0.25)',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <button
+              onClick={() => setIsProductModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '1.25rem',
+                right: '1.25rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                padding: '0.35rem'
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.25rem' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#10b981'
+              }}>
+                <PackagePlus size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 900, color: '#ffffff', margin: 0 }}>
+                  Registrar Producto & Cargar Imagen
+                </h3>
+                <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 800 }}>
+                  ADMINISTRADOR • CATÁLOGO TIENDA DEL GIMNASIO
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0.5rem 0 1.25rem 0' }}>
+              Carga fotografías de tus productos directamente desde tu ordenador o mediante URL para ponerlos a la venta.
+            </p>
+
+            <form onSubmit={handleSaveNewProduct} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* ZONA DE CARGA DE IMÁGENES */}
+              <div style={{
+                backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                border: '1.5px dashed rgba(16, 185, 129, 0.4)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                textAlign: 'center'
+              }}>
+                {productForm.imageUrl ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ height: '140px', width: '220px', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(16, 185, 129, 0.5)' }}>
+                      <img src={productForm.imageUrl} alt="Vista previa" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <label style={{
+                        padding: '0.4rem 0.85rem',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        border: '1px solid #10b981',
+                        color: '#10b981',
+                        borderRadius: '8px',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}>
+                        Cambiar Imagen
+                        <input type="file" accept="image/*" onChange={handleImageFileUpload} style={{ display: 'none' }} />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setProductForm(p => ({ ...p, imageUrl: '' }))}
+                        style={{
+                          padding: '0.4rem 0.85rem',
+                          backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                          border: '1px solid rgba(239, 68, 68, 0.4)',
+                          color: '#ef4444',
+                          borderRadius: '8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <Upload size={32} color="#10b981" style={{ margin: '0 auto 0.5rem auto' }} />
+                    <strong style={{ fontSize: '0.9rem', color: '#ffffff', display: 'block' }}>
+                      Cargar Fotografía del Producto desde tu PC
+                    </strong>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginBottom: '0.75rem' }}>
+                      Formatos compatibles: JPG, PNG, WEBP (Se procesará y optimizará automáticamente)
+                    </span>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <label style={{
+                        padding: '0.55rem 1.15rem',
+                        backgroundColor: '#10b981',
+                        color: '#000000',
+                        borderRadius: '10px',
+                        fontWeight: 900,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)'
+                      }}>
+                        <Upload size={16} />
+                        <span>Seleccionar Archivo</span>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={handleImageFileUpload} 
+                          style={{ display: 'none' }} 
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = prompt('Ingresa la URL pública de la imagen (ej: https://...):');
+                          if (url) setProductForm(p => ({ ...p, imageUrl: url }));
+                        }}
+                        style={{
+                          padding: '0.55rem 1rem',
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          color: '#ffffff',
+                          borderRadius: '10px',
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        O Pegar Enlace URL
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* CAMPOS DEL FORMULARIO */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#cbd5e1', display: 'block', marginBottom: '0.35rem' }}>
+                    Nombre del Producto: *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej: Whey Isolate Vainilla 2kg"
+                    value={productForm.name}
+                    onChange={(e) => setProductForm(p => ({ ...p, name: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      padding: '0.6rem 0.85rem',
+                      fontSize: '0.82rem'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#cbd5e1', display: 'block', marginBottom: '0.35rem' }}>
+                    Categoría:
+                  </label>
+                  <select
+                    value={productForm.category}
+                    onChange={(e) => setProductForm(p => ({ ...p, category: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      padding: '0.6rem 0.85rem',
+                      fontSize: '0.82rem'
+                    }}
+                  >
+                    <option value="Proteína">Proteína</option>
+                    <option value="Creatina">Creatina</option>
+                    <option value="Pre-entrenos">Pre-entrenos</option>
+                    <option value="Vitaminas">Vitaminas & Minerales</option>
+                    <option value="Quemadores">Quemadores / Termogénicos</option>
+                    <option value="Ropa deportiva">Ropa deportiva</option>
+                    <option value="Accesorios">Accesorios (Cinturones, Straps)</option>
+                    <option value="Bebidas">Bebidas & Snacks</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.85rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#cbd5e1', display: 'block', marginBottom: '0.35rem' }}>
+                    Precio ($ USD/COP): *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={productForm.price}
+                    onChange={(e) => setProductForm(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      padding: '0.6rem 0.85rem',
+                      fontSize: '0.82rem'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#cbd5e1', display: 'block', marginBottom: '0.35rem' }}>
+                    Stock Inicial:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={productForm.stock}
+                    onChange={(e) => setProductForm(p => ({ ...p, stock: parseInt(e.target.value) || 0 }))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      padding: '0.6rem 0.85rem',
+                      fontSize: '0.82rem'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#cbd5e1', display: 'block', marginBottom: '0.35rem' }}>
+                    Etiqueta / Badge:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: NUEVO / MÁS VENDIDO"
+                    value={productForm.badge}
+                    onChange={(e) => setProductForm(p => ({ ...p, badge: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      padding: '0.6rem 0.85rem',
+                      fontSize: '0.82rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#cbd5e1', display: 'block', marginBottom: '0.35rem' }}>
+                  Descripción y Beneficios:
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Detalles sobre porción, ingredientes clave, modo de uso y pureza..."
+                  value={productForm.description}
+                  onChange={(e) => setProductForm(p => ({ ...p, description: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    padding: '0.65rem 0.85rem',
+                    fontSize: '0.82rem',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              {/* BOTONES DE ACCIÓN */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsProductModalOpen(false)}
+                  style={{
+                    padding: '0.65rem 1.25rem',
+                    backgroundColor: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#94a3b8',
+                    borderRadius: '10px',
+                    fontWeight: 800,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  style={{
+                    padding: '0.65rem 1.5rem',
+                    backgroundColor: '#10b981',
+                    color: '#000000',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontWeight: 900,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(16, 185, 129, 0.45)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.45rem'
+                  }}
+                >
+                  <Check size={18} />
+                  <span>Guardar Producto en la Tienda</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================================== */}
       {/* MODAL: PASE QR DIGITAL */}

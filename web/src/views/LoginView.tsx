@@ -236,6 +236,30 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   </>
                 )}
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onLoginSuccess({
+                    id: 'usr-vip-main',
+                    email: 'luis.moreno@apexlife.com',
+                    firstName: 'Luis Ernesto',
+                    lastName: 'Moreno',
+                    role: 'MEMBER',
+                    business: { id: 'b-gym', name: 'APEX LIFE Central', type: 'GYM' },
+                    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop',
+                  });
+                }}
+                style={{
+                  background: 'rgba(118, 224, 0, 0.15)',
+                  border: '1px solid #76e000',
+                  color: '#76e000',
+                }}
+                className="w-full py-2.5 rounded-xl font-extrabold text-xs transition shadow-lg shadow-lime-500/10 flex items-center justify-center gap-2 hover:bg-lime-500 hover:text-black cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>⚡ Explorar Mi Portal Directo (Socio VIP)</span>
+              </button>
             </form>
           ) : (
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5">

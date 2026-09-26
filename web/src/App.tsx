@@ -26,10 +26,20 @@ import { AIAgentView } from './views/AIAgentView.js';
 import { AIAgentFabModal } from './components/AIAgentFabModal.js';
 import { getStoredUser, clearStoredAuth, fetchProfile, setStoredUser, AuthUser, UserRole } from './services/api.js';
 
+const DEFAULT_USER: AuthUser = {
+  id: 'usr-vip-main',
+  email: 'luis.moreno@apexlife.com',
+  firstName: 'Luis Ernesto',
+  lastName: 'Moreno',
+  role: 'MEMBER',
+  business: { id: 'b-gym', name: 'APEX LIFE Central', type: 'GYM' },
+  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop',
+};
+
 export const App: React.FC = () => {
   const [activeSystem, setActiveSystem] = useState<'gym' | 'tlc'>('gym');
   const [currentView, setCurrentView] = useState('home');
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser>(getStoredUser() || DEFAULT_USER);
   const [referralCode, setReferralCode] = useState<string>('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isColorModalOpen, setIsColorModalOpen] = useState(false);
@@ -68,12 +78,14 @@ export const App: React.FC = () => {
       fetchProfile().then((profile) => {
         if (profile) setUser(profile);
       });
+    } else {
+      setStoredUser(DEFAULT_USER);
     }
   }, []);
 
   const handleLogout = () => {
     clearStoredAuth();
-    setUser(null);
+    setCurrentView('login');
   };
 
   const handleSwitchSystem = (system: 'gym' | 'tlc') => {
@@ -213,8 +225,8 @@ export const App: React.FC = () => {
     }
   };
 
-  // Pantalla de Inicio de Sesión obligatoria si no hay usuario autenticado (salvo tienda pública)
-  if (!user && currentView !== 'tlc_store') {
+  // Pantalla de Inicio de Sesión solo si se solicita explícitamente
+  if (currentView === 'login') {
     return (
       <LoginView 
         onLoginSuccess={(loggedUser) => {

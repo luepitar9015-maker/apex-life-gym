@@ -25,10 +25,14 @@ import {
   Key,
   LifeBuoy,
   LogOut,
-  UserCheck
+  UserCheck,
+  X,
+  Bot,
+  Home
 } from 'lucide-react';
-import { ColorTheme, EnvironmentTheme } from '../styles/themeConfig.js';
+import { ColorTheme, EnvironmentTheme, SymbolTheme, getSavedSymbol, getSavedPortalName } from '../styles/themeConfig.js';
 import { AuthUser } from '../services/api.js';
+import { SymbolIcon } from './SymbolIcon.js';
 
 interface SidebarProps {
   currentView: string;
@@ -37,28 +41,58 @@ interface SidebarProps {
   onSwitchSystem: (system: 'gym' | 'tlc') => void;
   currentTheme: ColorTheme;
   currentEnv?: EnvironmentTheme;
+  currentSymbol?: SymbolTheme;
+  portalName?: string;
   currentUser?: AuthUser | null;
   onLogout?: () => void;
+  isMobileDrawerOpen?: boolean;
+  onCloseMobileDrawer?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   currentView, 
-  onNavigate,
+  onNavigate: rawOnNavigate,
   activeSystem,
   onSwitchSystem,
   currentTheme,
   currentEnv,
+  currentSymbol = getSavedSymbol(),
+  portalName = getSavedPortalName(),
   currentUser,
-  onLogout
+  onLogout,
+  isMobileDrawerOpen = false,
+  onCloseMobileDrawer
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showBalance, setShowBalance] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const onNavigate = (view: string) => {
+    rawOnNavigate(view);
+    if (onCloseMobileDrawer) onCloseMobileDrawer();
+  };
+
   return (
-    <aside style={{
-      width: isCollapsed ? '72px' : '235px',
-      transition: 'all 0.22s ease',
+    <>
+      {isMobileDrawerOpen && (
+        <div 
+          onClick={onCloseMobileDrawer}
+          className="sidebar-backdrop"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            zIndex: 998,
+          }}
+        />
+      )}
+      <aside 
+        className={`app-sidebar ${isMobileDrawerOpen ? 'mobile-open' : ''}`}
+        style={{
+          width: isCollapsed ? '72px' : '235px',
+          transition: 'all 0.22s ease',
       background: currentEnv?.sidebarBg || '#070a12',
       borderRadius: '24px',
       padding: isCollapsed ? '1.25rem 0.5rem' : '1.25rem 1rem',
@@ -111,25 +145,80 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
       </button>
 
-      {/* Logo Brand con acento */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.2rem 0.4rem' }}>
+      {/* Botón de cierre para móvil */}
+      {onCloseMobileDrawer && (
+        <button
+          onClick={onCloseMobileDrawer}
+          className="mobile-drawer-close"
+          title="Cerrar Menú"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 30,
+          }}
+        >
+          <X size={18} />
+        </button>
+      )}
+
+      {/* Logo Brand con símbolo dinámico y nombre de portal */}
+      <div 
+        onClick={() => onNavigate('home')}
+        title="Ir a Mi Portal (Home)"
+        style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '0.55rem', 
+          padding: '0.2rem 0.2rem',
+          cursor: 'pointer',
+        }}
+      >
         <div style={{
-          fontSize: '1.45rem',
-          fontWeight: 900,
-          letterSpacing: '-0.04em',
-          fontFamily: 'system-ui',
-          color: '#ffffff',
+          width: '34px',
+          height: '34px',
+          borderRadius: '10px',
+          background: currentTheme.bannerGradient,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: currentTheme.textColor,
+          flexShrink: 0,
+          boxShadow: `0 0 14px ${currentTheme.primaryGlow}`,
+          border: '1px solid rgba(255,255,255,0.2)',
         }}>
-          {activeSystem === 'gym' ? (
-            <>APEX <span style={{ color: currentTheme.primary }}>LIFE</span></>
-          ) : (
-            <>APEX <span style={{ color: currentTheme.primary }}>LIFE</span> <span style={{ fontSize: '0.75rem', color: currentTheme.primary }}>TLC</span></>
-          )}
+          <SymbolIcon iconKey={currentSymbol.iconKey} size={18} />
         </div>
         {!isCollapsed && (
-          <span style={{ fontSize: '0.58rem', color: '#64748b', fontWeight: 700, letterSpacing: '0.06em', marginTop: '2px' }}>
-            GLOBAL
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <div style={{
+              fontSize: '1.15rem',
+              fontWeight: 900,
+              letterSpacing: '-0.03em',
+              fontFamily: 'system-ui',
+              color: '#ffffff',
+              lineHeight: 1.1,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '145px',
+            }}>
+              {portalName || 'APEX LIFE'}
+            </div>
+            <span style={{ fontSize: '0.58rem', color: currentTheme.primary, fontWeight: 800, letterSpacing: '0.06em' }}>
+              {activeSystem === 'gym' ? 'GYM • PORTAL' : 'TLC • DÉTOX'}
+            </span>
+          </div>
         )}
       </div>
 
@@ -234,6 +323,115 @@ export const Sidebar: React.FC<SidebarProps> = ({
         overflowY: 'auto',
         flex: 1,
       }}>
+        {/* Acceso Principal: Mi Portal Intuitivo (Home) */}
+        <div style={{ marginBottom: '0.35rem' }}>
+          <button
+            onClick={() => onNavigate('home')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.48rem 0.65rem',
+              borderRadius: '8px',
+              border: currentView === 'home' ? `1.5px solid ${currentTheme.primary}` : '1px solid rgba(255, 255, 255, 0.08)',
+              background: currentView === 'home' ? currentTheme.primary : 'rgba(255, 255, 255, 0.04)',
+              color: currentView === 'home' ? '#000000' : '#ffffff',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: currentView === 'home' ? `0 3px 14px ${currentTheme.primaryGlow}` : 'none',
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Home size={17} color={currentView === 'home' ? '#000000' : currentTheme.primary} />
+            {!isCollapsed && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <span>Mi Portal (Home)</span>
+                <span style={{
+                  fontSize: '0.55rem',
+                  background: currentView === 'home' ? '#000000' : currentTheme.primary,
+                  color: currentView === 'home' ? currentTheme.primary : '#000000',
+                  fontWeight: 900,
+                  padding: '0.08rem 0.35rem',
+                  borderRadius: '4px',
+                }}>
+                  {currentSymbol.emoji} RÁPIDO
+                </span>
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Acceso Global: Agente IA APEX Autónomo */}
+        <div style={{ marginBottom: '0.35rem' }}>
+          <button
+            onClick={() => onNavigate('ai_agent')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.45rem 0.65rem',
+              borderRadius: '8px',
+              border: currentView === 'ai_agent' ? `1.5px solid ${currentTheme.primary}` : `1px solid ${currentTheme.primary}44`,
+              background: currentView === 'ai_agent' ? currentTheme.primary : `${currentTheme.primary}18`,
+              color: currentView === 'ai_agent' ? '#000000' : '#ffffff',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: `0 2px 12px ${currentTheme.primaryGlow}`,
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Bot size={17} color={currentView === 'ai_agent' ? '#000000' : currentTheme.primary} />
+            {!isCollapsed && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <span>Agente IA APEX</span>
+                <span style={{ fontSize: '0.58rem', background: currentView === 'ai_agent' ? '#000000' : currentTheme.primary, color: currentView === 'ai_agent' ? currentTheme.primary : '#000000', fontWeight: 900, padding: '0.08rem 0.35rem', borderRadius: '4px' }}>
+                  24/7
+                </span>
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Acceso Global: Edición Video IA & Automatización Redes */}
+        <div style={{ marginBottom: '0.45rem' }}>
+          <button
+            onClick={() => onNavigate('tlc_video_ai')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.45rem 0.65rem',
+              borderRadius: '8px',
+              border: currentView === 'tlc_video_ai' ? '1.5px solid #a855f7' : '1px solid rgba(168, 85, 247, 0.35)',
+              background: currentView === 'tlc_video_ai' ? 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)' : 'rgba(168, 85, 247, 0.12)',
+              color: currentView === 'tlc_video_ai' ? '#ffffff' : '#f8fafc',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: currentView === 'tlc_video_ai' ? '0 4px 14px rgba(168, 85, 247, 0.4)' : 'none',
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Video size={17} color={currentView === 'tlc_video_ai' ? '#ffffff' : '#c084fc'} />
+            {!isCollapsed && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <span>Edición Video & Redes</span>
+                <span style={{ fontSize: '0.55rem', background: '#a855f7', color: '#ffffff', fontWeight: 900, padding: '0.08rem 0.35rem', borderRadius: '4px' }}>
+                  VIRAL IA
+                </span>
+              </div>
+            )}
+          </button>
+        </div>
+
         {activeSystem === 'gym' ? (
           /* MÓDULOS DE GIMNASIO NORMAL & ENTRENADORES */
           <>
@@ -638,5 +836,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
     </aside>
+    </>
   );
 };

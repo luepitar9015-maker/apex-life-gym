@@ -2114,4 +2114,49 @@ export const updateSupportTicket = async (
   }
 };
 
+/* ========================================================================= */
+/* AGENTE IA DE APEX LIFE                                                   */
+/* ========================================================================= */
+
+export interface AgentMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  actionSuggestion?: {
+    type: 'NAVIGATE' | 'ACTION';
+    targetView?: string;
+    label?: string;
+  };
+  timestamp: string;
+}
+
+export const sendAgentChatMessage = async (
+  message: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+  context?: any
+): Promise<{ success: boolean; data?: { reply: string; actionSuggestion?: any; timestamp: string }; message?: string }> => {
+  try {
+    const user = getStoredUser();
+    const res = await fetch(`${API_BASE_URL}/ai/agent-chat`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        message,
+        history,
+        userId: user?.id,
+        userRole: user?.role,
+        systemContext: context,
+      }),
+    });
+    return await res.json();
+  } catch (err: any) {
+    console.error('Error enviando mensaje al Agente IA:', err);
+    return {
+      success: false,
+      message: err.message || 'Error de comunicación con el Agente IA.',
+    };
+  }
+};
+
+
 

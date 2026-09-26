@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar.js';
 import { Header } from './components/Header.js';
+import { MobileBottomNav } from './components/MobileBottomNav.js';
 import { AuthModal } from './components/AuthModal.js';
 import { ColorPaletteModal } from './components/ColorPaletteModal.js';
-import { ColorTheme, EnvironmentTheme, getSavedTheme, getSavedEnvTheme, applyGlobalTheme } from './styles/themeConfig.js';
+import { ColorTheme, EnvironmentTheme, SymbolTheme, getSavedTheme, getSavedEnvTheme, applyGlobalTheme, getSavedSymbol, getSavedPortalName } from './styles/themeConfig.js';
+import { UserHomePortalView } from './views/UserHomePortalView.js';
 import { DashboardView } from './views/DashboardView.js';
 import { CheckInView } from './views/CheckInView.js';
 import { MembersView } from './views/MembersView.js';
@@ -20,17 +22,23 @@ import { TLCContactsView } from './views/TLCContactsView.js';
 import { LicensesView } from './views/LicensesView.js';
 import { SupportView } from './views/SupportView.js';
 import { LoginView } from './views/LoginView.js';
+import { AIAgentView } from './views/AIAgentView.js';
+import { AIAgentFabModal } from './components/AIAgentFabModal.js';
 import { getStoredUser, clearStoredAuth, fetchProfile, setStoredUser, AuthUser, UserRole } from './services/api.js';
 
 export const App: React.FC = () => {
   const [activeSystem, setActiveSystem] = useState<'gym' | 'tlc'>('gym');
-  const [currentView, setCurrentView] = useState('dashboard');
+  const [currentView, setCurrentView] = useState('home');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [referralCode, setReferralCode] = useState<string>('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isColorModalOpen, setIsColorModalOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<ColorTheme>(getSavedTheme());
   const [currentEnv, setCurrentEnv] = useState<EnvironmentTheme>(getSavedEnvTheme());
+  const [currentSymbol, setCurrentSymbol] = useState<SymbolTheme>(getSavedSymbol());
+  const [portalName, setPortalName] = useState<string>(getSavedPortalName());
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [isAIAgentModalOpen, setIsAIAgentModalOpen] = useState(false);
 
   useEffect(() => {
     // Aplicar temas guardados al cargar (Tableta 1 y Tableta 2)
@@ -73,7 +81,7 @@ export const App: React.FC = () => {
     if (system === 'tlc') {
       setCurrentView('tlc');
     } else {
-      setCurrentView('dashboard');
+      setCurrentView('home');
     }
   };
 
@@ -112,7 +120,7 @@ export const App: React.FC = () => {
         avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop',
       };
       setActiveSystem('gym');
-      setCurrentView('dashboard');
+      setCurrentView('home');
     } else if (role === 'AFFILIATE') {
       mockUser = {
         id: 'usr-aff-tlc',
@@ -149,6 +157,8 @@ export const App: React.FC = () => {
         business: { id: 'b-gym', name: 'Power Gym Club Sede Central', type: 'GYM' },
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop',
       };
+      setActiveSystem('gym');
+      setCurrentView('home');
     }
 
     setUser(mockUser);
@@ -157,6 +167,11 @@ export const App: React.FC = () => {
 
   const getViewDetails = () => {
     switch (currentView) {
+      case 'home':
+        return { 
+          title: `Mi Portal • ${portalName}`, 
+          subtitle: `Centro de acceso rápido, rutinas y personalización intuitiva (${currentSymbol.emoji} ${currentSymbol.name})` 
+        };
       case 'dashboard':
         return { title: 'Dashboard General Gym', subtitle: 'Aforo en vivo, métricas de capacidad e ingresos del gimnasio' };
       case 'checkin':
@@ -185,6 +200,8 @@ export const App: React.FC = () => {
         return { title: 'Contactos TLC • Ley 1581', subtitle: 'Gestión con autorización y Habeas Data de Colombia' };
       case 'licenses':
         return { title: 'Activador de Licencias & Permisos', subtitle: 'Control maestro de vigencia, claves y módulos permitidos' };
+      case 'ai_agent':
+        return { title: 'Agente IA Autónomo APEX', subtitle: 'Asistente y copiloto cognitivo en tiempo real para operaciones del sistema' };
       case 'support':
         return { title: 'Centro de Soporte Técnico', subtitle: 'Tickets de asistencia técnica, resolución de incidencias y soporte 24/7' };
       case 'users':
@@ -192,7 +209,7 @@ export const App: React.FC = () => {
       case 'profit_share':
         return { title: 'My Profit Share (Nexo)', subtitle: 'COPY-X Network & Historial de Comisiones con Tabla de Colores Personalizada' };
       default:
-        return { title: 'APEX LIFE & TLC Multi-System', subtitle: 'Plataforma Integral' };
+        return { title: `${portalName} Multi-System`, subtitle: 'Plataforma Integral' };
     }
   };
 
@@ -208,7 +225,7 @@ export const App: React.FC = () => {
             setCurrentView('tlc');
           } else {
             setActiveSystem('gym');
-            setCurrentView('dashboard');
+            setCurrentView('home');
           }
         }} 
       />
@@ -218,18 +235,19 @@ export const App: React.FC = () => {
   const details = getViewDetails();
 
   return (
-    <div style={{
-      display: 'flex',
-      minHeight: '100vh',
-      background: currentEnv.canvasBg,
-      transition: 'background 0.25s ease',
-      padding: '1.25rem',
-      gap: '1.25rem',
-      boxSizing: 'border-box',
-      overflowX: 'hidden',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    }}>
-      {/* Sidebar Flotante redondeado con tema dinámico */}
+    <div 
+      className="app-main-layout"
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        background: currentEnv.canvasBg,
+        transition: 'background 0.25s ease',
+        boxSizing: 'border-box',
+        overflowX: 'hidden',
+        fontFamily: 'Inter, system-ui, sans-serif'
+      }}
+    >
+      {/* Sidebar Flotante redondeado con tema dinámico y modo cajón móvil */}
       <Sidebar 
         currentView={currentView} 
         onNavigate={(view) => setCurrentView(view)} 
@@ -237,18 +255,24 @@ export const App: React.FC = () => {
         onSwitchSystem={handleSwitchSystem}
         currentTheme={currentTheme}
         currentEnv={currentEnv}
+        currentSymbol={currentSymbol}
+        portalName={portalName}
         currentUser={user}
         onLogout={handleLogout}
+        isMobileDrawerOpen={isMobileDrawerOpen}
+        onCloseMobileDrawer={() => setIsMobileDrawerOpen(false)}
       />
 
       {/* Main Content Area con estilo Nexo */}
-      <main style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1.25rem',
-        minWidth: 0,
-      }}>
+      <main 
+        className="app-main-content"
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+        }}
+      >
         <Header 
           title={details.title} 
           subtitle={details.subtitle} 
@@ -256,14 +280,31 @@ export const App: React.FC = () => {
           activeSystem={activeSystem}
           currentTheme={currentTheme}
           currentEnv={currentEnv}
+          currentSymbol={currentSymbol}
+          portalName={portalName}
           onOpenColorModal={() => setIsColorModalOpen(true)}
           onSwitchSystem={handleSwitchSystem}
           onOpenLogin={() => setIsAuthModalOpen(true)}
           onLogout={handleLogout}
           onQuickSwitchUser={handleQuickSwitchUser}
+          onOpenMenu={() => setIsMobileDrawerOpen(true)}
         />
 
         <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Fronter Intuitivo del Usuario: Mi Portal (Home) */}
+          {currentView === 'home' && (
+            <UserHomePortalView 
+              onNavigate={(v) => setCurrentView(v)} 
+              currentUser={user}
+              currentTheme={currentTheme}
+              currentEnv={currentEnv}
+              currentSymbol={currentSymbol}
+              portalName={portalName}
+              onOpenCustomizer={() => setIsColorModalOpen(true)}
+              onOpenAICopilot={() => setIsAIAgentModalOpen(true)}
+            />
+          )}
+
           {/* Módulos GYM con Estilo Nexo */}
           {currentView === 'dashboard' && <DashboardView onNavigate={(v) => setCurrentView(v)} currentTheme={currentTheme} />}
           {currentView === 'checkin' && <CheckInView currentTheme={currentTheme} />}
@@ -328,6 +369,15 @@ export const App: React.FC = () => {
             />
           )}
 
+          {/* Agente IA Autónomo de APEX LIFE */}
+          {currentView === 'ai_agent' && (
+            <AIAgentView 
+              currentTheme={currentTheme}
+              currentUser={user}
+              onNavigate={(v) => setCurrentView(v)}
+            />
+          )}
+
           {/* Módulos de Administración */}
           {currentView === 'users' && <UsersManagementView onSwitchUser={(u) => setUser(u)} currentTheme={currentTheme} />}
           
@@ -336,12 +386,33 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Modal Interactivo de Dos Tabletas de Colores (Tableta 1: Acento & Banners, Tableta 2: Entorno & Fondos) */}
+      {/* Barra de Navegación Inferior para Celulares / APK */}
+      <MobileBottomNav
+        currentView={currentView}
+        onNavigate={(view) => setCurrentView(view)}
+        activeSystem={activeSystem}
+        onSwitchSystem={handleSwitchSystem}
+        currentTheme={currentTheme}
+        currentUser={user}
+        onOpenMenu={() => setIsMobileDrawerOpen(true)}
+      />
+
+      {/* Agente IA Flotante Interactivo (FAB + Modal) */}
+      <AIAgentFabModal
+        currentTheme={currentTheme}
+        onNavigate={(view) => setCurrentView(view)}
+        isOpen={isAIAgentModalOpen}
+        onToggle={() => setIsAIAgentModalOpen(!isAIAgentModalOpen)}
+      />
+
+      {/* Centro de Personalización: Colores, Entornos & Símbolos */}
       <ColorPaletteModal
         isOpen={isColorModalOpen}
         onClose={() => setIsColorModalOpen(false)}
         currentTheme={currentTheme}
         currentEnv={currentEnv}
+        currentSymbol={currentSymbol}
+        portalName={portalName}
         onThemeChange={(newTheme) => {
           setCurrentTheme(newTheme);
           applyGlobalTheme(newTheme, currentEnv);
@@ -349,6 +420,12 @@ export const App: React.FC = () => {
         onEnvChange={(newEnv) => {
           setCurrentEnv(newEnv);
           applyGlobalTheme(currentTheme, newEnv);
+        }}
+        onSymbolChange={(newSymbol) => {
+          setCurrentSymbol(newSymbol);
+        }}
+        onPortalNameChange={(newName) => {
+          setPortalName(newName);
         }}
       />
 

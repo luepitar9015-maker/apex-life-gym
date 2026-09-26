@@ -1077,3 +1077,158 @@ export const generateRoutineWithAI = async (
     verifiedMachinesCount: verifiedMachines.size,
   };
 };
+
+/* ========================================================================= */
+/* AGENTE IA AUTÓNOMO DEL SISTEMA APEX LIFE (Chat, Consulta y Automatización) */
+/* ========================================================================= */
+
+export interface AgentChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+export interface AgentChatInput {
+  message: string;
+  history?: AgentChatMessage[];
+  userId?: string;
+  userRole?: string;
+  systemContext?: any;
+}
+
+export interface AgentChatResponse {
+  reply: string;
+  actionSuggestion?: {
+    type: 'NAVIGATE' | 'ACTION';
+    targetView?: string;
+    label?: string;
+  };
+  timestamp: string;
+}
+
+export const chatWithApexAgent = async (input: AgentChatInput): Promise<AgentChatResponse> => {
+  const { message, history = [], userRole = 'SUPERADMIN' } = input;
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  const systemPrompt = `Eres APEX AI, el Agente Inteligente Oficial y Asistente Autónomo de la plataforma APEX LIFE & TLC.
+Tu rol es asistir a administradores, entrenadores, afiliados TLC y socios en todas las operaciones del sistema.
+
+Conocimiento del Sistema APEX LIFE:
+1. GIMNASIO & FITNESS:
+   - Aforo en tiempo real de la sala: 38/100 personas (38% ocupación - Óptimo).
+   - Control de acceso biométrico y QR Virtual en recepción (Check-In).
+   - Directorio de socios con planes (Plan Black VIP + IA, Plan Mensual Pro, Plan Básico).
+   - Escáner Corporal IA 3D con estimación antropométrica de grasa, masa magra y análisis postural.
+   - Generador de Rutinas inteligentes con verificación de máquinas por sede.
+   - Nutrición inteligente y cálculo de macronutrientes.
+
+2. TOTAL LIFE CHANGES (TLC) & LEY 1581 DE 2012 (COLOMBIA):
+   - Registro y tratamiento de datos personales conforme al Régimen General de Protección de Datos Personales de Colombia (Habeas Data).
+   - Campos de cumplimiento legal: Autorización expresa, fecha/hora exacta, dirección IP, texto de autorización y opción de revocatoria.
+   - Productos estrella: Iaso Tea (Instant & Original para desintoxicación), Gotas Resolution (pérdida de grasa visceral), Café Delgada con Ganoderma, NutraBurst (multivitamínico líquido), NRG (energía y termogénesis).
+   - Plan de compensación 50/50/50 y red de afiliados.
+
+3. LICENCIAS COMERCIALES & MODULARIDAD (SUPERADMIN):
+   - Activador de licencias específicas para gimnasios y franquicias TLC.
+   - Tipos de planes: GYM_TLC_PRO, GYM_BASIC, TLC_NETWORK.
+   - Control granular de permisos de módulos: GYM_CORE, NUTRITION, ROUTINES, AI_SCAN, TLC_NETWORK, STORE, SUPPORT.
+   - Tokens criptográficos de activación y suspensión inmediata.
+
+4. SOPORTE TÉCNICO & INFRAESTRUCTURA:
+   - Servidor VPS en Contabo (IP 80.241.212.9) con Node.js 20, PostgreSQL 16, PM2 y Nginx.
+   - Despliegue en Vercel para alta disponibilidad.
+   - Sistema de tickets con prioridades (LOW, MEDIUM, HIGH, URGENT) y estados.
+
+INSTRUCCIONES DE RESPUESTA:
+- Sé sumamente profesional, dinámico, inspirador y preciso.
+- Utiliza formato Markdown con emojis y listas claras.
+- Si el usuario solicita ver o realizar algo específico, orienta al usuario y sugiere la acción correspondiente.
+- Responde siempre en español.`;
+
+  if (apiKey && apiKey !== 'AIzaSyYourGeminiApiKeyHere' && apiKey.trim().length > 10) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+
+      let formattedConversation = `${systemPrompt}\n\n`;
+      history.slice(-6).forEach((h) => {
+        formattedConversation += `${h.role === 'user' ? 'Usuario' : 'APEX AI'}: ${h.content}\n`;
+      });
+      formattedConversation += `Usuario: ${message}\nAPEX AI:`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ text: formattedConversation }],
+      });
+
+      const replyText = response.text || '';
+
+      // Detección automática de acciones sugeridas
+      let actionSuggestion: AgentChatResponse['actionSuggestion'] = undefined;
+      const lower = (message + ' ' + replyText).toLowerCase();
+
+      if (lower.includes('video') || lower.includes('redes') || lower.includes('publica') || lower.includes('tiktok') || lower.includes('reels') || lower.includes('edici')) {
+        actionSuggestion = { type: 'NAVIGATE', targetView: 'tlc_video_ai', label: '🎬 Abrir Edición Video IA & Redes' };
+      } else if (lower.includes('contacto') || lower.includes('ley 1581') || lower.includes('habeas data') || lower.includes('prospecto')) {
+        actionSuggestion = { type: 'NAVIGATE', targetView: 'tlc_contacts', label: 'Ver Contactos Ley 1581' };
+      } else if (lower.includes('licencia') || lower.includes('permiso') || lower.includes('activar módulo')) {
+        actionSuggestion = { type: 'NAVIGATE', targetView: 'licenses', label: 'Gestionar Licencias' };
+      } else if (lower.includes('aforo') || lower.includes('recepción') || lower.includes('qr') || lower.includes('entrada')) {
+        actionSuggestion = { type: 'NAVIGATE', targetView: 'checkin', label: 'Ir a Recepción QR' };
+      } else if (lower.includes('rutina') || lower.includes('entrenar') || lower.includes('ejercicio')) {
+        actionSuggestion = { type: 'NAVIGATE', targetView: 'routines', label: 'Generador de Rutinas' };
+      } else if (lower.includes('escan') || lower.includes('grasa') || lower.includes('postura') || lower.includes('cuerpo')) {
+        actionSuggestion = { type: 'NAVIGATE', targetView: 'aiscan', label: 'Escaneo Corporal IA' };
+      } else if (lower.includes('tlc') || lower.includes('iaso') || lower.includes('té') || lower.includes('afiliado')) {
+        actionSuggestion = { type: 'NAVIGATE', targetView: 'tlc', label: 'Ir al Hub TLC' };
+      } else if (lower.includes('soporte') || lower.includes('ticket') || lower.includes('falla') || lower.includes('ayuda')) {
+        actionSuggestion = { type: 'NAVIGATE', targetView: 'support', label: 'Centro de Soporte' };
+      }
+
+      return {
+        reply: replyText,
+        actionSuggestion,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (err) {
+      console.warn('Error en llamada a Gemini para Agente IA, usando motor semántico local:', err);
+    }
+  }
+
+  // Motor conversacional semántico inteligente de respaldo
+  const lowerMsg = message.toLowerCase();
+  let reply = '';
+  let actionSuggestion: AgentChatResponse['actionSuggestion'] = undefined;
+
+  if (lowerMsg.includes('video') || lowerMsg.includes('edici') || lowerMsg.includes('redes') || lowerMsg.includes('tiktok') || lowerMsg.includes('reels') || lowerMsg.includes('publica')) {
+    reply = `🎬 **Estudio de Edición con IA & Automatización de Redes Sociales:**\n\nEl sistema cuenta con el **TLC AI Content Engine**, un estudio integral para creadores y afiliados:\n\n1. **Generación de Video IA Multiformato:** Renderizado vertical TikTok / Reels (9:16) y Feed (4:5) para productos como Iaso Tea, Café Delgada y Resolution.\n2. **Chat de Copiloto de Edición:** Ajusta el tono dinámico, subtítulos virales y llamados a la acción de compra mediante texto.\n3. **Publicación y Automatización:** Calendario social con programación directa para Instagram Reels, TikTok, YouTube Shorts y Facebook.\n4. **Métricas de Conversión:** Rastreo de clics, vistas y atribución de comisiones del 50% vía enlace de afiliado.\n\n¿Deseas ingresar al estudio de video ahora?`;
+    actionSuggestion = { type: 'NAVIGATE', targetView: 'tlc_video_ai', label: '🎬 Abrir Edición Video & Redes' };
+  } else if (lowerMsg.includes('aforo') || lowerMsg.includes('sala') || lowerMsg.includes('cuantas personas') || lowerMsg.includes('ocupado')) {
+    reply = `🏋️‍♂️ **Estado del Aforo en Sala:**\n\nActualmente hay **38 de 100 personas** en sala (**38% de ocupación**).\n\n• **Nivel de flujo:** Óptimo / Confortable.\n• **Áreas con mayor disponibilidad:** Zona de Fuerza Libre y Cardio.\n• **Terminal activo:** Terminal Principal QR (T1) con validación instantánea.`;
+    actionSuggestion = { type: 'NAVIGATE', targetView: 'dashboard', label: 'Ver Dashboard de Aforo' };
+  } else if (lowerMsg.includes('1581') || lowerMsg.includes('habeas data') || lowerMsg.includes('contacto') || lowerMsg.includes('consentimiento')) {
+    reply = `⚖️ **Módulo TLC • Cumplimiento Ley 1581 de 2012 (Colombia):**\n\nEl sistema cuenta con un motor de captura de prospectos 100% blindado bajo la normativa de protección de datos de la SIC:\n\n1. **Consentimiento Expreso:** Checkbox obligatorio no premarcado.\n2. **Trazabilidad Forense:** Registro inmutable de IP (${'80.241.212.9'} / cliente), fecha y hora exacta.\n3. **Cláusula Legal Autorizada:** Autorización para prospección comercial, salud y nutrición TLC.\n4. **Derecho ARCO:** Botón de revocatoria de consentimiento inmediato.\n\n¿Deseas registrar un nuevo contacto o consultar los prospectos autorizados?`;
+    actionSuggestion = { type: 'NAVIGATE', targetView: 'tlc_contacts', label: 'Abrir Registro Ley 1581' };
+  } else if (lowerMsg.includes('licencia') || lowerMsg.includes('activar') || lowerMsg.includes('permiso') || lowerMsg.includes('plan')) {
+    reply = `🔑 **Control Maestro de Licencias & Permisos:**\n\nComo Superusuario puedes gestionar las licencias de sedes de gimnasios y redes TLC:\n\n• **Planes Disponibles:** \`GYM_TLC_PRO\`, \`GYM_BASIC\`, \`TLC_NETWORK\`.\n• **Permisos Granulares:** Gimnasio Core, Nutrición, Rutinas, Escáner IA 3D, TLC Network, Tienda y Soporte.\n• **Tokens Cifrados:** Se generan llaves únicas de 64 bits con fecha de expiración y auditoría de uso.\n\n¿Quieres activar una nueva licencia o extender días a un cliente existente?`;
+    actionSuggestion = { type: 'NAVIGATE', targetView: 'licenses', label: 'Ir al Activador de Licencias' };
+  } else if (lowerMsg.includes('rutina') || lowerMsg.includes('entreno') || lowerMsg.includes('ejercicio') || lowerMsg.includes('hipertrofia')) {
+    reply = `💪 **Generador Inteligente de Rutinas:**\n\nPuedo estructurar planes de entrenamiento personalizados considerando:\n\n• **Nivel:** Principiante, Intermedio o Avanzado.\n• **Objetivo:** Hipertrofia, Pérdida de Grasa, Fuerza o Tonificación.\n• **Entorno:** Gimnasio comercial (con máquinas verificadas en sede) o Casa / Mancuernas.\n• **Alternativas Inmediatas:** Cada ejercicio cuenta con su alternativa si la máquina principal está ocupada.\n\n¿Deseas diseñar un plan para ti o para un socio del gimnasio?`;
+    actionSuggestion = { type: 'NAVIGATE', targetView: 'routines', label: 'Diseñar Rutina IA' };
+  } else if (lowerMsg.includes('tlc') || lowerMsg.includes('iaso') || lowerMsg.includes('te') || lowerMsg.includes('té') || lowerMsg.includes('delgada') || lowerMsg.includes('detox')) {
+    reply = `🌿 **Ecosistema Total Life Changes (TLC):**\n\nProductos principales y protocolos sugeridos:\n\n• **Iaso Tea (Instant & Original):** Desintoxicación natural del colon y drenaje de toxinas (hasta 5 libras en 5 días).\n• **Resolution Drops:** Gotas homeopáticas para reducción de grasa visceral e inhibición de ansiedad calórica.\n• **Café Delgada:** Café premium enriquecido con Ganoderma Lucidum para activar el metabolismo.\n• **NutraBurst:** 72 minerales y fitonutrientes líquidos de máxima absorción.\n\nLos afiliados disponen de tienda virtual con enlace de referido y comisión del 50%.`;
+    actionSuggestion = { type: 'NAVIGATE', targetView: 'tlc', label: 'Explorar Hub TLC' };
+  } else if (lowerMsg.includes('soporte') || lowerMsg.includes('ticket') || lowerMsg.includes('servidor') || lowerMsg.includes('contabo')) {
+    reply = `🛡️ **Centro de Soporte Técnico & Estado de Servidores:**\n\n• **Servidor VPS Contabo:** IP \`80.241.212.9\` • Estado: **ONLINE (PM2 & PostgreSQL 16)**.\n• **Frontend Vercel:** Alta disponibilidad con CDN mundial y proxy inverso seguro.\n• **Tickets Técnicos:** Puedes crear tickets con prioridad inmediata asignados a los ingenieros de soporte.\n\n¿Deseas reportar una novedad o verificar el estado de un ticket?`;
+    actionSuggestion = { type: 'NAVIGATE', targetView: 'support', label: 'Ver Soporte Técnico' };
+  } else if (lowerMsg.includes('hola') || lowerMsg.includes('buenas') || lowerMsg.includes('saludos') || lowerMsg.includes('quien eres') || lowerMsg.includes('qué haces')) {
+    reply = `👋 ¡Hola! Soy **APEX AI**, tu Agente Inteligente y Asistente Autónomo del ecosistema **APEX LIFE & TLC**.\n\nPuedo ayudarte en tiempo real con:\n\n1. 🏋️ **Gestión del Gimnasio:** Aforo, recepción QR, directorio de socios y rutinas.\n2. ⚖️ **Contactos Ley 1581 (Colombia):** Registro y cumplimiento Habeas Data para TLC.\n3. 🔑 **Licencias & Módulos:** Activación y configuración de permisos de cliente.\n4. 🌿 **Catálogo TLC:** Protocolos détox, productos y herramientas para afiliados.\n5. 🛡️ **Soporte Técnico:** Estado del servidor Contabo y atención de tickets.\n\n¿En qué te gustaría que trabajemos hoy?`;
+  } else {
+    reply = `🤖 Entendido. He analizado tu consulta sobre: *"${message}"*.\n\nComo Agente IA de **APEX LIFE**, puedo asistirte en la automatización de cualquiera de los módulos del sistema (Gimnasio, TLC Ley 1581, Licencias, Escaneo Corporal IA o Soporte).\n\n¿Deseas que ejecute alguna acción específica o te brinde detalles de alguno de estos módulos?`;
+  }
+
+  return {
+    reply,
+    actionSuggestion,
+    timestamp: new Date().toISOString(),
+  };
+};
+

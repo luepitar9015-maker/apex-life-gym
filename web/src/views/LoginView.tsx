@@ -141,7 +141,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* Tarjeta de Inicio de Sesión */}
-        <div className="p-7 rounded-3xl bg-gray-900/80 border border-gray-800 shadow-2xl backdrop-blur-xl space-y-5">
+        <div className="p-4 sm:p-7 rounded-3xl bg-gray-900/80 border border-gray-800 shadow-2xl backdrop-blur-xl space-y-5">
           {/* Selector Login / Registro */}
           <div className="grid grid-cols-2 p-1 bg-gray-950/80 rounded-xl border border-gray-800 text-xs font-semibold">
             <button

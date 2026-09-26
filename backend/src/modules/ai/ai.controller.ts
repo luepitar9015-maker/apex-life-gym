@@ -3,6 +3,7 @@ import {
   analyzeBodyWithAI, 
   generateMealPlanWithAI, 
   generateRoutineWithAI, 
+  chatWithApexAgent,
   GYM_LOCATIONS_CATALOG,
   RoutineLevel,
   RoutineGoalType,
@@ -134,6 +135,37 @@ export const handleGetGymLocations = async (_req: Request, res: Response): Promi
     res.status(500).json({
       success: false,
       message: 'Error al obtener inventario de sedes y máquinas',
+      error: error.message,
+    });
+  }
+};
+
+// Conversación y comandos con el Agente IA de APEX LIFE
+export const handleAgentChat = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { message, history, userId, userRole, systemContext } = req.body;
+
+    if (!message || typeof message !== 'string') {
+      res.status(400).json({ success: false, message: 'El mensaje es requerido.' });
+      return;
+    }
+
+    const response = await chatWithApexAgent({
+      message,
+      history,
+      userId,
+      userRole,
+      systemContext,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: response,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al procesar consulta con el Agente IA',
       error: error.message,
     });
   }

@@ -244,3 +244,145 @@ export const getSavedEnvTheme = (): EnvironmentTheme => {
   } catch (e) {}
   return ENVIRONMENT_PALETTES[0]; // Nexo Light Canvas por defecto
 };
+
+// -------------------------------------------------------------
+// TABLETA 3: SÍMBOLOS, EMBLEMAS & PERSONALIZACIÓN DE IDENTIDAD
+// -------------------------------------------------------------
+export type SymbolIconKey = 
+  | 'zap' 
+  | 'dumbbell' 
+  | 'flame' 
+  | 'crown' 
+  | 'leaf' 
+  | 'shield' 
+  | 'gem' 
+  | 'target' 
+  | 'star' 
+  | 'trophy';
+
+export interface SymbolTheme {
+  id: string;
+  name: string;
+  iconKey: SymbolIconKey;
+  emoji: string;
+  category: 'Energía' | 'Fuerza' | 'Salud' | 'Estatus';
+  description: string;
+}
+
+export const USER_SYMBOLS: SymbolTheme[] = [
+  {
+    id: 'sym-zap',
+    name: 'Rayo Dinámico',
+    iconKey: 'zap',
+    emoji: '⚡',
+    category: 'Energía',
+    description: 'Alta intensidad, energía explosiva, velocidad y rendimiento'
+  },
+  {
+    id: 'sym-dumbbell',
+    name: 'Titán Pesa',
+    iconKey: 'dumbbell',
+    emoji: '🏋️‍♂️',
+    category: 'Fuerza',
+    description: 'Fuerza pura, hipertrofia, levantamiento y musculación'
+  },
+  {
+    id: 'sym-flame',
+    name: 'Llama Activa',
+    iconKey: 'flame',
+    emoji: '🔥',
+    category: 'Energía',
+    description: 'Quema calórica, cardio extremo, resistencia y pasión'
+  },
+  {
+    id: 'sym-crown',
+    name: 'Corona Royale VIP',
+    iconKey: 'crown',
+    emoji: '👑',
+    category: 'Estatus',
+    description: 'Liderazgo, nivel directivo, membrecía platino y excelencia'
+  },
+  {
+    id: 'sym-leaf',
+    name: 'Hoja Vital Zen',
+    iconKey: 'leaf',
+    emoji: '🌿',
+    category: 'Salud',
+    description: 'Total Life Changes, salud détox, nutrición natural y balance'
+  },
+  {
+    id: 'sym-shield',
+    name: 'Escudo Fortaleza',
+    iconKey: 'shield',
+    emoji: '🛡️',
+    category: 'Fuerza',
+    description: 'Disciplina inquebrantable, consistencia, constancia y protección'
+  },
+  {
+    id: 'sym-gem',
+    name: 'Diamante Black',
+    iconKey: 'gem',
+    emoji: '💎',
+    category: 'Estatus',
+    description: 'Elegancia superior, precisión biomecánica y resultados premium'
+  },
+  {
+    id: 'sym-target',
+    name: 'Diana Focus',
+    iconKey: 'target',
+    emoji: '🎯',
+    category: 'Fuerza',
+    description: 'Metas claras, enfoque milimétrico y objetivos cumplidos'
+  },
+  {
+    id: 'sym-star',
+    name: 'Estrella Pro',
+    iconKey: 'star',
+    emoji: '⭐',
+    category: 'Estatus',
+    description: 'Destacado de la comunidad, superación continua y brillo'
+  },
+  {
+    id: 'sym-trophy',
+    name: 'Trofeo Campeón',
+    iconKey: 'trophy',
+    emoji: '🏆',
+    category: 'Estatus',
+    description: 'Victorias deportivas, competencias y superación personal'
+  }
+];
+
+const SYMBOL_STORAGE_KEY = 'nexo_gym_active_symbol';
+const PORTAL_NAME_STORAGE_KEY = 'nexo_gym_portal_name';
+
+export const getSavedSymbol = (): SymbolTheme => {
+  try {
+    const saved = localStorage.getItem(SYMBOL_STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  return USER_SYMBOLS[0]; // Rayo por defecto
+};
+
+export const saveSymbol = (symbol: SymbolTheme): void => {
+  try {
+    localStorage.setItem(SYMBOL_STORAGE_KEY, JSON.stringify(symbol));
+  } catch (e) {
+    console.warn('No se pudo guardar símbolo en localStorage');
+  }
+};
+
+export const getSavedPortalName = (): string => {
+  try {
+    const saved = localStorage.getItem(PORTAL_NAME_STORAGE_KEY);
+    if (saved) return saved;
+  } catch (e) {}
+  return 'APEX LIFE';
+};
+
+export const savePortalName = (name: string): void => {
+  try {
+    localStorage.setItem(PORTAL_NAME_STORAGE_KEY, name);
+  } catch (e) {
+    console.warn('No se pudo guardar nombre de portal en localStorage');
+  }
+};

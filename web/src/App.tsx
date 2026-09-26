@@ -25,8 +25,6 @@ import { LicensesView } from './views/LicensesView.js';
 import { SupportView } from './views/SupportView.js';
 import { AIAgentView } from './views/AIAgentView.js';
 import { AIAgentFabModal } from './components/AIAgentFabModal.js';
-import { ApexLifeMasterView } from './views/ApexLifeMasterView.js';
-import { ApexLifeApp } from './ApexLifeApp.js';
 import { getStoredUser, clearStoredAuth, fetchProfile, setStoredUser, AuthUser, UserRole } from './services/api.js';
 
 const DEFAULT_USER: AuthUser = {
@@ -42,7 +40,7 @@ const DEFAULT_USER: AuthUser = {
 
 export const App: React.FC = () => {
   const [activeSystem, setActiveSystem] = useState<'gym' | 'tlc'>('gym');
-  const [currentView, setCurrentView] = useState('users'); // Iniciar en el módulo solicitado de gestión de usuarios & permisos
+  const [currentView, setCurrentView] = useState('home'); // Inicia en Mi Portal (Home) con carnet y accesos directos
   const [user, setUser] = useState<AuthUser>(getStoredUser() || DEFAULT_USER);
   const [referralCode, setReferralCode] = useState<string>('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -140,10 +138,6 @@ export const App: React.FC = () => {
         return { title: 'Sistema de Auditoría & Trazabilidad', subtitle: 'Bitácora de seguridad, accesos y eventos de auditoría forense' };
       case 'server_status':
         return { title: 'Estado y Telemetría del Servidor', subtitle: 'Monitoreo de CPU, RAM, PostgreSQL, Prisma y latencia en vivo' };
-      case 'apex_master':
-        return { title: 'APEX LIFE 360°', subtitle: 'Arquitectura Integral de 3 Roles (Admin, Entrenador IA, Socio Body Scan)' };
-      case 'apex_app':
-        return { title: 'APEX LIFE High-Tech Biometric', subtitle: 'Fronter autónomo de máquinas, productos y diagnóstico' };
       case 'home':
         return { title: portalName, subtitle: 'Tu Carnet Digital & Portal Inteligente APEX' };
       case 'dashboard':
@@ -259,21 +253,6 @@ export const App: React.FC = () => {
             <ServerStatusView 
               currentTheme={currentTheme} 
             />
-          )}
-
-          {/* Vista Maestra APEX 360 */}
-          {currentView === 'apex_master' && (
-            <ApexLifeMasterView
-              currentTheme={currentTheme}
-              currentEnv={currentEnv}
-              currentUser={user}
-              onNavigateView={(v) => setCurrentView(v)}
-            />
-          )}
-
-          {/* Fronter High-Tech Autónomo */}
-          {currentView === 'apex_app' && (
-            <ApexLifeApp />
           )}
 
           {/* Portal Intuitivo del Usuario */}

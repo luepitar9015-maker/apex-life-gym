@@ -324,50 +324,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         overflowY: 'auto',
         flex: 1,
       }}>
-        {/* Acceso Maestro: APEX LIFE 360° (3 Roles Arquitectura) */}
-        <div style={{ marginBottom: '0.45rem' }}>
-          <button
-            onClick={() => onNavigate('apex_master')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.52rem 0.65rem',
-              borderRadius: '9px',
-              border: currentView === 'apex_master' ? `1.5px solid ${currentTheme.primary}` : '1px solid rgba(16, 185, 129, 0.4)',
-              background: currentView === 'apex_master' 
-                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
-                : 'linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.08) 100%)',
-              color: currentView === 'apex_master' ? '#000000' : '#ffffff',
-              fontSize: '0.79rem',
-              fontWeight: 900,
-              cursor: 'pointer',
-              boxShadow: currentView === 'apex_master' ? '0 4px 18px rgba(16, 185, 129, 0.45)' : 'none',
-              textAlign: 'left',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Sparkles size={17} color={currentView === 'apex_master' ? '#000000' : '#10b981'} />
-            {!isCollapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <span>APEX LIFE 360°</span>
-                <span style={{
-                  fontSize: '0.52rem',
-                  background: currentView === 'apex_master' ? '#000000' : '#10b981',
-                  color: currentView === 'apex_master' ? '#10b981' : '#000000',
-                  fontWeight: 900,
-                  padding: '0.08rem 0.35rem',
-                  borderRadius: '4px',
-                  letterSpacing: '0.03em',
-                }}>
-                  3 ROLES
-                </span>
-              </div>
-            )}
-          </button>
-        </div>
-
         {/* Acceso Principal: Mi Portal Intuitivo (Home) */}
         <div style={{ marginBottom: '0.35rem' }}>
           <button

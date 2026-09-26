@@ -28,7 +28,8 @@ import {
   UserCheck,
   X,
   Bot,
-  Home
+  Home,
+  FileText
 } from 'lucide-react';
 import { ColorTheme, EnvironmentTheme, SymbolTheme, getSavedSymbol, getSavedPortalName } from '../styles/themeConfig.js';
 import { AuthUser } from '../services/api.js';
@@ -795,7 +796,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
           >
             <Key size={16} color={currentView === 'licenses' ? currentTheme.primary : '#f97316'} />
-            {!isCollapsed && <span>Licencias & Permisos</span>}
+            {!isCollapsed && <span>Licencias & SaaS</span>}
+          </button>
+
+          {/* Sistema de Auditoría (Superadmin / Admin) */}
+          <button
+            onClick={() => onNavigate('audit')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.42rem 0.65rem',
+              borderRadius: '6px',
+              border: 'none',
+              background: currentView === 'audit' ? currentTheme.accentBg : 'transparent',
+              color: currentView === 'audit' ? currentTheme.primary : '#94a3b8',
+              fontSize: '0.78rem',
+              fontWeight: currentView === 'audit' ? 700 : 500,
+              cursor: 'pointer',
+              textAlign: 'left',
+              width: '100%',
+            }}
+          >
+            <FileText size={16} color={currentView === 'audit' ? currentTheme.primary : '#c084fc'} />
+            {!isCollapsed && <span>Auditoría & Logs</span>}
+          </button>
+
+          {/* Sistema de Estado del Servidor */}
+          <button
+            onClick={() => onNavigate('server_status')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.42rem 0.65rem',
+              borderRadius: '6px',
+              border: 'none',
+              background: currentView === 'server_status' ? currentTheme.accentBg : 'transparent',
+              color: currentView === 'server_status' ? currentTheme.primary : '#94a3b8',
+              fontSize: '0.78rem',
+              fontWeight: currentView === 'server_status' ? 700 : 500,
+              cursor: 'pointer',
+              textAlign: 'left',
+              width: '100%',
+            }}
+          >
+            <Activity size={16} color={currentView === 'server_status' ? currentTheme.primary : '#10b981'} />
+            {!isCollapsed && <span>Estado del Servidor</span>}
           </button>
 
           {/* Centro de Soporte Técnico */}

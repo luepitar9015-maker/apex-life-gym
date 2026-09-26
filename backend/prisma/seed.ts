@@ -28,7 +28,22 @@ async function main() {
   await prisma.membershipPlan.deleteMany();
   await prisma.user.deleteMany();
 
-  // 2. Crear Usuarios (Admin, Entrenador, Nutricionista, Cliente)
+  const masterSuperadminHash = await bcrypt.hash('Colombia2026**', 10);
+
+  // 2. Crear Usuarios (Superadmin Master, Admin, Entrenador, Nutricionista, Cliente)
+  const masterSuperadmin = await prisma.user.create({
+    data: {
+      email: 'luepitar@gamil.com',
+      passwordHash: masterSuperadminHash,
+      firstName: 'Luepitar',
+      lastName: 'Director Master',
+      documentId: 'MASTER-001',
+      role: Role.SUPERADMIN,
+      gender: Gender.MALE,
+      phone: '+57 300 000 0000',
+    },
+  });
+
   const admin = await prisma.user.create({
     data: {
       email: 'admin@gymfit.com',

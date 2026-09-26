@@ -14,6 +14,10 @@ import tlcRoutes from './modules/tlc/tlc.routes.js';
 import trainersRoutes from './modules/trainers/trainers.routes.js';
 import licensesRoutes from './modules/licenses/licenses.routes.js';
 import supportRoutes from './modules/support/support.routes.js';
+import usersRoutes from './modules/users/users.routes.js';
+import permissionsRoutes from './modules/permissions/permissions.routes.js';
+import auditRoutes from './modules/audit/audit.routes.js';
+import serverRoutes from './modules/server/server.routes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -35,6 +39,10 @@ export const createApp = (): Express => {
 
   // Montaje de rutas de la API
   app.use('/api/auth', authRoutes);
+  app.use('/api/users', usersRoutes);
+  app.use('/api/permissions', permissionsRoutes);
+  app.use('/api/audit', auditRoutes);
+  app.use('/api/server', serverRoutes);
   app.use('/api/members', membersRoutes);
   app.use('/api/exercises', exercisesRoutes);
   app.use('/api/routines', routinesRoutes);

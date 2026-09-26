@@ -195,6 +195,41 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
             <button
               type="button"
+              onClick={async () => {
+                setLoginEmail('luepitar@gamil.com');
+                setLoginPassword('Colombia2026**');
+                setIsLoading(true);
+                const res = await loginUser('luepitar@gamil.com', 'Colombia2026**');
+                setIsLoading(false);
+                if (res.success && res.user) {
+                  setSuccessMessage(`¡Bienvenido Superadministrador Luepitar!`);
+                  setTimeout(() => {
+                    onSuccess(res.user!);
+                    onClose();
+                  }, 500);
+                }
+              }}
+              disabled={isLoading}
+              style={{
+                gridColumn: 'span 2',
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.22) 0%, rgba(168, 85, 247, 0.22) 100%)',
+                border: '1px solid rgba(239, 68, 68, 0.5)',
+                padding: '0.55rem 0.75rem',
+                borderRadius: '8px',
+                color: '#ffffff',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <span>🛡️ Superadmin & Soporte Master (luepitar@gamil.com)</span>
+              <span style={{ fontSize: '0.65rem', background: '#ef4444', color: '#fff', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 900 }}>TODO EL SISTEMA</span>
+            </button>
+            <button
+              type="button"
               onClick={() => handleQuickLogin('admin@gymfit.com')}
               disabled={isLoading}
               style={{

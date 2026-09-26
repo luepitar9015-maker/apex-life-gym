@@ -34,6 +34,15 @@ interface MobileHeaderProps {
 
 export const DEMO_USERS: MobileUser[] = [
   {
+    id: 'usr-luepitar-master',
+    name: 'Luepitar Director Master',
+    email: 'luepitar@gamil.com',
+    role: 'SUPERADMIN',
+    roleLabel: 'Superadmin & Soporte Global',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop',
+    affiliateCode: 'luepitar-master',
+  },
+  {
     id: 'usr-super',
     name: 'Carlos Superadmin',
     email: 'superadmin@gymfit.com',

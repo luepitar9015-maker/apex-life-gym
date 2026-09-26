@@ -756,3 +756,60 @@ model SupportTicket {
   @@index([status])
   @@index([priority])
 }
+
+// -------------------------------------------------------------
+// 11. SISTEMA DE AUDITORÍA Y REGISTRO DE EVENTOS
+// -------------------------------------------------------------
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  userEmail   String?
+  userName    String?
+  action      String   // ej: USER_CREATE, USER_UPDATE, USER_DELETE, PERMISSION_CHANGE, LOGIN_SUCCESS, SECURITY_ALERT, SERVER_STATUS_CHECK
+  entity      String   // User, Permission, Server, System, License, Payment
+  entityId    String?
+  details     String?  @db.Text // Payload JSON con cambios y metadatos
+  ipAddress   String?
+  userAgent   String?
+  severity    String   @default("INFO") // INFO, WARNING, SECURITY, CRITICAL
+  status      String   @default("SUCCESS") // SUCCESS, FAILED
+  timestamp   DateTime @default(now())
+
+  @@index([action])
+  @@index([entity])
+  @@index([severity])
+  @@index([timestamp])
+  @@index([userId])
+}
+
+// -------------------------------------------------------------
+// 12. SISTEMA DE PERMISOS GRANULARES (RBAC & OVERRIDES)
+// -------------------------------------------------------------
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique // ej: users:create, server:manage, audit:view
+  name        String
+  category    String   // USUARIOS, SEGURIDAD, SERVIDOR, AUDITORIA, GIMNASIO, TLC, FINANZAS
+  description String?
+  roles       String[] // Roles que tienen este permiso por defecto
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+model UserCustomPermission {
+  id             String   @id @default(uuid())
+  userId         String
+  permissionCode String
+  isGranted      Boolean  @default(true) // true = otorgado adicional, false = revocado explícitamente
+  grantedBy      String?
+  grantedAt      DateTime @default(now())
+
+  @@unique([userId, permissionCode])
+  @@index([userId])
+}
+

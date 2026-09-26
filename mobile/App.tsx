@@ -20,6 +20,7 @@ import { TLCStoreScreen } from './src/screens/TLCStoreScreen';
 import { TLCHubScreen } from './src/screens/TLCHubScreen';
 import { TLCVideoAIScreen } from './src/screens/TLCVideoAIScreen';
 import { TrainersScreen } from './src/screens/TrainersScreen';
+import { AdminSystemScreen } from './src/screens/AdminSystemScreen';
 import { MobileHeader, DEMO_USERS, MobileUser } from './src/components/MobileHeader';
 import { ColorPaletteModal } from './src/components/ColorPaletteModal';
 import { ThemeProvider, useTheme } from './src/styles/themeConfig';
@@ -42,19 +43,24 @@ const MainApp: React.FC = () => {
     }
   };
 
-  // Pestañas dinámicas según el sistema activo
+  const isAdmin = currentUser.role === 'SUPERADMIN' || currentUser.role === 'BUSINESS_ADMIN';
+
+  // Pestañas dinámicas según el sistema activo y permisos de usuario
   const gymTabs = [
     { id: 'home', label: 'Mi Pase QR', icon: Home },
     { id: 'workout', label: 'Entrenar', icon: Dumbbell },
     { id: 'aiscan', label: 'Escaneo IA', icon: Sparkles },
     { id: 'nutrition', label: 'Macros', icon: UtensilsCrossed },
-    { id: 'trainers', label: 'Coaches', icon: ShieldCheck },
+    ...(isAdmin 
+      ? [{ id: 'admin', label: 'Admin Core', icon: ShieldCheck }] 
+      : [{ id: 'trainers', label: 'Coaches', icon: ShieldCheck }]),
   ];
 
   const tlcTabs = [
     { id: 'tlc_store', label: 'Tienda TLC', icon: ShoppingBag },
     { id: 'tlc_video_ai', label: 'Video IA', icon: Video },
     { id: 'tlc_hub', label: 'Mi Red & Reto', icon: Leaf },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin Core', icon: ShieldCheck }] : []),
   ];
 
   const currentTabs = activeSystem === 'gym' ? gymTabs : tlcTabs;
@@ -80,7 +86,10 @@ const MainApp: React.FC = () => {
 
       {/* Pantalla Activa */}
       <View style={styles.screenContainer}>
-        {activeSystem === 'gym' ? (
+        {/* Pantalla de Administración Móvil (Usuarios, Permisos, Auditoría, Servidor) */}
+        {activeTab === 'admin' ? (
+          <AdminSystemScreen currentUser={currentUser} />
+        ) : activeSystem === 'gym' ? (
           <>
             {activeTab === 'home' && (
               <HomeScreen currentUser={currentUser} onNavigateTab={(t) => setActiveTab(t)} />

@@ -24,6 +24,7 @@ import { SupportView } from './views/SupportView.js';
 import { LoginView } from './views/LoginView.js';
 import { AIAgentView } from './views/AIAgentView.js';
 import { AIAgentFabModal } from './components/AIAgentFabModal.js';
+import { ApexLifeMasterView } from './views/ApexLifeMasterView.js';
 import { getStoredUser, clearStoredAuth, fetchProfile, setStoredUser, AuthUser, UserRole } from './services/api.js';
 
 const DEFAULT_USER: AuthUser = {
@@ -38,7 +39,7 @@ const DEFAULT_USER: AuthUser = {
 
 export const App: React.FC = () => {
   const [activeSystem, setActiveSystem] = useState<'gym' | 'tlc'>('gym');
-  const [currentView, setCurrentView] = useState('home');
+  const [currentView, setCurrentView] = useState('apex_master');
   const [user, setUser] = useState<AuthUser>(getStoredUser() || DEFAULT_USER);
   const [referralCode, setReferralCode] = useState<string>('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -179,6 +180,11 @@ export const App: React.FC = () => {
 
   const getViewDetails = () => {
     switch (currentView) {
+      case 'apex_master':
+        return { 
+          title: 'APEX LIFE • Ecosistema Integral 360°', 
+          subtitle: 'Arquitectura Maestra de 3 Roles: Admin del Gimnasio, Entrenador Personal & Cliente con IA' 
+        };
       case 'home':
         return { 
           title: `Mi Portal • ${portalName}`, 
@@ -303,6 +309,16 @@ export const App: React.FC = () => {
         />
 
         <div style={{ flex: 1, minWidth: 0 }}>
+          {/* VISTA MAESTRA APEX LIFE: Ecosistema 3 Roles (Admin, Coach IA, Cliente) */}
+          {currentView === 'apex_master' && (
+            <ApexLifeMasterView
+              currentTheme={currentTheme}
+              currentEnv={currentEnv}
+              currentUser={user}
+              onNavigateView={(v) => setCurrentView(v)}
+            />
+          )}
+
           {/* Fronter Intuitivo del Usuario: Mi Portal (Home) */}
           {currentView === 'home' && (
             <UserHomePortalView 

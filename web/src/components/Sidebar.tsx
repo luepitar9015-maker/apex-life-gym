@@ -8,24 +8,60 @@ import {
   Sliders,
   Flame,
   Activity,
+  User,
+  Shield,
 } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
   aforoInfo?: { current: number; max: number; percent: number };
+  activeRole: 'ADMIN' | 'TRAINER' | 'MEMBER';
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforoInfo }) => {
-  const navItems = [
-    { id: 'dashboard', label: 'Panel Principal', icon: LayoutDashboard, badge: null },
-    { id: 'checkin', label: 'Recepción & QR', icon: QrCode, badge: 'En vivo' },
-    { id: 'members', label: 'Directorio de Socios', icon: Users, badge: null },
-    { id: 'pos', label: 'Caja & Cobros', icon: CreditCard, badge: null },
-    { id: 'routines', label: 'Rutinas & Ejercicios', icon: Dumbbell, badge: null },
-    { id: 'aforo', label: 'Control de Aforo', icon: Activity, badge: null },
-    { id: 'settings', label: 'Configuración', icon: Sliders, badge: null },
-  ];
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforoInfo, activeRole }) => {
+  const getNavItems = () => {
+    if (activeRole === 'TRAINER') {
+      return [
+        { id: 'trainer', label: 'Panel del Entrenador', icon: Dumbbell, badge: 'Coach' },
+        { id: 'routines', label: 'Rutinas & Biomecánica', icon: Activity, badge: null },
+        { id: 'members', label: 'Directorio de Atletas', icon: Users, badge: null },
+      ];
+    }
+
+    if (activeRole === 'MEMBER') {
+      return [
+        { id: 'affiliate', label: 'Mi Carnet & Portal', icon: QrCode, badge: 'Socio' },
+        { id: 'routines', label: 'Mi Plan de Ejercicios', icon: Dumbbell, badge: null },
+      ];
+    }
+
+    // Default: ADMIN
+    return [
+      { id: 'dashboard', label: 'Panel Principal', icon: LayoutDashboard, badge: null },
+      { id: 'checkin', label: 'Recepción & QR', icon: QrCode, badge: 'En vivo' },
+      { id: 'members', label: 'Directorio de Socios', icon: Users, badge: null },
+      { id: 'pos', label: 'Caja & Cobros', icon: CreditCard, badge: null },
+      { id: 'routines', label: 'Rutinas & Ejercicios', icon: Dumbbell, badge: null },
+      { id: 'aforo', label: 'Control de Aforo', icon: Activity, badge: null },
+      { id: 'settings', label: 'Configuración', icon: Sliders, badge: null },
+    ];
+  };
+
+  const navItems = getNavItems();
+
+  const getRoleLabel = () => {
+    switch (activeRole) {
+      case 'ADMIN':
+        return { title: 'Administrador GYM', subtitle: 'Control Total & Caja', color: '#10b981', initial: 'AD' };
+      case 'TRAINER':
+        return { title: 'Coach Laura Gómez', subtitle: 'Entrenador de Sala', color: '#06b6d4', initial: 'LG' };
+      case 'MEMBER':
+        return { title: 'Mateo Giraldo', subtitle: 'Afiliado Pro (GYM-1001)', color: '#8b5cf6', initial: 'MG' };
+    }
+  };
+
+  const roleInfo = getRoleLabel();
 
   return (
     <aside style={{
@@ -71,8 +107,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforo
         </div>
       </div>
 
-      {/* Live Aforo Badge */}
-      {aforoInfo && (
+      {/* Live Aforo Badge (Admin / Coach) */}
+      {aforoInfo && activeRole !== 'MEMBER' && (
         <div style={{
           margin: '1.25rem 1.25rem 0.5rem 1.25rem',
           padding: '0.85rem 1rem',
@@ -160,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforo
         })}
       </nav>
 
-      {/* Footer Info */}
+      {/* Active User Card at Bottom */}
       <div style={{
         padding: '1.25rem',
         borderTop: '1px solid rgba(255, 255, 255, 0.06)',
@@ -169,26 +205,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforo
         gap: '0.75rem',
       }}>
         <div style={{
-          width: '36px',
-          height: '36px',
+          width: '38px',
+          height: '38px',
           borderRadius: '50%',
-          backgroundColor: '#1e293b',
+          backgroundColor: `${roleInfo.color}25`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontWeight: 700,
-          color: '#cbd5e1',
+          fontWeight: 800,
+          color: roleInfo.color,
           fontSize: '0.85rem',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          border: `1px solid ${roleInfo.color}50`,
         }}>
-          AD
+          {roleInfo.initial}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Admin Master
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {roleInfo.title}
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 500 }}>
-            Recepción & Control
+          <div style={{ fontSize: '0.72rem', color: roleInfo.color, fontWeight: 600 }}>
+            {roleInfo.subtitle}
           </div>
         </div>
       </div>

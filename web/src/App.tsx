@@ -9,10 +9,15 @@ import { POSView } from './views/POSView';
 import { RoutinesView } from './views/RoutinesView';
 import { AforoView } from './views/AforoView';
 import { SettingsView } from './views/SettingsView';
+import { AffiliatePortalView } from './views/AffiliatePortalView';
+import { TrainerView } from './views/TrainerView';
 
 import { api } from './services/api';
 
+export type UserRole = 'ADMIN' | 'TRAINER' | 'MEMBER';
+
 export const App: React.FC = () => {
+  const [activeRole, setActiveRole] = useState<UserRole>('ADMIN');
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [aforoInfo, setAforoInfo] = useState({ current: 2, max: 60, percent: 3 });
@@ -29,7 +34,7 @@ export const App: React.FC = () => {
         });
       }
     } catch (e) {
-      // Ignorar si el backend está reiniciando
+      // Ignorar si el backend está ocupado
     }
   };
 
@@ -38,6 +43,13 @@ export const App: React.FC = () => {
     const interval = setInterval(syncAforo, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleRoleChange = (newRole: UserRole) => {
+    setActiveRole(newRole);
+    if (newRole === 'ADMIN') setCurrentView('dashboard');
+    else if (newRole === 'TRAINER') setCurrentView('trainer');
+    else if (newRole === 'MEMBER') setCurrentView('affiliate');
+  };
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
@@ -64,6 +76,10 @@ export const App: React.FC = () => {
         return { title: 'Control de Aforo & Salas', subtitle: 'Ocupación perimétrica de salas y monitoreo de afluencia' };
       case 'settings':
         return { title: 'Configuración del Gimnasio', subtitle: 'Parámetros del negocio, NIT, horarios y aforo máximo' };
+      case 'affiliate':
+        return { title: 'Portal del Afiliado / Socio', subtitle: 'Carnet digital virtual QR, membresía vigente y entrenamientos' };
+      case 'trainer':
+        return { title: 'Portal del Entrenador', subtitle: 'Supervisión de atletas, prescripción de rutinas y descansos' };
       default:
         return { title: 'APEX GYM', subtitle: 'Sistema de Gestión' };
     }
@@ -77,6 +93,7 @@ export const App: React.FC = () => {
         currentView={currentView}
         onNavigate={handleNavigate}
         aforoInfo={aforoInfo}
+        activeRole={activeRole}
       />
 
       <div className="main-content">
@@ -84,6 +101,8 @@ export const App: React.FC = () => {
           title={headerInfo.title}
           subtitle={headerInfo.subtitle}
           onOpenQuickScan={() => handleNavigate('checkin')}
+          activeRole={activeRole}
+          onRoleChange={handleRoleChange}
         />
 
         <main className="content-body">
@@ -115,6 +134,10 @@ export const App: React.FC = () => {
           {currentView === 'aforo' && <AforoView />}
 
           {currentView === 'settings' && <SettingsView />}
+
+          {currentView === 'affiliate' && <AffiliatePortalView />}
+
+          {currentView === 'trainer' && <TrainerView />}
         </main>
       </div>
     </div>

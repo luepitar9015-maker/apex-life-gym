@@ -1,552 +1,501 @@
-import React, { useState } from 'react';
-import { 
-  Users, 
-  DollarSign, 
-  Activity, 
-  Sparkles, 
-  Download, 
-  Eye, 
-  Calendar, 
-  ChevronDown, 
-  FileSpreadsheet, 
-  CheckCircle2, 
-  XCircle, 
-  QrCode, 
+import React, { useEffect, useState } from 'react';
+import {
+  Users,
+  UserCheck,
   TrendingUp,
-  Unlock,
-  Lock,
-  Dumbbell
+  AlertTriangle,
+  ArrowUpRight,
+  Clock,
+  Dumbbell,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
-import { ColorTheme, getSavedTheme } from '../styles/themeConfig.js';
+import { api, DashboardData } from '../services/api';
 
 interface DashboardViewProps {
   onNavigate: (view: string) => void;
-  currentTheme?: ColorTheme;
+  onSelectMemberForRenewal?: (memberId: string) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, currentTheme = getSavedTheme() }) => {
-  const [selectedStrategy, setSelectedStrategy] = useState('Plan Mensual & Anual');
-  const [dateRange, setDateRange] = useState('13/09/2026 - 19/09/2026');
-  const [selectedTerminal, setSelectedTerminal] = useState('Terminal Principal QR (T1)');
-  const [showEmptyNotice, setShowEmptyNotice] = useState(false);
+export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onSelectMemberForRenewal }) => {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const accesses = [
-    {
-      id: 'ACC-81920',
-      login: '10987654',
-      name: 'Juan Pérez',
-      plan: 'Plan Black VIP + IA',
-      method: 'QR Virtual',
-      amount: '$65.00',
-      status: 'PERMITIDO',
-      time: 'Sep 22, 2026, 07:14 PM',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop'
-    },
-    {
-      id: 'ACC-81919',
-      login: '98765432',
-      name: 'Camila Gómez',
-      plan: 'Plan Mensual Pro',
-      method: 'QR Virtual',
-      amount: '$45.00',
-      status: 'PERMITIDO',
-      time: 'Sep 22, 2026, 06:52 PM',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop'
-    },
-    {
-      id: 'ACC-81918',
-      login: '11223344',
-      name: 'Mateo Silva',
-      plan: 'Plan Básico (Vencido)',
-      method: 'DNI Manual',
-      amount: '$0.00',
-      status: 'DENEGADO',
-      time: 'Sep 22, 2026, 06:30 PM',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop'
-    },
-    {
-      id: 'ACC-81917',
-      login: '55443322',
-      name: 'Sofía Reyes',
-      plan: 'Plan Black VIP + IA',
-      method: 'QR Virtual',
-      amount: '$65.00',
-      status: 'PERMITIDO',
-      time: 'Sep 22, 2026, 05:45 PM',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop'
-    },
-    {
-      id: 'ACC-81916',
-      login: '77889900',
-      name: 'Carlos Mendoza',
-      plan: 'Pase Semanal Cross',
-      method: 'QR Virtual',
-      amount: '$20.00',
-      status: 'PERMITIDO',
-      time: 'Sep 22, 2026, 04:20 PM',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop'
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const res = await api.getDashboard();
+      setData(res);
+    } catch (err) {
+      console.error('Error cargando dashboard:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const handleExportCSV = () => {
-    const headers = ['Access ID,Documento,Socio,Plan,Metodo,Valor,Estado,Hora'];
-    const rows = accesses.map(a => `${a.id},${a.login},"${a.name}","${a.plan}",${a.method},${a.amount},${a.status},"${a.time}"`);
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
-    const encoded = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encoded);
-    link.setAttribute('download', `Accesos_Gym_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 15000); // Polling cada 15s para aforo en vivo
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading && !data) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <RefreshCw size={36} color="#10b981" style={{ animation: 'spin 1s linear infinite' }} />
+          <p style={{ marginTop: '1rem', color: '#94a3b8', fontSize: '0.9rem' }}>Cargando telemetría del gimnasio...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const metrics = data?.metrics || {
+    totalMembers: 0,
+    activeMembers: 0,
+    expiredMembers: 0,
+    expiringSoonCount: 0,
+    todayCheckIns: 0,
+    currentInGym: 0,
+    maxCapacity: 80,
+    occupancyPercent: 0,
+    todayRevenue: 0,
+  };
+
+  const occupancyColor =
+    metrics.occupancyPercent > 85 ? '#ef4444' : metrics.occupancyPercent > 65 ? '#f59e0b' : '#10b981';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* ------------------------------------------------------------- */}
-      {/* HERO BANNER ESTILO NEXO: VIBRANTE + WIDGET FLOTANTE + GYM-AI */}
-      {/* ------------------------------------------------------------- */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      {/* Top Banner & Quick Status */}
       <div style={{
-        background: currentTheme.bannerGradient,
-        borderRadius: '18px',
-        padding: '2.5rem 3rem',
-        position: 'relative',
-        overflow: 'hidden',
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(6, 182, 212, 0.08) 100%)',
+        border: '1px solid rgba(16, 185, 129, 0.25)',
+        borderRadius: '16px',
+        padding: '1.5rem 1.75rem',
         display: 'flex',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '1.5rem',
-        boxShadow: `0 14px 40px ${currentTheme.primaryGlow}`,
+        gap: '1rem',
       }}>
-        {/* Patrón geométrico diagonal cortado */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          opacity: 0.22,
-          backgroundImage: `
-            linear-gradient(135deg, rgba(255, 255, 255, 0.45) 25%, transparent 25%),
-            linear-gradient(225deg, rgba(255, 255, 255, 0.45) 25%, transparent 25%),
-            linear-gradient(315deg, rgba(255, 255, 255, 0.45) 25%, transparent 25%),
-            linear-gradient(45deg, rgba(255, 255, 255, 0.45) 25%, transparent 25%)
-          `,
-          backgroundSize: '90px 90px',
-          backgroundPosition: '0 0, 45px 0, 45px -45px, 0px 45px',
-          pointerEvents: 'none',
-        }} />
-
-        {/* Título Izquierda */}
-        <div style={{ position: 'relative', zIndex: 2 }}>
-          <h1 style={{
-            fontSize: '3.4rem',
-            fontWeight: 900,
-            fontStyle: 'italic',
-            color: '#0a0f1d',
-            lineHeight: 1.02,
-            margin: 0,
-            letterSpacing: '-0.035em',
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}>
-            Gym Fit<br />Overview
-          </h1>
-        </div>
-
-        {/* Widget Negro Inset: Aforo en Tiempo Real + Capacidad Desbloqueada */}
-        <div style={{
-          position: 'relative',
-          zIndex: 2,
-          background: '#070a12',
-          borderRadius: '16px',
-          padding: '1.2rem 1.65rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1.6rem',
-          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-        }}>
-          {/* Barra de progreso de Aforo */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', minWidth: '210px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>
-                # Aforo Ocupado en Sala
-              </span>
-              <span style={{ fontSize: '0.85rem', color: '#ffffff', fontWeight: 800 }}>
-                38/100 (38%)
-              </span>
-            </div>
-            <div style={{
-              width: '100%',
-              height: '6px',
-              background: '#1e293b',
-              borderRadius: '999px',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                width: '38%',
-                height: '100%',
-                background: currentTheme.primary,
-                boxShadow: `0 0 10px ${currentTheme.primary}`,
-                borderRadius: '999px',
-              }} />
-            </div>
+            <Sparkles size={24} color="#10b981" />
           </div>
-
-          <div style={{ width: '1px', height: '42px', background: 'rgba(255, 255, 255, 0.1)' }} />
-
-          {/* Socios Activos */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: currentTheme.primary,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 0 16px ${currentTheme.primaryGlow}`,
-            }}>
-              <Unlock size={20} color="#000000" />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.15 }}>Socios<br />activos</div>
-            </div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 900, color: '#ffffff', marginLeft: '0.2rem' }}>
-              342
-            </div>
-          </div>
-
-          <div style={{ width: '1px', height: '42px', background: 'rgba(255, 255, 255, 0.1)' }} />
-
-          {/* Capacidad Libre */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              background: '#1a2234',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}>
-              <Activity size={18} color="#64748b" />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.15 }}>Cupos<br />libres</div>
-            </div>
-            <div style={{ fontSize: '1.85rem', fontWeight: 900, color: '#64748b', marginLeft: '0.2rem' }}>
-              62
-            </div>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+              Centro de Mando • {data?.gymName || 'APEX GYM'}
+            </h2>
+            <p style={{ fontSize: '0.84rem', color: '#94a3b8', margin: '3px 0 0 0' }}>
+              Control de acceso activo, caja sincronizada y telemetría de aforo en tiempo real.
+            </p>
           </div>
         </div>
 
-        {/* Branding Marca Derecha */}
-        <div style={{
-          position: 'relative',
-          zIndex: 2,
-          fontSize: '3.6rem',
-          fontWeight: 900,
-          fontStyle: 'italic',
-          color: '#ffffff',
-          letterSpacing: '-0.04em',
-          textShadow: '0 4px 15px rgba(0,0,0,0.12)',
-        }}>
-          GYM-AI
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            onClick={() => onNavigate('checkin')}
+            style={{
+              backgroundColor: '#10b981',
+              color: '#ffffff',
+              border: 'none',
+              padding: '0.65rem 1.25rem',
+              borderRadius: '10px',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 0 16px rgba(16, 185, 129, 0.35)',
+            }}
+          >
+            <UserCheck size={18} />
+            <span>Check-in QR</span>
+          </button>
+          <button
+            onClick={() => onNavigate('pos')}
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              color: '#f8fafc',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              padding: '0.65rem 1.25rem',
+              borderRadius: '10px',
+              fontWeight: 600,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+            }}
+          >
+            Nueva Venta / Cobro
+          </button>
         </div>
       </div>
 
-      {/* ------------------------------------------------------------- */}
-      {/* PROFIT & REVENUE OVERVIEW CARD */}
-      {/* ------------------------------------------------------------- */}
-      <section style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        padding: '1.35rem 1.65rem',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 3px 12px rgba(0, 0, 0, 0.02)',
+      {/* Grid de Métricas Principales */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+        gap: '1.25rem',
       }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          marginBottom: '1.25rem',
-        }}>
-          <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              Ingresos & Rendimiento Operativo
-            </h2>
-            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
-              Facturación de membresías y cuotas para el periodo {dateRange}
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.42rem 0.85rem',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '0.8rem',
-              color: '#334155',
-              cursor: 'pointer',
-            }}>
-              <Calendar size={13} color="#64748b" />
-              <span>{selectedStrategy}</span>
-              <ChevronDown size={13} color="#64748b" />
-            </div>
-
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.45rem',
-              padding: '0.42rem 0.85rem',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: '#334155',
-              cursor: 'pointer',
-            }}>
-              <Calendar size={13} color="#64748b" />
-              <span>{dateRange}</span>
-            </div>
-
-            <button
-              onClick={handleExportCSV}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                padding: '0.42rem 0.9rem',
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                color: '#0f172a',
-                cursor: 'pointer',
-              }}
-            >
-              <Download size={13} />
-              <span>Descargar Reporte</span>
-            </button>
-
-            <button
-              onClick={() => setShowEmptyNotice(!showEmptyNotice)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                padding: '0.42rem 0.9rem',
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                color: '#0f172a',
-                cursor: 'pointer',
-              }}
-            >
-              <Eye size={13} />
-              <span>Ver Métricas</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Métricas en Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-          gap: '1rem',
-          padding: '1.25rem',
-          background: '#f8fafc',
-          borderRadius: '12px',
-          border: '1px solid #e2e8f0',
-        }}>
-          <div>
-            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Facturación del Mes</span>
-            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: currentTheme.primary }}>$18,450.00 USD</div>
-            <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 600 }}>+18.2% vs mes anterior</span>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Planes Black VIP + IA</span>
-            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>184 Socios</div>
-            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Membresía más vendida</span>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Escaneos Corporales IA</span>
-            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>87 Realizados</div>
-            <span style={{ fontSize: '0.72rem', color: currentTheme.primary, fontWeight: 600 }}>15 diagnósticos hoy</span>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Check-ins de Hoy</span>
-            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>142 Accesos</div>
-            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>98.2% con QR Virtual</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------- */}
-      {/* ACCESS & TRANSACTION HISTORY CARD */}
-      {/* ------------------------------------------------------------- */}
-      <section style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        padding: '1.35rem 1.65rem',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 3px 12px rgba(0, 0, 0, 0.02)',
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          marginBottom: '1rem',
-        }}>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-            Historial de Check-In & Validaciones en Vivo
-          </h2>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', color: '#334155' }}>
-              <span style={{ color: '#64748b' }}>Terminal Activa:</span>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.4rem 0.75rem',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontWeight: 700,
-                color: '#0f172a',
-                cursor: 'pointer',
-              }}>
-                <span>{selectedTerminal}</span>
-                <ChevronDown size={13} />
+        {/* Aforo Actual Card */}
+        <div className="glass-card" style={{ position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Aforo en Sala
+              </span>
+              <div style={{ fontSize: '2.1rem', fontWeight: 800, color: '#f8fafc', marginTop: '0.35rem', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ color: occupancyColor }}>{metrics.currentInGym}</span>
+                <span style={{ fontSize: '1rem', color: '#64748b', fontWeight: 600 }}>/ {metrics.maxCapacity} máx</span>
               </div>
             </div>
-
-            <button
-              onClick={handleExportCSV}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                padding: '0.42rem 0.9rem',
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                color: '#0f172a',
-                cursor: 'pointer',
-              }}
-            >
-              <FileSpreadsheet size={14} color="#16a34a" />
-              <span>Export to Excel</span>
-            </button>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              backgroundColor: `${occupancyColor}20`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Users size={22} color={occupancyColor} />
+            </div>
+          </div>
+          <div style={{ marginTop: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
+              <span style={{ color: '#94a3b8' }}>Capacidad Ocupada</span>
+              <span style={{ fontWeight: 700, color: occupancyColor }}>{metrics.occupancyPercent}%</span>
+            </div>
+            <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, metrics.occupancyPercent)}%`, height: '100%', backgroundColor: occupancyColor }} />
+            </div>
           </div>
         </div>
 
-        {/* Tabla */}
+        {/* Check-ins de Hoy */}
+        <div className="glass-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Asistencias Hoy
+              </span>
+              <div style={{ fontSize: '2.1rem', fontWeight: 800, color: '#f8fafc', marginTop: '0.35rem' }}>
+                {metrics.todayCheckIns}
+              </div>
+            </div>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(6, 182, 212, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <UserCheck size={22} color="#06b6d4" />
+            </div>
+          </div>
+          <div style={{ marginTop: '0.9rem', fontSize: '0.78rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <ArrowUpRight size={15} />
+            <span>Ingresos validados por QR</span>
+          </div>
+        </div>
+
+        {/* Socios Activos */}
+        <div className="glass-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Socios Activos
+              </span>
+              <div style={{ fontSize: '2.1rem', fontWeight: 800, color: '#f8fafc', marginTop: '0.35rem' }}>
+                {metrics.activeMembers}
+              </div>
+            </div>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Dumbbell size={22} color="#10b981" />
+            </div>
+          </div>
+          <div style={{ marginTop: '0.9rem', fontSize: '0.78rem', color: '#94a3b8' }}>
+            De <strong style={{ color: '#f1f5f9' }}>{metrics.totalMembers}</strong> socios registrados
+          </div>
+        </div>
+
+        {/* Ingresos del Día */}
+        <div className="glass-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Caja de Hoy
+              </span>
+              <div style={{ fontSize: '1.9rem', fontWeight: 800, color: '#f8fafc', marginTop: '0.35rem' }}>
+                ${metrics.todayRevenue.toLocaleString('es-CO')}
+              </div>
+            </div>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(139, 92, 246, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <TrendingUp size={22} color="#8b5cf6" />
+            </div>
+          </div>
+          <div style={{ marginTop: '0.9rem', fontSize: '0.78rem', color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>Membresías y pases diarios</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Secciones Inferiores: Ocupación por Zonas & Alertas de Vencimiento */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem' }}>
+        {/* Alerta de Socios Próximos a Vencer */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={18} color="#f59e0b" />
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                Próximos a Vencer (7 días)
+              </h3>
+            </div>
+            <span style={{
+              fontSize: '0.75rem',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              color: '#f59e0b',
+              fontWeight: 700,
+            }}>
+              {metrics.expiringSoonCount} pendientes
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+            {data?.expiringSoonMembers && data.expiringSoonMembers.length > 0 ? (
+              data.expiringSoonMembers.map((member) => (
+                <div
+                  key={member.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    borderRadius: '10px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                      color: '#f59e0b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                    }}>
+                      {member.firstName.charAt(0)}{member.lastName.charAt(0)}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#f1f5f9' }}>
+                        {member.firstName} {member.lastName}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                        {member.currentPlan?.name || 'Plan'} • Doc: {member.documentNumber}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (onSelectMemberForRenewal) onSelectMemberForRenewal(member.id);
+                      onNavigate('members');
+                    }}
+                    style={{
+                      backgroundColor: '#f59e0b',
+                      color: '#000000',
+                      border: 'none',
+                      padding: '0.4rem 0.85rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Renovar
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b' }}>
+                <CheckCircleOutlineIcon />
+                <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>No hay membresías por vencer esta semana.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Ocupación por Zonas */}
+        <div className="glass-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+              Aforo por Salas y Zonas
+            </h3>
+            <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>En vivo</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {data?.zones.map((zone) => {
+              const pct = Math.round((zone.active / zone.capacity) * 100);
+              return (
+                <div key={zone.code} style={{
+                  padding: '0.85rem 1rem',
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  borderRadius: '10px',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0' }}>{zone.name}</span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981' }}>
+                      {zone.active} / {zone.capacity} socios
+                    </span>
+                  </div>
+                  <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', backgroundColor: '#10b981' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Accesos Recientes en Vivo */}
+      <div className="glass-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+              Últimos Check-ins Registrados
+            </h3>
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '2px 0 0 0' }}>
+              Historial de ingresos por torniquete y recepción
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate('checkin')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#10b981',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            Ver todos los accesos <ArrowUpRight size={14} />
+          </button>
+        </div>
+
         <div style={{ overflowX: 'auto' }}>
-          <table style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            textAlign: 'left',
-            fontSize: '0.82rem',
-          }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
-              <tr style={{
-                borderBottom: '1px solid #f1f5f9',
-                background: '#fafbfc',
-                color: '#64748b',
-                fontWeight: 600,
-              }}>
-                <th style={{ padding: '0.85rem 1rem' }}>Access ID</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Documento</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Socio</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Membresía</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Método</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Cuota ($)</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Estado</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Hora Check-in</th>
+              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#64748b' }}>
+                <th style={{ padding: '0.75rem 1rem' }}>Socio</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Documento</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Membresía</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Zona</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Hora</th>
+                <th style={{ padding: '0.75rem 1rem' }}>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {accesses.map((acc) => (
-                <tr
-                  key={acc.id}
-                  style={{
-                    borderBottom: '1px solid #f8fafc',
-                    transition: 'background 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <td style={{ padding: '0.9rem 1rem', fontWeight: 800, color: '#0f172a' }}>
-                    {acc.id}
-                  </td>
-                  <td style={{ padding: '0.9rem 1rem', color: '#0f172a', fontWeight: 700 }}>
-                    {acc.login}
-                  </td>
-                  <td style={{ padding: '0.9rem 1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                      <img src={acc.avatar} alt={acc.name} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
-                      <span style={{ fontWeight: 700, color: '#0f172a' }}>{acc.name}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '0.9rem 1rem', color: '#334155' }}>
-                    {acc.plan}
-                  </td>
-                  <td style={{ padding: '0.9rem 1rem', color: '#64748b' }}>
-                    {acc.method}
-                  </td>
-                  <td style={{
-                    padding: '0.9rem 1rem',
-                    fontWeight: 800,
-                    color: currentTheme.primary,
-                  }}>
-                    {acc.amount}
-                  </td>
-                  <td style={{ padding: '0.9rem 1rem' }}>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.3rem',
-                      padding: '0.2rem 0.6rem',
-                      borderRadius: '999px',
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      background: acc.status === 'PERMITIDO' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                      color: acc.status === 'PERMITIDO' ? '#10b981' : '#ef4444',
-                    }}>
-                      {acc.status === 'PERMITIDO' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                      {acc.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.9rem 1rem', color: '#64748b' }}>
-                    {acc.time}
+              {data?.recentCheckIns && data.recentCheckIns.length > 0 ? (
+                data.recentCheckIns.map((item) => (
+                  <tr key={item.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.04)' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#f1f5f9' }}>
+                      {item.member.firstName} {item.member.lastName}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#94a3b8' }}>
+                      {item.member.documentNumber}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#cbd5e1' }}>
+                      {item.member.currentPlan?.name || 'Pase Regular'}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#94a3b8' }}>
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        fontSize: '0.75rem',
+                      }}>
+                        {item.zone}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Clock size={13} color="#64748b" />
+                        {new Date(item.checkInTime).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <span style={{
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        backgroundColor: item.status === 'GRANTED' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                        color: item.status === 'GRANTED' ? '#10b981' : '#ef4444',
+                        fontWeight: 700,
+                        fontSize: '0.74rem',
+                      }}>
+                        {item.status === 'GRANTED' ? 'AUTORIZADO' : 'DENEGADO'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                    No se han registrado check-ins el día de hoy.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
     </div>
   );
 };
+
+const CheckCircleOutlineIcon = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
+  </svg>
+);

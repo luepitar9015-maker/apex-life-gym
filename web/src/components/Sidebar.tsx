@@ -1,888 +1,197 @@
-import React, { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  QrCode, 
-  Users, 
-  Sparkles, 
-  Dumbbell, 
-  UtensilsCrossed, 
-  ShieldCheck, 
-  Scale, 
-  ShoppingBag, 
-  DollarSign, 
-  User, 
-  Eye, 
-  EyeOff, 
-  ChevronDown, 
-  ChevronLeft, 
-  ChevronRight, 
-  MoreVertical,
-  Layers,
-  Leaf,
+import React from 'react';
+import {
+  LayoutDashboard,
+  QrCode,
+  Users,
+  CreditCard,
+  Dumbbell,
+  Sliders,
+  Flame,
   Activity,
-  Award,
-  Video,
-  Key,
-  LifeBuoy,
-  LogOut,
-  UserCheck,
-  X,
-  Bot,
-  Home,
-  FileText
 } from 'lucide-react';
-import { ColorTheme, EnvironmentTheme, SymbolTheme, getSavedSymbol, getSavedPortalName } from '../styles/themeConfig.js';
-import { AuthUser } from '../services/api.js';
-import { SymbolIcon } from './SymbolIcon.js';
 
 interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
-  activeSystem: 'gym' | 'tlc';
-  onSwitchSystem: (system: 'gym' | 'tlc') => void;
-  currentTheme: ColorTheme;
-  currentEnv?: EnvironmentTheme;
-  currentSymbol?: SymbolTheme;
-  portalName?: string;
-  currentUser?: AuthUser | null;
-  onLogout?: () => void;
-  isMobileDrawerOpen?: boolean;
-  onCloseMobileDrawer?: () => void;
+  aforoInfo?: { current: number; max: number; percent: number };
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  currentView, 
-  onNavigate: rawOnNavigate,
-  activeSystem,
-  onSwitchSystem,
-  currentTheme,
-  currentEnv,
-  currentSymbol = getSavedSymbol(),
-  portalName = getSavedPortalName(),
-  currentUser,
-  onLogout,
-  isMobileDrawerOpen = false,
-  onCloseMobileDrawer
-}) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [showBalance, setShowBalance] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const onNavigate = (view: string) => {
-    rawOnNavigate(view);
-    if (onCloseMobileDrawer) onCloseMobileDrawer();
-  };
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforoInfo }) => {
+  const navItems = [
+    { id: 'dashboard', label: 'Panel Principal', icon: LayoutDashboard, badge: null },
+    { id: 'checkin', label: 'Recepción & QR', icon: QrCode, badge: 'En vivo' },
+    { id: 'members', label: 'Directorio de Socios', icon: Users, badge: null },
+    { id: 'pos', label: 'Caja & Cobros', icon: CreditCard, badge: null },
+    { id: 'routines', label: 'Rutinas & Ejercicios', icon: Dumbbell, badge: null },
+    { id: 'aforo', label: 'Control de Aforo', icon: Activity, badge: null },
+    { id: 'settings', label: 'Configuración', icon: Sliders, badge: null },
+  ];
 
   return (
-    <>
-      {isMobileDrawerOpen && (
-        <div 
-          onClick={onCloseMobileDrawer}
-          className="sidebar-backdrop"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            zIndex: 998,
-          }}
-        />
-      )}
-      <aside 
-        className={`app-sidebar ${isMobileDrawerOpen ? 'mobile-open' : ''}`}
-        style={{
-          width: isCollapsed ? '72px' : '235px',
-          transition: 'all 0.22s ease',
-      background: currentEnv?.sidebarBg || '#070a12',
-      borderRadius: '24px',
-      padding: isCollapsed ? '1.25rem 0.5rem' : '1.25rem 1rem',
+    <aside style={{
+      width: '270px',
+      backgroundColor: '#0a0e17',
+      borderRight: '1px solid rgba(255, 255, 255, 0.08)',
       display: 'flex',
       flexDirection: 'column',
-      gap: '0.85rem',
-      color: '#ffffff',
-      position: 'relative',
-      flexShrink: 0,
-      boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45)',
-      alignSelf: 'stretch',
-      border: '1px solid rgba(255, 255, 255, 0.05)',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      zIndex: 50,
+      height: '100vh',
+      position: 'sticky',
+      top: 0,
+      zIndex: 40,
     }}>
-      {/* Tira vertical neón en el borde derecho */}
+      {/* Brand Header */}
       <div style={{
-        position: 'absolute',
-        top: '24px',
-        right: '0px',
-        bottom: '24px',
-        width: '3.5px',
-        background: currentTheme.primary,
-        borderRadius: '999px',
-        boxShadow: `0 0 12px ${currentTheme.primaryGlow}`,
-      }} />
-
-      {/* Botón circular toggle < */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        title={isCollapsed ? 'Expandir Menú' : 'Contraer Menú'}
-        style={{
-          position: 'absolute',
-          top: '36px',
-          right: '-13px',
-          width: '26px',
-          height: '26px',
-          borderRadius: '50%',
-          background: currentTheme.primary,
-          color: '#000000',
-          border: '2px solid #070a12',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 20,
-          boxShadow: `0 0 12px ${currentTheme.primaryGlow}`,
-        }}
-      >
-        {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-      </button>
-
-      {/* Botón de cierre para móvil */}
-      {onCloseMobileDrawer && (
-        <button
-          onClick={onCloseMobileDrawer}
-          className="mobile-drawer-close"
-          title="Cerrar Menú"
-          style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px',
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 30,
-          }}
-        >
-          <X size={18} />
-        </button>
-      )}
-
-      {/* Logo Brand con símbolo dinámico y nombre de portal */}
-      <div 
-        onClick={() => onNavigate('home')}
-        title="Ir a Mi Portal (Home)"
-        style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '0.55rem', 
-          padding: '0.2rem 0.2rem',
-          cursor: 'pointer',
-        }}
-      >
+        padding: '1.75rem 1.5rem',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.85rem',
+      }}>
         <div style={{
-          width: '34px',
-          height: '34px',
-          borderRadius: '10px',
-          background: currentTheme.bannerGradient,
+          width: '42px',
+          height: '42px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: currentTheme.textColor,
-          flexShrink: 0,
-          boxShadow: `0 0 14px ${currentTheme.primaryGlow}`,
-          border: '1px solid rgba(255,255,255,0.2)',
+          boxShadow: '0 0 20px rgba(16, 185, 129, 0.35)',
         }}>
-          <SymbolIcon iconKey={currentSymbol.iconKey} size={18} />
+          <Flame size={24} color="#ffffff" />
         </div>
-        {!isCollapsed && (
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <div style={{
-              fontSize: '1.15rem',
-              fontWeight: 900,
-              letterSpacing: '-0.03em',
-              fontFamily: 'system-ui',
-              color: '#ffffff',
-              lineHeight: 1.1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: '145px',
-            }}>
-              {portalName || 'APEX LIFE'}
-            </div>
-            <span style={{ fontSize: '0.58rem', color: currentTheme.primary, fontWeight: 800, letterSpacing: '0.06em' }}>
-              {activeSystem === 'gym' ? 'GYM • PORTAL' : 'TLC • DÉTOX'}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.02em' }}>
+              APEX<span style={{ color: '#10b981' }}>GYM</span>
             </span>
           </div>
-        )}
+          <span style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
+            Fitness Management Pro
+          </span>
+        </div>
       </div>
 
-      {/* User Card */}
+      {/* Live Aforo Badge */}
+      {aforoInfo && (
+        <div style={{
+          margin: '1.25rem 1.25rem 0.5rem 1.25rem',
+          padding: '0.85rem 1rem',
+          borderRadius: '12px',
+          backgroundColor: 'rgba(16, 185, 129, 0.06)',
+          border: '1px solid rgba(16, 185, 129, 0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.4rem',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }} />
+              Aforo en Sala
+            </span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#10b981' }}>
+              {aforoInfo.current} / {aforoInfo.max}
+            </span>
+          </div>
+          <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${Math.min(100, aforoInfo.percent)}%`,
+              height: '100%',
+              backgroundColor: aforoInfo.percent > 85 ? '#ef4444' : aforoInfo.percent > 65 ? '#f59e0b' : '#10b981',
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <nav style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', overflowY: 'auto' }}>
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = currentView === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.85rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '10px',
+                border: 'none',
+                backgroundColor: isActive ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
+                color: isActive ? '#10b981' : '#94a3b8',
+                fontWeight: isActive ? 600 : 500,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%',
+                transition: 'all 0.18s ease',
+                position: 'relative',
+              }}
+            >
+              <Icon size={19} color={isActive ? '#10b981' : '#64748b'} />
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.badge && (
+                <span style={{
+                  fontSize: '0.68rem',
+                  padding: '2px 7px',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                  color: '#10b981',
+                  fontWeight: 700,
+                }}>
+                  {item.badge}
+                </span>
+              )}
+              {isActive && (
+                <div style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: '18%',
+                  bottom: '18%',
+                  width: '3.5px',
+                  backgroundColor: '#10b981',
+                  borderRadius: '0 4px 4px 0',
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Footer Info */}
       <div style={{
+        padding: '1.25rem',
+        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0.35rem 0.4rem',
+        gap: '0.75rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            background: '#1e293b',
-            border: `1.5px solid ${currentTheme.primary}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff',
-          }}>
-            <User size={18} />
-          </div>
-          {!isCollapsed && (
-            <div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ffffff', lineHeight: 1.15 }}>
-                Luis Ernesto
-              </div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ffffff' }}>
-                Moreno
-              </div>
-              <div style={{ fontSize: '0.65rem', color: '#64748b', letterSpacing: '0.06em', marginTop: '1px' }}>
-                {showPassword ? 'ID: 51212602' : '••••••••••••'}
-              </div>
-            </div>
-          )}
-        </div>
-        {!isCollapsed && (
-          <button
-            onClick={() => setShowPassword(!showPassword)}
-            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0 }}
-          >
-            {showPassword ? <Eye size={15} /> : <EyeOff size={15} />}
-          </button>
-        )}
-      </div>
-
-      {/* Píldora de Balance / Aforo (Solid Theme Pill) */}
-      <button
-        onClick={() => setShowBalance(!showBalance)}
-        style={{
-          background: currentTheme.primary,
-          border: 'none',
-          borderRadius: '999px',
-          padding: '0.42rem 0.85rem',
+        <div style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          backgroundColor: '#1e293b',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          color: '#000000',
-          fontWeight: 800,
-          fontSize: '0.75rem',
-          cursor: 'pointer',
-          boxShadow: `0 4px 14px ${currentTheme.primaryGlow}`,
-          transition: 'transform 0.15s ease',
-        }}
-      >
-        <span>{activeSystem === 'gym' ? 'Aforo Sala' : 'Balance TLC'}</span>
-        <span>
-          {showBalance ? (activeSystem === 'gym' ? '38 / 100' : '$14,892.45') : '••••••'}
-        </span>
-      </button>
-
-      {/* Selector de Sistema Alterno (GYM vs TLC) */}
-      <div style={{
-        background: currentTheme.primary,
-        borderRadius: '8px',
-        padding: '0.45rem 0.75rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        color: '#000000',
-        fontWeight: 800,
-        fontSize: '0.78rem',
-        cursor: 'pointer',
-      }}
-      onClick={() => onSwitchSystem(activeSystem === 'gym' ? 'tlc' : 'gym')}
-      title="Cambiar entre Sistema GYM y TLC"
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-          {activeSystem === 'gym' ? <Dumbbell size={15} /> : <Leaf size={15} />}
-          {!isCollapsed && <span>{activeSystem === 'gym' ? 'Modo GYM Normal' : 'Modo TLC Détox'}</span>}
+          justifyContent: 'center',
+          fontWeight: 700,
+          color: '#cbd5e1',
+          fontSize: '0.85rem',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        }}>
+          AD
         </div>
-        {!isCollapsed && <ChevronDown size={14} />}
-      </div>
-
-      {/* Menú de Navegación */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.15rem',
-        overflowY: 'auto',
-        flex: 1,
-      }}>
-        {/* Acceso Principal: Mi Portal Intuitivo (Home) */}
-        <div style={{ marginBottom: '0.35rem' }}>
-          <button
-            onClick={() => onNavigate('home')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.48rem 0.65rem',
-              borderRadius: '8px',
-              border: currentView === 'home' ? `1.5px solid ${currentTheme.primary}` : '1px solid rgba(255, 255, 255, 0.08)',
-              background: currentView === 'home' ? currentTheme.primary : 'rgba(255, 255, 255, 0.04)',
-              color: currentView === 'home' ? '#000000' : '#ffffff',
-              fontSize: '0.78rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: currentView === 'home' ? `0 3px 14px ${currentTheme.primaryGlow}` : 'none',
-              textAlign: 'left',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Home size={17} color={currentView === 'home' ? '#000000' : currentTheme.primary} />
-            {!isCollapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <span>Mi Portal (Home)</span>
-                <span style={{
-                  fontSize: '0.55rem',
-                  background: currentView === 'home' ? '#000000' : currentTheme.primary,
-                  color: currentView === 'home' ? currentTheme.primary : '#000000',
-                  fontWeight: 900,
-                  padding: '0.08rem 0.35rem',
-                  borderRadius: '4px',
-                }}>
-                  {currentSymbol.emoji} RÁPIDO
-                </span>
-              </div>
-            )}
-          </button>
-        </div>
-
-        {/* Acceso Global: Agente IA APEX Autónomo */}
-        <div style={{ marginBottom: '0.35rem' }}>
-          <button
-            onClick={() => onNavigate('ai_agent')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.45rem 0.65rem',
-              borderRadius: '8px',
-              border: currentView === 'ai_agent' ? `1.5px solid ${currentTheme.primary}` : `1px solid ${currentTheme.primary}44`,
-              background: currentView === 'ai_agent' ? currentTheme.primary : `${currentTheme.primary}18`,
-              color: currentView === 'ai_agent' ? '#000000' : '#ffffff',
-              fontSize: '0.78rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: `0 2px 12px ${currentTheme.primaryGlow}`,
-              textAlign: 'left',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Bot size={17} color={currentView === 'ai_agent' ? '#000000' : currentTheme.primary} />
-            {!isCollapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <span>Agente IA APEX</span>
-                <span style={{ fontSize: '0.58rem', background: currentView === 'ai_agent' ? '#000000' : currentTheme.primary, color: currentView === 'ai_agent' ? currentTheme.primary : '#000000', fontWeight: 900, padding: '0.08rem 0.35rem', borderRadius: '4px' }}>
-                  24/7
-                </span>
-              </div>
-            )}
-          </button>
-        </div>
-
-        {/* Acceso Global: Edición Video IA & Automatización Redes */}
-        <div style={{ marginBottom: '0.45rem' }}>
-          <button
-            onClick={() => onNavigate('tlc_video_ai')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.45rem 0.65rem',
-              borderRadius: '8px',
-              border: currentView === 'tlc_video_ai' ? '1.5px solid #a855f7' : '1px solid rgba(168, 85, 247, 0.35)',
-              background: currentView === 'tlc_video_ai' ? 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)' : 'rgba(168, 85, 247, 0.12)',
-              color: currentView === 'tlc_video_ai' ? '#ffffff' : '#f8fafc',
-              fontSize: '0.78rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: currentView === 'tlc_video_ai' ? '0 4px 14px rgba(168, 85, 247, 0.4)' : 'none',
-              textAlign: 'left',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Video size={17} color={currentView === 'tlc_video_ai' ? '#ffffff' : '#c084fc'} />
-            {!isCollapsed && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <span>Edición Video & Redes</span>
-                <span style={{ fontSize: '0.55rem', background: '#a855f7', color: '#ffffff', fontWeight: 900, padding: '0.08rem 0.35rem', borderRadius: '4px' }}>
-                  VIRAL IA
-                </span>
-              </div>
-            )}
-          </button>
-        </div>
-
-        {activeSystem === 'gym' ? (
-          /* MÓDULOS DE GIMNASIO NORMAL & ENTRENADORES */
-          <>
-            {[
-              { id: 'dashboard', label: 'Dashboard Gym', icon: LayoutDashboard },
-              { id: 'checkin', label: 'Recepción & QR', icon: QrCode },
-              { id: 'members', label: 'Directorio Socios', icon: Users },
-              { id: 'aiscan', label: 'Escaneo Corporal IA', icon: Sparkles },
-              { id: 'routines', label: 'Rutinas & Series', icon: Dumbbell },
-              { id: 'nutrition', label: 'Nutrición Macros', icon: UtensilsCrossed },
-            ].map((item) => {
-              const Icon = item.icon;
-              const isActive = currentView === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onNavigate(item.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.65rem',
-                    padding: '0.42rem 0.65rem',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: isActive ? currentTheme.accentBg : 'transparent',
-                    color: isActive ? currentTheme.primary : '#94a3b8',
-                    fontSize: '0.78rem',
-                    fontWeight: isActive ? 700 : 500,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                >
-                  <Icon size={16} />
-                  {!isCollapsed && <span>{item.label}</span>}
-                </button>
-              );
-            })}
-
-            {/* Sección Resaltada: Entrenadores 1-on-1 */}
-            <div style={{ marginTop: '0.35rem' }}>
-              <div 
-                onClick={() => onNavigate('trainers')}
-                style={{
-                  background: currentView === 'trainers' ? currentTheme.primary : 'rgba(255, 255, 255, 0.04)',
-                  border: `1px solid ${currentView === 'trainers' ? currentTheme.primary : 'rgba(255, 255, 255, 0.08)'}`,
-                  borderRadius: '8px',
-                  padding: '0.45rem 0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  color: currentView === 'trainers' ? '#000000' : '#ffffff',
-                  fontWeight: 800,
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <ShieldCheck size={16} />
-                  {!isCollapsed && <span>Entrenadores 1-on-1</span>}
-                </div>
-                {!isCollapsed && <ChevronDown size={14} />}
-              </div>
-
-              {!isCollapsed && currentView === 'trainers' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '1.6rem', marginTop: '0.35rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: currentTheme.primary, fontWeight: 700, padding: '0.15rem 0', cursor: 'pointer' }}>
-                    Coaches Activos
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', padding: '0.15rem 0', cursor: 'pointer' }}>
-                    Alumnos Asignados
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          /* MÓDULOS DE TOTAL LIFE CHANGES (TLC) */
-          <>
-            {/* Sección Resaltada: Red de Afiliados TLC */}
-            <div style={{ marginTop: '0.2rem' }}>
-              <div 
-                onClick={() => onNavigate('tlc')}
-                style={{
-                  background: currentTheme.primary,
-                  borderRadius: '8px',
-                  padding: '0.45rem 0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  color: '#000000',
-                  fontWeight: 800,
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <Users size={16} />
-                  {!isCollapsed && <span>My Affiliate Network</span>}
-                </div>
-                {!isCollapsed && <ChevronDown size={14} />}
-              </div>
-
-              {!isCollapsed && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '1.6rem', marginTop: '0.35rem' }}>
-                  <div 
-                    onClick={() => onNavigate('tlc')}
-                    style={{ fontSize: '0.75rem', color: currentView === 'tlc' ? currentTheme.primary : '#94a3b8', fontWeight: 700, padding: '0.15rem 0', cursor: 'pointer' }}
-                  >
-                    Dashboard TLC
-                  </div>
-                  <div 
-                    onClick={() => onNavigate('tlc_contacts')}
-                    style={{ 
-                      fontSize: '0.75rem', 
-                      color: currentView === 'tlc_contacts' ? currentTheme.primary : '#94a3b8', 
-                      fontWeight: currentView === 'tlc_contacts' ? 700 : 500, 
-                      padding: '0.15rem 0', 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <span>Contactos Ley 1581</span>
-                    <span style={{ fontSize: '0.58rem', background: 'rgba(20, 184, 166, 0.25)', color: '#2dd4bf', fontWeight: 800, padding: '0.05rem 0.3rem', borderRadius: '3px' }}>COL</span>
-                  </div>
-                  <div 
-                    onClick={() => onNavigate('tlc_protocols')}
-                    style={{ fontSize: '0.75rem', color: currentView === 'tlc_protocols' ? currentTheme.primary : '#94a3b8', padding: '0.15rem 0', cursor: 'pointer' }}
-                  >
-                    Reto Détox 15/30 Días
-                  </div>
-                  <div 
-                    onClick={() => onNavigate('tlc_products')}
-                    style={{ fontSize: '0.75rem', color: currentView === 'tlc_products' ? currentTheme.primary : '#94a3b8', padding: '0.15rem 0', cursor: 'pointer' }}
-                  >
-                    Kits Iaso Tea & Gotas
-                  </div>
-                  <div 
-                    onClick={() => onNavigate('tlc_store')}
-                    style={{ 
-                      fontSize: '0.75rem', 
-                      color: currentView === 'tlc_store' ? currentTheme.primary : '#94a3b8', 
-                      fontWeight: currentView === 'tlc_store' ? 700 : 500, 
-                      padding: '0.15rem 0', 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <span>Tienda en Línea TLC</span>
-                    <span style={{ fontSize: '0.6rem', background: currentTheme.primary, color: '#000', fontWeight: 800, padding: '0.05rem 0.3rem', borderRadius: '3px' }}>LINK</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Acceso Directo: Tienda en Línea TLC Compartible */}
-            <div style={{ marginTop: '0.35rem' }}>
-              <button
-                onClick={() => onNavigate('tlc_store')}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.65rem',
-                  padding: '0.45rem 0.65rem',
-                  borderRadius: '8px',
-                  border: currentView === 'tlc_store' ? `1.5px solid ${currentTheme.primary}` : '1px solid rgba(255, 255, 255, 0.08)',
-                  background: currentView === 'tlc_store' ? currentTheme.accentBg : 'rgba(255, 255, 255, 0.03)',
-                  color: currentView === 'tlc_store' ? currentTheme.primary : '#f8fafc',
-                  fontSize: '0.78rem',
-                  fontWeight: currentView === 'tlc_store' ? 800 : 600,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <ShoppingBag size={16} color={currentView === 'tlc_store' ? currentTheme.primary : '#38bdf8'} />
-                {!isCollapsed && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <span>Tienda Online & Link</span>
-                    <span style={{
-                      fontSize: '0.58rem',
-                      background: 'rgba(56, 189, 248, 0.2)',
-                      color: '#38bdf8',
-                      padding: '0.1rem 0.35rem',
-                      borderRadius: '4px',
-                      fontWeight: 700
-                    }}>
-                      50% COM
-                    </span>
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* Acceso Especial: TLC AI Content Engine (Video Marketing Autónomo) */}
-            <div style={{ marginTop: '0.35rem' }}>
-              <button
-                onClick={() => onNavigate('tlc_video_ai')}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.65rem',
-                  padding: '0.45rem 0.65rem',
-                  borderRadius: '8px',
-                  border: currentView === 'tlc_video_ai' ? `1.5px solid ${currentTheme.primary}` : '1px solid rgba(255, 255, 255, 0.08)',
-                  background: currentView === 'tlc_video_ai' ? currentTheme.accentBg : 'rgba(255, 255, 255, 0.03)',
-                  color: currentView === 'tlc_video_ai' ? currentTheme.primary : '#f8fafc',
-                  fontSize: '0.78rem',
-                  fontWeight: currentView === 'tlc_video_ai' ? 800 : 600,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <Video size={16} color={currentView === 'tlc_video_ai' ? currentTheme.primary : '#a855f7'} />
-                {!isCollapsed && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <span>Video Marketing IA</span>
-                    <span style={{
-                      fontSize: '0.58rem',
-                      background: 'rgba(168, 85, 247, 0.25)',
-                      color: '#c084fc',
-                      padding: '0.1rem 0.35rem',
-                      borderRadius: '4px',
-                      fontWeight: 800
-                    }}>
-                      VIRAL IA
-                    </span>
-                  </div>
-                )}
-              </button>
-            </div>
-
-            {/* Sección Resaltada: Comisiones TLC */}
-            <div style={{ marginTop: '0.45rem' }}>
-              <div 
-                onClick={() => onNavigate('tlc_sales')}
-                style={{
-                  background: currentView === 'tlc_sales' ? currentTheme.primary : 'rgba(255, 255, 255, 0.04)',
-                  border: `1px solid ${currentView === 'tlc_sales' ? currentTheme.primary : 'rgba(255, 255, 255, 0.08)'}`,
-                  borderRadius: '8px',
-                  padding: '0.45rem 0.75rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  color: currentView === 'tlc_sales' ? '#000000' : '#ffffff',
-                  fontWeight: 800,
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <DollarSign size={16} />
-                  {!isCollapsed && <span>My Commissions</span>}
-                </div>
-                {!isCollapsed && <ChevronDown size={14} />}
-              </div>
-
-              {!isCollapsed && currentView === 'tlc_sales' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', paddingLeft: '1.6rem', marginTop: '0.35rem' }}>
-                  <div style={{ fontSize: '0.75rem', color: currentTheme.primary, fontWeight: 700, padding: '0.15rem 0', cursor: 'pointer' }}>
-                    Ventas Minoristas (50%)
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', padding: '0.15rem 0', cursor: 'pointer' }}>
-                    Puntos PV Acumulados
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Sección Común: Módulos del Sistema */}
-        <div style={{ marginTop: '0.65rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-          <button
-            onClick={() => onNavigate('users')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.42rem 0.65rem',
-              borderRadius: '6px',
-              border: 'none',
-              background: currentView === 'users' ? currentTheme.accentBg : 'transparent',
-              color: currentView === 'users' ? currentTheme.primary : '#94a3b8',
-              fontSize: '0.78rem',
-              fontWeight: currentView === 'users' ? 700 : 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-            }}
-          >
-            <ShieldCheck size={16} />
-            {!isCollapsed && <span>Usuarios & Roles</span>}
-          </button>
-
-          {/* Activador de Licencias (Superadmin) */}
-          <button
-            onClick={() => onNavigate('licenses')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.42rem 0.65rem',
-              borderRadius: '6px',
-              border: 'none',
-              background: currentView === 'licenses' ? currentTheme.accentBg : 'transparent',
-              color: currentView === 'licenses' ? currentTheme.primary : '#94a3b8',
-              fontSize: '0.78rem',
-              fontWeight: currentView === 'licenses' ? 700 : 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-            }}
-          >
-            <Key size={16} color={currentView === 'licenses' ? currentTheme.primary : '#f97316'} />
-            {!isCollapsed && <span>Licencias & SaaS</span>}
-          </button>
-
-          {/* Sistema de Auditoría (Superadmin / Admin) */}
-          <button
-            onClick={() => onNavigate('audit')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.42rem 0.65rem',
-              borderRadius: '6px',
-              border: 'none',
-              background: currentView === 'audit' ? currentTheme.accentBg : 'transparent',
-              color: currentView === 'audit' ? currentTheme.primary : '#94a3b8',
-              fontSize: '0.78rem',
-              fontWeight: currentView === 'audit' ? 700 : 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-            }}
-          >
-            <FileText size={16} color={currentView === 'audit' ? currentTheme.primary : '#c084fc'} />
-            {!isCollapsed && <span>Auditoría & Logs</span>}
-          </button>
-
-          {/* Sistema de Estado del Servidor */}
-          <button
-            onClick={() => onNavigate('server_status')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.42rem 0.65rem',
-              borderRadius: '6px',
-              border: 'none',
-              background: currentView === 'server_status' ? currentTheme.accentBg : 'transparent',
-              color: currentView === 'server_status' ? currentTheme.primary : '#94a3b8',
-              fontSize: '0.78rem',
-              fontWeight: currentView === 'server_status' ? 700 : 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-            }}
-          >
-            <Activity size={16} color={currentView === 'server_status' ? currentTheme.primary : '#10b981'} />
-            {!isCollapsed && <span>Estado del Servidor</span>}
-          </button>
-
-          {/* Centro de Soporte Técnico */}
-          <button
-            onClick={() => onNavigate('support')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.65rem',
-              padding: '0.42rem 0.65rem',
-              borderRadius: '6px',
-              border: 'none',
-              background: currentView === 'support' ? currentTheme.accentBg : 'transparent',
-              color: currentView === 'support' ? currentTheme.primary : '#94a3b8',
-              fontSize: '0.78rem',
-              fontWeight: currentView === 'support' ? 700 : 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-            }}
-          >
-            <LifeBuoy size={16} color={currentView === 'support' ? currentTheme.primary : '#38bdf8'} />
-            {!isCollapsed && <span>Soporte Técnico</span>}
-          </button>
-        </div>
-      </div>
-
-      {/* Footer Usuario en Sidebar */}
-      <div style={{
-        paddingTop: '0.65rem',
-        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '0.4rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', overflow: 'hidden' }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            background: currentTheme.primary,
-            color: '#000',
-            fontWeight: 800,
-            fontSize: '0.75rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            {currentUser?.firstName?.charAt(0) || 'U'}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Admin Master
           </div>
-          {!isCollapsed && (
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ffffff', lineHeight: 1.1, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                {currentUser?.firstName ? `${currentUser.firstName} ${currentUser.lastName}` : 'Carlos Administrador'}
-              </div>
-              <div style={{ fontSize: '0.62rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                {currentUser?.email || 'admin@gymfit.com'}
-              </div>
-            </div>
-          )}
+          <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 500 }}>
+            Recepción & Control
+          </div>
         </div>
-        {!isCollapsed && onLogout && (
-          <button
-            onClick={onLogout}
-            title="Cerrar Sesión"
-            style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              borderRadius: '6px',
-              padding: '0.35rem',
-              color: '#f87171',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <LogOut size={14} />
-          </button>
-        )}
       </div>
     </aside>
-    </>
   );
 };

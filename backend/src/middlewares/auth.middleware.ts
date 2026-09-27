@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { Role } from '@prisma/client';
+
+export type Role = 'ADMIN' | 'RECEPTIONIST' | 'TRAINER' | string;
 
 export interface AuthenticatedUser {
   userId: string;
@@ -42,7 +43,7 @@ export const authenticateJwt = (
   }
 };
 
-export const requireRoles = (...roles: Role[]) => {
+export const requireRoles = (...roles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ success: false, message: 'Usuario no autenticado.' });

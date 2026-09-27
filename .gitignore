@@ -9,3 +9,6 @@ build/
 *.log
 .DS_Store
 .expo/
+*.db
+*.db-journal
+vite.config.ts.timestamp*

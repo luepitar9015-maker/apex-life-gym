@@ -1,815 +1,162 @@
-// Prisma Schema para Plataforma Integral de Gimnasio con IA Corporal y Nutrición
-// Motor: PostgreSQL
+// APEX GYM - Motor de Base de Datos
+// Plataforma Integral de Gimnasio
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// -------------------------------------------------------------
-// ENUMS
-// -------------------------------------------------------------
-
-enum Role {
-  SUPERADMIN
-  BUSINESS_ADMIN
-  ADMIN
-  AFFILIATE
-  TRAINER
-  NUTRITIONIST
-  MEMBER
-}
-
-enum BusinessType {
-  TLC
-  GYM
-}
-
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
-}
-
-enum MembershipStatus {
-  ACTIVE
-  EXPIRED
-  PAUSED
-  CANCELLED
-  PENDING
-}
-
-enum PaymentStatus {
-  COMPLETED
-  PENDING
-  FAILED
-  REFUNDED
-}
-
-enum PaymentMethod {
-  CASH
-  CREDIT_CARD
-  DEBIT_CARD
-  TRANSFER
-  QR_PAYMENT
-}
-
-enum MuscleGroup {
-  CHEST
-  BACK
-  LEGS_QUADRICEPS
-  LEGS_HAMSTRINGS
-  GLUTES
-  CALVES
-  SHOULDERS
-  BICEPS
-  TRICEPS
-  FOREARMS
-  CORE_ABS
-  FULL_BODY
-  CARDIO
-}
-
-enum EquipmentType {
-  BARBELL
-  DUMBBELL
-  KETTLEBELL
-  MACHINE
-  CABLE
-  BODYWEIGHT
-  RESISTANCE_BAND
-  SMITH_MACHINE
-  OTHER
-}
-
-enum RoutineDifficulty {
-  BEGINNER
-  INTERMEDIATE
-  ADVANCED
-  ELITE
-}
-
-enum RoutineGoal {
-  HYPERTROPHY
-  STRENGTH
-  FAT_LOSS
-  ENDURANCE
-  FUNCTIONAL
-  REHABILITATION
-}
-
-enum MealType {
-  BREAKFAST
-  MORNING_SNACK
-  LUNCH
-  AFTERNOON_SNACK
-  PRE_WORKOUT
-  POST_WORKOUT
-  DINNER
-}
-
-// -------------------------------------------------------------
-// 1. USUARIOS, ROLES Y ACCESOS
-// -------------------------------------------------------------
-
-model Business {
-  id          String       @id @default(uuid())
-  name        String       // ej: "Total Life Changes - Sede Central", "Power Gym Fitness Club"
-  type        BusinessType @default(GYM)
-  address     String?
-  phone       String?
-  email       String?
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  users       User[]
-  products    TLCProduct[]
-  sales       TLCSale[]
-}
-
 model User {
-  id              String         @id @default(uuid())
-  email           String         @unique
-  passwordHash    String
-  firstName       String
-  lastName        String
-  documentId      String?        @unique // DNI o Cédula
-  phone           String?
-  role            Role           @default(MEMBER)
-  gender          Gender?
-  birthDate       DateTime?
-  avatarUrl       String?
-
-  // Relación con Negocio / Organización
-  businessId        String?
-  business          Business?      @relation(fields: [businessId], references: [id], onDelete: SetNull)
-
-  // Para Afiliados / TLC
-  sponsorId         String?        // ID del afiliado patrocinador
-  sponsor           User?          @relation("SponsorAffiliates", fields: [sponsorId], references: [id])
-  sponsoredMembers  User[]         @relation("SponsorAffiliates")
-  affiliateRank     String?        // ej: "Afiliado", "Director", "Ejecutivo"
-  totalPvPoints     Int            @default(0)
-
-  // Relación con TLC
-  tlcProtocols      TLCWeightLossProtocol[] @relation("ClientProtocols")
-  supervisedProtocols TLCWeightLossProtocol[] @relation("AffiliateSupervisedProtocols")
-  sales             TLCSale[]       @relation("AffiliateSales")
-
-  // Relaciones de Entrenador Personal
-  trainerClients    TrainerClientAssignment[] @relation("TrainerAssignments")
-  clientTrainers    TrainerClientAssignment[] @relation("ClientAssignments")
-  
-  // Datos Médicos / Par-Q inicial
-  medicalConditions String?
-  injuriesHistory   String?
-  emergencyContact  String?
-  emergencyPhone    String?
-
-  isActive        Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  // Relaciones Administrativas
-  subscriptions    Subscription[]
-  payments         Payment[]
-  attendanceLogs   AttendanceLog[]
-
-  // Relaciones de Entrenamiento
-  assignedRoutines Routine[]       @relation("MemberRoutines")
-  createdRoutines  Routine[]       @relation("TrainerRoutines")
-  workoutLogs      WorkoutLog[]
-
-  // Relaciones de Diagnóstico y Biometría
-  bodyAssessments  BodyAssessment[] @relation("MemberAssessments")
-  conductedAssessments BodyAssessment[] @relation("TrainerAssessments")
-  aiBodyScans      AIBodyScan[]
-
-  // Relaciones de Nutrición
-  nutritionPlans   NutritionPlan[]  @relation("MemberNutritionPlans")
-  createdPlans     NutritionPlan[]  @relation("NutritionistPlans")
-
-  // Relaciones de TLC Contactos y Soporte Técnico
-  assignedContacts TLCContact[]     @relation("AffiliateAssignedContacts")
-  supportTickets   SupportTicket[]
-
-  @@index([role])
-  @@index([email])
-  @@index([businessId])
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("ADMIN") // ADMIN, RECEPTIONIST, TRAINER
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// -------------------------------------------------------------
-// 2. MEMBRESÍAS, PAGOS Y CONTROL DE ASISTENCIA
-// -------------------------------------------------------------
+model Member {
+  id               String       @id @default(uuid())
+  code             String       @unique // ej: GYM-1001
+  documentNumber   String       @unique
+  documentType     String       @default("CC") // CC, TI, CE, PASAPORTE
+  firstName        String
+  lastName         String
+  phone            String?
+  email            String?
+  birthDate        String?
+  gender           String?      // MALE, FEMALE, OTHER
+  address          String?
+  emergencyContact String?
+  emergencyPhone   String?
+  photoUrl         String?
+  status           String       @default("ACTIVE") // ACTIVE, EXPIRED, PAUSED, CANCELLED
+  medicalNotes     String?
+  weight           Float?
+  height           Float?
+  notes            String?
+  
+  currentPlanId    String?
+  currentPlan      MembershipPlan? @relation(fields: [currentPlanId], references: [id])
+  planStartDate    DateTime?
+  planEndDate      DateTime?
+
+  payments         Payment[]
+  checkIns         CheckIn[]
+  routines         MemberRoutine[]
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
 
 model MembershipPlan {
-  id           String         @id @default(uuid())
-  name         String         // ej: "Plan Mensual Black", "Pase Anual VIP"
-  description  String?
-  durationDays Int            // ej: 30, 90, 365
-  price        Decimal        @db.Decimal(10, 2)
-  includesCoach Boolean       @default(false)
-  includesNutrition Boolean   @default(false)
-  isActive     Boolean        @default(true)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id              String    @id @default(uuid())
+  name            String    // ej: Pase Diario, Mensual Pro, Trimestral, Anual VIP
+  description     String?
+  price           Float
+  durationDays    Int       // ej: 1, 30, 90, 180, 365
+  accessHours     String?   @default("ALL_DAY") // ALL_DAY, MORNING, NIGHT
+  includesTrainer Boolean   @default(false)
+  active          Boolean   @default(true)
+  sortOrder       Int       @default(0)
+  
+  members         Member[]
+  payments        Payment[]
 
-  subscriptions Subscription[]
-}
-
-model Subscription {
-  id               String           @id @default(uuid())
-  userId           String
-  membershipPlanId String
-  startDate        DateTime
-  endDate          DateTime
-  status           MembershipStatus @default(ACTIVE)
-  autoRenew        Boolean          @default(false)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  membershipPlan   MembershipPlan   @relation(fields: [membershipPlanId], references: [id])
-  payments         Payment[]
-
-  @@index([userId])
-  @@index([status])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Payment {
   id             String         @id @default(uuid())
-  userId         String
-  subscriptionId String?
-  amount         Decimal        @db.Decimal(10, 2)
-  currency       String         @default("USD")
-  method         PaymentMethod  @default(CASH)
-  status         PaymentStatus  @default(COMPLETED)
-  invoiceNumber  String?        @unique
-  paidAt         DateTime       @default(now())
-
-  user           User           @relation(fields: [userId], references: [id])
-  subscription   Subscription?  @relation(fields: [subscriptionId], references: [id])
-
-  @@index([userId])
+  invoiceNumber  String         @unique // ej: REC-2026-0001
+  memberId       String
+  member         Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  planId         String?
+  plan           MembershipPlan? @relation(fields: [planId], references: [id])
+  amount         Float
+  paymentMethod  String         @default("CASH") // CASH, CARD, TRANSFER, NEQUI_DAVIPLATA
+  notes          String?
+  status         String         @default("COMPLETED") // COMPLETED, VOID
+  createdAt      DateTime       @default(now())
 }
 
-model AttendanceLog {
-  id          String   @id @default(uuid())
-  userId      String
-  checkInTime DateTime @default(now())
+model CheckIn {
+  id           String    @id @default(uuid())
+  memberId     String
+  member       Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  checkInTime  DateTime  @default(now())
   checkOutTime DateTime?
-  method      String   @default("QR_CODE") // QR_CODE, FINGERPRINT, MANUAL
-
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([checkInTime])
+  status       String    @default("GRANTED") // GRANTED, DENIED
+  reason       String?   // ej: Membresía activa, Membresía vencida, Documento no encontrado
+  zone         String    @default("GENERAL") // GENERAL, PESAS, CARDIO, CLASES
 }
-
-// -------------------------------------------------------------
-// 3. CATÁLOGO DE EJERCICIOS Y RUTINAS
-// -------------------------------------------------------------
 
 model Exercise {
-  id               String         @id @default(uuid())
-  name             String         @unique // ej: "Press de Banca Plano con Barra"
-  slug             String         @unique
-  description      String?
-  primaryMuscle    MuscleGroup
-  secondaryMuscles MuscleGroup[]
-  equipment        EquipmentType
-  mechanics        String?        // Compuesto / Aislamiento
-  videoUrl         String?        // Video demostrativo o animación 3D
-  thumbnailUrl     String?
-  instructions     String?        // Técnica paso a paso
-  createdAt        DateTime       @default(now())
+  id          String   @id @default(uuid())
+  name        String
+  muscleGroup String   // CHEST, BACK, LEGS, SHOULDERS, ARMS, CORE, CARDIO
+  equipment   String?  // BARBELL, DUMBBELL, MACHINE, CABLE, BODYWEIGHT
+  description String?
+  imageUrl    String?
 
   routineExercises RoutineExercise[]
-  workoutSets      WorkoutSet[]
-
-  @@index([primaryMuscle])
-  @@index([equipment])
+  createdAt   DateTime @default(now())
 }
 
 model Routine {
-  id          String            @id @default(uuid())
-  title       String            // ej: "Rutina Hipertrofia 4 Días - Empuje / Tirón / Pierna"
-  description String?
-  difficulty  RoutineDifficulty @default(INTERMEDIATE)
-  goal        RoutineGoal       @default(HYPERTROPHY)
-  isTemplate  Boolean           @default(false)
-  createdById String
-  memberId    String?           // Si es asignada a un cliente específico
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id           String            @id @default(uuid())
+  name         String
+  description  String?
+  goal         String            @default("HYPERTROPHY") // HYPERTROPHY, STRENGTH, FAT_LOSS, ENDURANCE
+  difficulty   String            @default("INTERMEDIATE") // BEGINNER, INTERMEDIATE, ADVANCED
+  daysPerWeek  Int               @default(4)
+  
+  exercises    RoutineExercise[]
+  members      MemberRoutine[]
 
-  creator     User              @relation("TrainerRoutines", fields: [createdById], references: [id])
-  member      User?             @relation("MemberRoutines", fields: [memberId], references: [id])
-  days        RoutineDay[]
-  workoutLogs WorkoutLog[]
-
-  @@index([memberId])
-  @@index([isTemplate])
-}
-
-model RoutineDay {
-  id          String            @id @default(uuid())
-  routineId   String
-  dayOrder    Int               // 1, 2, 3, 4...
-  name        String            // ej: "Día 1: Pecho, Hombro y Tríceps"
-  description String?
-
-  routine     Routine           @relation(fields: [routineId], references: [id], onDelete: Cascade)
-  exercises   RoutineExercise[]
-
-  @@index([routineId])
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 }
 
 model RoutineExercise {
-  id           String      @id @default(uuid())
-  routineDayId String
-  exerciseId   String
-  orderIndex   Int         // Orden del ejercicio en la sesión
-  targetSets   Int         @default(4)
-  targetReps   String      @default("8-12") // Rango de repeticiones (ej: "10-12", "6-8")
-  targetRpe    Decimal?    @db.Decimal(3, 1) // Esfuerzo percibido (ej: 8.5)
-  restSeconds  Int         @default(90)     // Descanso sugerido
-  notes        String?     // ej: "Drop-set en la última serie"
-
-  routineDay   RoutineDay  @relation(fields: [routineDayId], references: [id], onDelete: Cascade)
-  exercise     Exercise    @relation(fields: [exerciseId], references: [id])
-
-  @@index([routineDayId])
-  @@index([exerciseId])
-}
-
-model WorkoutLog {
-  id          String       @id @default(uuid())
-  userId      String
-  routineId   String?
-  startedAt   DateTime     @default(now())
-  completedAt DateTime?
-  feelingRate Int?         // 1 a 5 (energía y sensación física)
+  id          String   @id @default(uuid())
+  routineId   String
+  routine     Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  dayNumber   Int      @default(1) // Día 1, 2, 3, etc.
+  sets        Int      @default(4)
+  reps        String   @default("10-12")
+  restSeconds Int      @default(60)
   notes       String?
-
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  routine     Routine?     @relation(fields: [routineId], references: [id])
-  sets        WorkoutSet[]
-
-  @@index([userId])
-  @@index([startedAt])
 }
 
-model WorkoutSet {
-  id             String     @id @default(uuid())
-  workoutLogId   String
-  exerciseId     String
-  setNumber      Int
-  weightKg       Decimal    @db.Decimal(6, 2)
-  repsCompleted  Int
-  rpeActual      Decimal?   @db.Decimal(3, 1)
-  isWarmup       Boolean    @default(false)
-  isFailed       Boolean    @default(false)
-  createdAt      DateTime   @default(now())
-
-  workoutLog     WorkoutLog @relation(fields: [workoutLogId], references: [id], onDelete: Cascade)
-  exercise       Exercise   @relation(fields: [exerciseId], references: [id])
-
-  @@index([workoutLogId])
-  @@index([exerciseId])
+model MemberRoutine {
+  id         String   @id @default(uuid())
+  memberId   String
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  routineId  String
+  routine    Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+  active     Boolean  @default(true)
 }
 
-// -------------------------------------------------------------
-// 4. DIAGNÓSTICO, ANTROPOMETRÍA Y ANÁLISIS DE IA CORPORAL
-// -------------------------------------------------------------
-
-model BodyAssessment {
-  id                String       @id @default(uuid())
-  userId            String
-  recordedById      String?      // Entrenador o el mismo usuario
-  assessmentDate    DateTime     @default(now())
-  
-  // Datos biométricos directos
-  weightKg          Decimal      @db.Decimal(5, 2)
-  heightCm          Decimal      @db.Decimal(5, 2)
-  bodyFatPercentage Decimal?     @db.Decimal(4, 2) // % Grasa
-  leanMassKg        Decimal?     @db.Decimal(5, 2) // Masa Muscular Magra
-  visceralFatScore  Int?
-  
-  // Medidas perimetrales (cm)
-  chestCm           Decimal?     @db.Decimal(5, 2)
-  waistCm           Decimal?     @db.Decimal(5, 2)
-  hipsCm            Decimal?     @db.Decimal(5, 2)
-  armLeftCm         Decimal?     @db.Decimal(5, 2)
-  armRightCm        Decimal?     @db.Decimal(5, 2)
-  thighLeftCm       Decimal?     @db.Decimal(5, 2)
-  thighRightCm      Decimal?     @db.Decimal(5, 2)
-  calfCm            Decimal?     @db.Decimal(5, 2)
-
-  // Fotos de evolución (almacenamiento encriptado o URLs firmadas)
-  frontPhotoUrl     String?
-  sidePhotoUrl      String?
-  backPhotoUrl      String?
-  notes             String?
-
-  user              User         @relation("MemberAssessments", fields: [userId], references: [id], onDelete: Cascade)
-  recordedBy        User?        @relation("TrainerAssessments", fields: [recordedById], references: [id])
-  aiBodyScans       AIBodyScan[]
-
-  @@index([userId])
-  @@index([assessmentDate])
+model GymSetting {
+  id             String   @id @default("singleton")
+  gymName        String   @default("APEX GYM & FITNESS")
+  nit            String   @default("901.884.212-9")
+  phone          String   @default("+57 310 892 4410")
+  address        String   @default("Av. Principal #45-12, Centro Deportivo")
+  currency       String   @default("COP ($)")
+  maxCapacity    Int      @default(80)
+  alertCapacity  Int      @default(70)
+  openingHours   String   @default("Lun - Vie: 5:00 AM - 10:00 PM | Sáb - Dom: 6:00 AM - 6:00 PM")
+  updatedAt      DateTime @updatedAt
 }
-
-model AIBodyScan {
-  id                   String          @id @default(uuid())
-  userId               String
-  assessmentId         String?
-  scanDate             DateTime        @default(now())
-  
-  // Entradas de imagen analizadas
-  frontImageUrl        String
-  sideImageUrl         String?
-
-  // Resultados calculados por Visión Artificial
-  estimatedFatPct      Decimal         @db.Decimal(4, 2) // % Grasa estimada por IA
-  estimatedLeanMassKg  Decimal         @db.Decimal(5, 2) // Masa Magra calculada
-  estimatedBmi         Decimal         @db.Decimal(4, 2) // IMC
-  somatotype           String?         // Ectomorfo, Mesomorfo, Endomorfo
-  
-  // Diagnóstico Postural y Biomecánico
-  postureAssessment    String?         // ej: "Hombro derecho elevado 2°, leve anteversión pélvica"
-  postureKeypointsJson Json?           // Coordenadas esqueléticas 2D/3D (MediaPipe / PoseNet)
-  visualMetricsJson    Json?           // Ratios cintura-cadera, simetría muscular
-  
-  // Recomendaciones generadas por IA
-  aiRecommendations    String?         // Sugerencias de entrenamiento y prevención de lesiones
-  confidenceScore      Decimal?        @db.Decimal(3, 2) // Nivel de certidumbre del modelo (0.00 a 1.00)
-
-  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assessment           BodyAssessment? @relation(fields: [assessmentId], references: [id])
-
-  @@index([userId])
-  @@index([scanDate])
-}
-
-// -------------------------------------------------------------
-// 5. MÓDULO DE NUTRICIÓN Y ALIMENTACIÓN
-// -------------------------------------------------------------
-
-model FoodItem {
-  id                String         @id @default(uuid())
-  name              String         // ej: "Pechuga de Pollo cocida", "Avena en hojuelas"
-  brand             String?
-  servingGrams      Decimal        @default(100) @db.Decimal(6, 2)
-  calories          Decimal        @db.Decimal(6, 2) // Kcal por porción
-  proteinGrams      Decimal        @db.Decimal(6, 2)
-  carbsGrams        Decimal        @db.Decimal(6, 2)
-  fatGrams          Decimal        @db.Decimal(6, 2)
-  fiberGrams        Decimal?       @db.Decimal(6, 2)
-  category          String?        // Carnes, Granos, Verduras, Frutas, Lácteos, Suplementos
-
-  mealFoodItems     MealFoodItem[]
-
-  @@index([name])
-}
-
-model NutritionPlan {
-  id                 String     @id @default(uuid())
-  title              String     // ej: "Plan Definición 2200 kcal - Alta Proteína"
-  description        String?
-  userId             String
-  nutritionistId     String?
-  
-  dailyCaloriesTarget Decimal   @db.Decimal(6, 2)
-  targetProteinGrams Decimal   @db.Decimal(6, 2)
-  targetCarbsGrams   Decimal   @db.Decimal(6, 2)
-  targetFatGrams     Decimal   @db.Decimal(6, 2)
-
-  waterLitersTarget  Decimal?   @db.Decimal(3, 1) @default(2.5)
-  notes              String?
-  startDate          DateTime   @default(now())
-  endDate            DateTime?
-  isActive           Boolean    @default(true)
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-
-  user               User       @relation("MemberNutritionPlans", fields: [userId], references: [id], onDelete: Cascade)
-  nutritionist       User?      @relation("NutritionistPlans", fields: [nutritionistId], references: [id])
-  mealDays           MealDay[]
-
-  @@index([userId])
-  @@index([isActive])
-}
-
-model MealDay {
-  id              String        @id @default(uuid())
-  nutritionPlanId String
-  dayNumber       Int           // 1 = Lunes, 2 = Martes... o Día A / Día B
-  dayLabel        String        // ej: "Día de Entrenamiento", "Lunes"
-
-  nutritionPlan   NutritionPlan @relation(fields: [nutritionPlanId], references: [id], onDelete: Cascade)
-  meals           Meal[]
-
-  @@index([nutritionPlanId])
-}
-
-model Meal {
-  id          String         @id @default(uuid())
-  mealDayId   String
-  type        MealType       @default(BREAKFAST)
-  customName  String         // ej: "Desayuno Pre-Entreno"
-  timeHour    String?        // ej: "08:00 AM"
-  orderIndex  Int            @default(1)
-
-  mealDay     MealDay        @relation(fields: [mealDayId], references: [id], onDelete: Cascade)
-  foodItems   MealFoodItem[]
-
-  @@index([mealDayId])
-}
-
-model MealFoodItem {
-  id           String   @id @default(uuid())
-  mealId       String
-  foodItemId   String
-  portionGrams Decimal  @db.Decimal(6, 2) // ej: 150g de pechuga
-  customNotes  String?  // ej: "A la plancha sin aceite"
-
-  meal         Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
-  foodItem     FoodItem @relation(fields: [foodItemId], references: [id])
-
-  @@index([mealId])
-  @@index([foodItemId])
-}
-
-// -------------------------------------------------------------
-// 6. TOTAL LIFE CHANGES (TLC) Y SISTEMA DE AFILIADOS
-// -------------------------------------------------------------
-
-model TLCProduct {
-  id             String    @id @default(uuid())
-  businessId     String?
-  name           String    // ej: "Iaso Tea Original", "Resolution Drops", "NRG Cápsulas", "NutraBurst Líquido"
-  sku            String    @unique
-  description    String?
-  category       String    // "DETOX", "WEIGHT_LOSS", "ENERGY", "NUTRITION", "KIT"
-  priceUsd       Decimal   @db.Decimal(10, 2)
-  pvPoints       Int       @default(40) // Puntos de volumen
-  commissionUsd  Decimal   @default(20.00) @db.Decimal(10, 2) // Comisión estándar del afiliado
-  imageUrl       String?
-  inStock        Int       @default(100)
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  business       Business? @relation(fields: [businessId], references: [id])
-  saleItems      TLCSaleItem[]
-}
-
-model TLCWeightLossProtocol {
-  id                     String    @id @default(uuid())
-  clientId               String
-  affiliateId            String?   // Afiliado o patrocinador que supervisa
-  protocolType           String    @default("DETOX_30_DAYS") // "DETOX_15_DAYS", "DETOX_30_DAYS", "RESOLUTION_EXTREME"
-  startDate              DateTime  @default(now())
-  endDate                DateTime?
-  startWeightKg          Decimal   @db.Decimal(5, 2)
-  currentWeightKg        Decimal   @db.Decimal(5, 2)
-  targetWeightKg         Decimal   @db.Decimal(5, 2)
-  productsUsed           String?   // ej: "Iaso Tea + Gotas Resolution"
-  dailyWaterTargetLiters Decimal   @default(3.0) @db.Decimal(3, 1)
-  status                 String    @default("ACTIVE") // "ACTIVE", "COMPLETED", "PAUSED"
-  notes                  String?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-
-  client                 User      @relation("ClientProtocols", fields: [clientId], references: [id], onDelete: Cascade)
-  affiliate              User?     @relation("AffiliateSupervisedProtocols", fields: [affiliateId], references: [id])
-  dailyLogs              TLCProtocolDailyLog[]
-
-  @@index([clientId])
-  @@index([affiliateId])
-}
-
-model TLCProtocolDailyLog {
-  id             String   @id @default(uuid())
-  protocolId     String
-  logDate        DateTime @default(now())
-  weightKg       Decimal? @db.Decimal(5, 2)
-  tookTea        Boolean  @default(false)
-  tookResolution Boolean  @default(false)
-  waterLiters    Decimal? @db.Decimal(3, 1)
-  caloriesEaten  Int?
-  feelingScore   Int?     // 1 a 5
-  notes          String?
-
-  protocol       TLCWeightLossProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
-
-  @@index([protocolId])
-}
-
-model TLCSale {
-  id             String        @id @default(uuid())
-  businessId     String?
-  affiliateId    String        // Quien vendió
-  customerName   String
-  customerPhone  String?
-  customerEmail  String?
-  totalUsd       Decimal       @db.Decimal(10, 2)
-  commissionUsd  Decimal       @db.Decimal(10, 2)
-  pointsPv       Int           @default(0)
-  status         PaymentStatus @default(COMPLETED)
-  createdAt      DateTime      @default(now())
-
-  business       Business?     @relation(fields: [businessId], references: [id])
-  affiliate      User          @relation("AffiliateSales", fields: [affiliateId], references: [id])
-  items          TLCSaleItem[]
-
-  @@index([affiliateId])
-}
-
-model TLCSaleItem {
-  id          String     @id @default(uuid())
-  saleId      String
-  productId   String
-  quantity    Int        @default(1)
-  unitPrice   Decimal    @db.Decimal(10, 2)
-
-  sale        TLCSale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product     TLCProduct @relation(fields: [productId], references: [id])
-}
-
-// -------------------------------------------------------------
-// 7. ENTRENADORES PERSONALIZADOS (1-ON-1 COACHING)
-// -------------------------------------------------------------
-
-model TrainerClientAssignment {
-  id              String   @id @default(uuid())
-  trainerId       String
-  clientId        String
-  status          String   @default("ACTIVE") // "ACTIVE", "PAUSED", "COMPLETED"
-  goal            String?  // ej: "Preparación Maratón", "Aumento Masa Muscular 5kg"
-  notes           String?
-  sessionsPerWeek Int      @default(3)
-  startDate       DateTime @default(now())
-  endDate         DateTime?
-
-  trainer         User     @relation("TrainerAssignments", fields: [trainerId], references: [id], onDelete: Cascade)
-  client          User     @relation("ClientAssignments", fields: [clientId], references: [id], onDelete: Cascade)
-
-  @@unique([trainerId, clientId])
-  @@index([trainerId])
-  @@index([clientId])
-}
-
-// -------------------------------------------------------------
-// 8. TLC CONTACTOS & PROSPECTOS (CUMPLIMIENTO LEY 1581 COLOMBIA)
-// -------------------------------------------------------------
-
-model TLCContact {
-  id                    String    @id @default(uuid())
-  firstName             String
-  lastName              String
-  documentType          String    @default("CC") // CC, CE, PASAPORTE, PPT, NIT
-  documentId            String
-  phone                 String    // WhatsApp de contacto
-  email                 String
-  department            String?   // Departamento de Colombia (ej: Antioquia, Cundinamarca)
-  city                  String?   // Municipio / Ciudad (ej: Medellín, Bogotá)
-  leadSource            String    @default("ORGANIC") // WHATSAPP, INSTAGRAM, FACEBOOK, REFERIDO, EVENTO, TIENDA_VIRTUAL
-  interestProduct       String?   // Iaso Tea Original, Gotas Resolution, NRG, NutraBurst, Kit Pérdida de Peso, Negocio TLC
-  notes                 String?
-  status                String    @default("NUEVO") // NUEVO, CONTACTADO, EN_SEGUIMIENTO, CLIENTE, DESCARTADO
-
-  // Cumplimiento estricto Ley 1581 de 2012 y Decreto 1377 de 2013 (Habeas Data Colombia)
-  dataPolicyAccepted    Boolean   @default(true)
-  acceptedAt            DateTime  @default(now())
-  ipAddress             String?
-  authorizationText     String    @db.Text
-  revocationRequested   Boolean   @default(false)
-  revocationDate        DateTime?
-
-  assignedAffiliateId   String?
-  assignedAffiliate     User?     @relation("AffiliateAssignedContacts", fields: [assignedAffiliateId], references: [id], onDelete: SetNull)
-
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  @@index([email])
-  @@index([phone])
-  @@index([documentId])
-  @@index([status])
-  @@index([assignedAffiliateId])
-}
-
-// -------------------------------------------------------------
-// 9. SUPERUSUARIO: ACTIVADOR DE LICENCIAS Y PERMISOS DEL SISTEMA
-// -------------------------------------------------------------
-
-model SystemLicense {
-  id                 String    @id @default(uuid())
-  licenseKey         String    @unique // ej: TLC-ENT-2026-X892-COL
-  businessName       String    // Nombre de la Empresa / Sede / Gimnasio
-  contactEmail       String
-  contactPhone       String?
-  planType           String    @default("GYM_TLC_PRO") // TLC_GROWTH, GYM_STANDARD, GYM_TLC_PRO, ENTERPRISE_UNLIMITED
-  status             String    @default("ACTIVE") // ACTIVE, TRIAL, SUSPENDED, EXPIRED
-  maxUsers           Int       @default(100)
-  startDate          DateTime  @default(now())
-  expiresAt          DateTime
-  modulesAllowed     String    @db.Text // JSON string de permisos activados
-  activatedByUserId  String?
-  notes              String?
-
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  @@index([licenseKey])
-  @@index([status])
-}
-
-// -------------------------------------------------------------
-// 10. MÓDULO DE SOPORTE TÉCNICO Y TICKETS
-// -------------------------------------------------------------
-
-model SupportTicket {
-  id             String    @id @default(uuid())
-  ticketNumber   String    @unique // ej: TK-2026-001
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject        String
-  category       String    @default("SISTEMA") // LICENCIA, PAGOS, SISTEMA, RUTINAS, TLC, OTRO
-  priority       String    @default("MEDIA")   // BAJA, MEDIA, ALTA, URGENTE
-  status         String    @default("ABIERTO") // ABIERTO, EN_PROCESO, ESPERANDO_CLIENTE, RESUELTO, CERRADO
-  description    String    @db.Text
-  adminResponse  String?   @db.Text
-  resolvedAt     DateTime?
-
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  @@index([userId])
-  @@index([status])
-  @@index([priority])
-}
-
-// -------------------------------------------------------------
-// 11. SISTEMA DE AUDITORÍA Y REGISTRO DE EVENTOS
-// -------------------------------------------------------------
-
-model AuditLog {
-  id          String   @id @default(uuid())
-  userId      String?
-  userEmail   String?
-  userName    String?
-  action      String   // ej: USER_CREATE, USER_UPDATE, USER_DELETE, PERMISSION_CHANGE, LOGIN_SUCCESS, SECURITY_ALERT, SERVER_STATUS_CHECK
-  entity      String   // User, Permission, Server, System, License, Payment
-  entityId    String?
-  details     String?  @db.Text // Payload JSON con cambios y metadatos
-  ipAddress   String?
-  userAgent   String?
-  severity    String   @default("INFO") // INFO, WARNING, SECURITY, CRITICAL
-  status      String   @default("SUCCESS") // SUCCESS, FAILED
-  timestamp   DateTime @default(now())
-
-  @@index([action])
-  @@index([entity])
-  @@index([severity])
-  @@index([timestamp])
-  @@index([userId])
-}
-
-// -------------------------------------------------------------
-// 12. SISTEMA DE PERMISOS GRANULARES (RBAC & OVERRIDES)
-// -------------------------------------------------------------
-
-model Permission {
-  id          String   @id @default(uuid())
-  code        String   @unique // ej: users:create, server:manage, audit:view
-  name        String
-  category    String   // USUARIOS, SEGURIDAD, SERVIDOR, AUDITORIA, GIMNASIO, TLC, FINANZAS
-  description String?
-  roles       String[] // Roles que tienen este permiso por defecto
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([category])
-}
-
-model UserCustomPermission {
-  id             String   @id @default(uuid())
-  userId         String
-  permissionCode String
-  isGranted      Boolean  @default(true) // true = otorgado adicional, false = revocado explícitamente
-  grantedBy      String?
-  grantedAt      DateTime @default(now())
-
-  @@unique([userId, permissionCode])
-  @@index([userId])
-}
-

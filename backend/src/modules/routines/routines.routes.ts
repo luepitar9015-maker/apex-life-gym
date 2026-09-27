@@ -1,12 +1,10 @@
 import { Router } from 'express';
-import { createRoutine, getRoutines, recordWorkoutSession } from './routines.controller.js';
-import { authenticateJwt, requireRoles } from '../../middlewares/auth.middleware.js';
-import { Role } from '@prisma/client';
+import { getRoutines, createRoutine, assignRoutineToMember } from './routines.controller.js';
 
 const router = Router();
 
-router.get('/', authenticateJwt, getRoutines);
-router.post('/', authenticateJwt, requireRoles(Role.SUPERADMIN, Role.ADMIN, Role.TRAINER), createRoutine);
-router.post('/log-session', authenticateJwt, recordWorkoutSession);
+router.get('/', getRoutines);
+router.post('/', createRoutine);
+router.post('/assign', assignRoutineToMember);
 
 export default router;

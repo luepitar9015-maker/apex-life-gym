@@ -1,360 +1,407 @@
-import { PrismaClient, Role, Gender, MembershipStatus, MuscleGroup, EquipmentType, RoutineDifficulty, RoutineGoal, MealType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Iniciando carga de datos semilla (Seed)...');
+  console.log('🌱 Inicializando datos base para APEX GYM...');
 
-  const defaultPasswordHash = await bcrypt.hash('password123', 10);
-
-  // 1. Limpiar datos existentes (orden seguro por restricciones de claves foráneas)
-  await prisma.mealFoodItem.deleteMany();
-  await prisma.meal.deleteMany();
-  await prisma.mealDay.deleteMany();
-  await prisma.nutritionPlan.deleteMany();
-  await prisma.foodItem.deleteMany();
-  await prisma.workoutSet.deleteMany();
-  await prisma.workoutLog.deleteMany();
+  // 1. Limpieza de datos
+  await prisma.checkIn.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.memberRoutine.deleteMany();
   await prisma.routineExercise.deleteMany();
-  await prisma.routineDay.deleteMany();
   await prisma.routine.deleteMany();
   await prisma.exercise.deleteMany();
-  await prisma.aIBodyScan.deleteMany();
-  await prisma.bodyAssessment.deleteMany();
-  await prisma.attendanceLog.deleteMany();
-  await prisma.payment.deleteMany();
-  await prisma.subscription.deleteMany();
+  await prisma.member.deleteMany();
   await prisma.membershipPlan.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.gymSetting.deleteMany();
 
-  const masterSuperadminHash = await bcrypt.hash('Colombia2026**', 10);
-
-  // 2. Crear Usuarios (Superadmin Master, Admin, Entrenador, Nutricionista, Cliente)
-  const masterSuperadmin = await prisma.user.create({
+  // 2. Configuración del Gimnasio
+  await prisma.gymSetting.create({
     data: {
-      email: 'luepitar@gamil.com',
-      passwordHash: masterSuperadminHash,
-      firstName: 'Luepitar',
-      lastName: 'Director Master',
-      documentId: 'MASTER-001',
-      role: Role.SUPERADMIN,
-      gender: Gender.MALE,
-      phone: '+57 300 000 0000',
+      id: 'singleton',
+      gymName: 'APEX GYM & FITNESS',
+      nit: '901.884.212-9',
+      phone: '+57 310 892 4410',
+      address: 'Av. Las Palmas #24-10, Zona Fitness',
+      currency: 'COP ($)',
+      maxCapacity: 60,
+      alertCapacity: 50,
+      openingHours: 'Lun - Vie: 5:00 AM - 10:00 PM | Sáb - Dom: 6:00 AM - 6:00 PM',
     },
   });
 
-  const admin = await prisma.user.create({
+  // 3. Usuarios del Sistema
+  const hashedPassword = await bcrypt.hash('Admin2026!', 10);
+  await prisma.user.createMany({
+    data: [
+      {
+        email: 'admin@apexgym.com',
+        name: 'Administrador Master',
+        password: hashedPassword,
+        role: 'ADMIN',
+      },
+      {
+        email: 'recepcion@apexgym.com',
+        name: 'Carlos Recepción',
+        password: hashedPassword,
+        role: 'RECEPTIONIST',
+      },
+      {
+        email: 'coach@apexgym.com',
+        name: 'Coach Laura Gómez',
+        password: hashedPassword,
+        role: 'TRAINER',
+      },
+    ],
+  });
+
+  // 4. Planes de Membresía
+  const planDiario = await prisma.membershipPlan.create({
     data: {
-      email: 'admin@gymfit.com',
-      passwordHash: defaultPasswordHash,
-      firstName: 'Carlos',
-      lastName: 'Administrador',
-      documentId: 'ADM001',
-      role: Role.SUPERADMIN,
-      gender: Gender.MALE,
-      phone: '+1 800 555 0100',
+      name: 'Pase Diario',
+      description: 'Acceso total por 1 día a todas las máquinas y duchas',
+      price: 15000,
+      durationDays: 1,
+      accessHours: 'ALL_DAY',
+      includesTrainer: false,
+      sortOrder: 1,
     },
   });
 
-  const trainer = await prisma.user.create({
-    data: {
-      email: 'coach.marcos@gymfit.com',
-      passwordHash: defaultPasswordHash,
-      firstName: 'Marcos',
-      lastName: 'Valenzuela',
-      documentId: 'ENT002',
-      role: Role.TRAINER,
-      gender: Gender.MALE,
-      phone: '+1 800 555 0101',
-    },
-  });
-
-  const nutritionist = await prisma.user.create({
-    data: {
-      email: 'nutri.laura@gymfit.com',
-      passwordHash: defaultPasswordHash,
-      firstName: 'Laura',
-      lastName: 'Méndez',
-      documentId: 'NUT003',
-      role: Role.NUTRITIONIST,
-      gender: Gender.FEMALE,
-      phone: '+1 800 555 0102',
-    },
-  });
-
-  const member = await prisma.user.create({
-    data: {
-      email: 'juan.perez@email.com',
-      passwordHash: defaultPasswordHash,
-      firstName: 'Juan',
-      lastName: 'Pérez',
-      documentId: '1098765432',
-      role: Role.MEMBER,
-      gender: Gender.MALE,
-      birthDate: new Date('1996-05-14'),
-      phone: '+1 800 555 0103',
-      medicalConditions: 'Ninguna',
-      injuriesHistory: 'Leve molestia en rodilla izquierda hace 2 años',
-    },
-  });
-
-  // 3. Planes de Membresía
   const planMensual = await prisma.membershipPlan.create({
     data: {
-      name: 'Plan Mensual Pro',
-      description: 'Acceso total al gimnasio, vestuarios y lockers.',
+      name: 'Mensual Pro',
+      description: 'Acceso ilimitado por 30 días + valoración física inicial',
+      price: 95000,
       durationDays: 30,
-      price: 45.0,
-      includesCoach: false,
-      includesNutrition: false,
+      accessHours: 'ALL_DAY',
+      includesTrainer: true,
+      sortOrder: 2,
     },
   });
 
-  const planVIP = await prisma.membershipPlan.create({
+  const planTrimestral = await prisma.membershipPlan.create({
     data: {
-      name: 'Plan Black VIP + IA & Coach',
-      description: 'Acceso ilimitado, escaneos de IA corporal mensuales, rutina personalizada y plan nutricional.',
-      durationDays: 30,
-      price: 85.0,
-      includesCoach: true,
-      includesNutrition: true,
+      name: 'Trimestral Élite',
+      description: '90 días de acceso total con descuento del 15% + rutina personalizada',
+      price: 245000,
+      durationDays: 90,
+      accessHours: 'ALL_DAY',
+      includesTrainer: true,
+      sortOrder: 3,
     },
   });
 
-  // 4. Suscripción del cliente
-  await prisma.subscription.create({
+  const planAnualVIP = await prisma.membershipPlan.create({
     data: {
-      userId: member.id,
-      membershipPlanId: planVIP.id,
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      status: MembershipStatus.ACTIVE,
+      name: 'Anual VIP Black',
+      description: '365 días de entrenamiento ilimitado, acceso a zonas VIP, toalla y nutricionista',
+      price: 780000,
+      durationDays: 365,
+      accessHours: 'ALL_DAY',
+      includesTrainer: true,
+      sortOrder: 4,
     },
   });
 
-  // 5. Catálogo de Ejercicios Fundamentales
-  const exercisesData = [
-    {
-      name: 'Press de Banca Plano con Barra',
-      slug: 'press-de-banca-plano-barra',
-      primaryMuscle: MuscleGroup.CHEST,
-      secondaryMuscles: [MuscleGroup.TRICEPS, MuscleGroup.SHOULDERS],
-      equipment: EquipmentType.BARBELL,
-      mechanics: 'Compuesto',
-      instructions: 'Acuéstate sobre el banco plano con los ojos bajo la barra. Agarre prono un poco más ancho que los hombros. Desciende de forma controlada hasta tocar el esternón medio y empuja explosivamente contrayendo los pectorales.',
-    },
-    {
-      name: 'Sentadilla Trasera con Barra (Squat)',
-      slug: 'sentadilla-trasera-barra',
-      primaryMuscle: MuscleGroup.LEGS_QUADRICEPS,
-      secondaryMuscles: [MuscleGroup.GLUTES, MuscleGroup.CORE_ABS],
-      equipment: EquipmentType.BARBELL,
-      mechanics: 'Compuesto',
-      instructions: 'Coloca la barra sobre los trapecios. Pies al ancho de hombros con ligera apertura. Baja quebrando caderas y rodillas manteniendo el torso erguido hasta que los muslos rompan el paralelo.',
-    },
-    {
-      name: 'Peso Muerto Convencional (Deadlift)',
-      slug: 'peso-muerto-convencional',
-      primaryMuscle: MuscleGroup.BACK,
-      secondaryMuscles: [MuscleGroup.LEGS_HAMSTRINGS, MuscleGroup.GLUTES, MuscleGroup.FOREARMS],
-      equipment: EquipmentType.BARBELL,
-      mechanics: 'Compuesto',
-      instructions: 'Pies a la anchura de caderas bajo la barra. Sujeta la barra con agarre firme, espalda neutra, pecho inflado. Empuja el suelo con las piernas y bloquea caderas al erguirte.',
-    },
-    {
-      name: 'Dominadas con Agarre Prono (Pull-Ups)',
-      slug: 'dominadas-pronas',
-      primaryMuscle: MuscleGroup.BACK,
-      secondaryMuscles: [MuscleGroup.BICEPS, MuscleGroup.FOREARMS],
-      equipment: EquipmentType.BODYWEIGHT,
-      mechanics: 'Compuesto',
-      instructions: 'Cuélgate de la barra con agarre prono. Retrae escápulas y tracciona con los dorsales hasta que la barbilla supere la barra.',
-    },
-    {
-      name: 'Press Militar de Hombros con Barra',
-      slug: 'press-militar-barra',
-      primaryMuscle: MuscleGroup.SHOULDERS,
-      secondaryMuscles: [MuscleGroup.TRICEPS, MuscleGroup.CORE_ABS],
-      equipment: EquipmentType.BARBELL,
-      mechanics: 'Compuesto',
-      instructions: 'De pie, barra apoyada en la parte alta del pecho. Empuja la barra verticalmente por encima de la cabeza bloqueando los codos y manteniendo el core firme.',
-    },
-    {
-      name: 'Curl de Bíceps con Mancuernas en Banco Inclinado',
-      slug: 'curl-biceps-mancuernas-inclinado',
-      primaryMuscle: MuscleGroup.BICEPS,
-      secondaryMuscles: [MuscleGroup.FOREARMS],
-      equipment: EquipmentType.DUMBBELL,
-      mechanics: 'Aislamiento',
-      instructions: 'Banco a 60 grados. Brazos colgando perpendicularmente. Flexiona los codos supinando las muñecas sin balancear los hombros.',
-    },
-    {
-      name: 'Extensión de Tríceps en Polea Alta con Cuerda',
-      slug: 'extension-triceps-polea-cuerda',
-      primaryMuscle: MuscleGroup.TRICEPS,
-      secondaryMuscles: [],
-      equipment: EquipmentType.CABLE,
-      mechanics: 'Aislamiento',
-      instructions: 'Codos pegados al torso. Extiende los brazos hacia abajo abriendo las puntas de la cuerda al final del recorrido para máxima contracción.',
-    },
-  ];
-
-  const createdExercises = [];
-  for (const ex of exercisesData) {
-    const item = await prisma.exercise.create({ data: ex });
-    createdExercises.push(item);
-  }
-
-  // 6. Crear Rutina Modelo Push / Pull / Legs
-  const rutina = await prisma.routine.create({
-    data: {
-      title: 'Plan Hipertrofia Elite (Push / Pull / Legs)',
-      description: 'Rutina optimizada para ganancia de masa muscular y fuerza.',
-      difficulty: RoutineDifficulty.INTERMEDIATE,
-      goal: RoutineGoal.HYPERTROPHY,
-      isTemplate: true,
-      createdById: trainer.id,
-      memberId: member.id,
-    },
-  });
-
-  const dia1 = await prisma.routineDay.create({
-    data: {
-      routineId: rutina.id,
-      dayOrder: 1,
-      name: 'Día 1: Empuje (Pecho, Hombro, Tríceps)',
-    },
-  });
-
-  await prisma.routineExercise.create({
-    data: {
-      routineDayId: dia1.id,
-      exerciseId: createdExercises[0].id, // Press Banca
-      orderIndex: 1,
-      targetSets: 4,
-      targetReps: '8-10',
-      targetRpe: 8.5,
-      restSeconds: 120,
-      notes: 'Calentamiento previo de aproximación con barra vacía.',
-    },
-  });
-
-  await prisma.routineExercise.create({
-    data: {
-      routineDayId: dia1.id,
-      exerciseId: createdExercises[4].id, // Press Militar
-      orderIndex: 2,
-      targetSets: 3,
-      targetReps: '10-12',
-      targetRpe: 8.0,
-      restSeconds: 90,
-    },
-  });
-
-  // 7. Diagnóstico Físico & Escaneo con IA del Usuario
-  const assessment = await prisma.bodyAssessment.create({
-    data: {
-      userId: member.id,
-      recordedById: trainer.id,
-      weightKg: 78.5,
-      heightCm: 177.0,
-      bodyFatPercentage: 16.4,
-      leanMassKg: 65.6,
-      chestCm: 102.0,
-      waistCm: 81.5,
-      hipsCm: 96.0,
-      armRightCm: 37.0,
-      armLeftCm: 36.8,
-      notes: 'Buen balance muscular general, objetivo de recortar grasa a 12% manteniendo masa magra.',
-    },
-  });
-
-  await prisma.aIBodyScan.create({
-    data: {
-      userId: member.id,
-      assessmentId: assessment.id,
-      frontImageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&auto=format&fit=crop',
-      sideImageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&auto=format&fit=crop',
-      estimatedFatPct: 16.2,
-      estimatedLeanMassKg: 65.8,
-      estimatedBmi: 25.05,
-      somatotype: 'Mesomorfo',
-      postureAssessment: 'Excelente simetría escapular. Ligera rotación interna de hombro izquierdo corregible con trabajo de deltoides posterior.',
-      postureKeypointsJson: {
-        shouldersAlignmentDeg: 0.8,
-        pelvicTiltDeg: 2.1,
-        spineCurvature: 'Normal / Neutra',
+  // 5. Catálogo de Ejercicios
+  const exercises = await Promise.all([
+    prisma.exercise.create({
+      data: {
+        name: 'Press de Banca Plano',
+        muscleGroup: 'CHEST',
+        equipment: 'BARBELL',
+        description: 'Ejercicio básico de empuje para desarrollo de pectoral mayor y tríceps.',
       },
-      visualMetricsJson: {
-        waistToHipRatio: 0.84,
-        shoulderToWaistRatio: 1.42,
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Aperturas con Mancuernas',
+        muscleGroup: 'CHEST',
+        equipment: 'DUMBBELL',
+        description: 'Aislamiento de pectoral medio y estiramiento con rango completo.',
       },
-      aiRecommendations: 'Priorizar ejercicios de tracción horizontal (Face Pulls) para equilibrar el hombro izquierdo. Mantener ingesta de proteína a 2.0g/kg.',
-      confidenceScore: 0.94,
-    },
-  });
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Sentadilla Libre con Barra',
+        muscleGroup: 'LEGS',
+        equipment: 'BARBELL',
+        description: 'Rey de los ejercicios de pierna. Cuádriceps, glúteos y estabilidad de core.',
+      },
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Prensa Inclinada 45°',
+        muscleGroup: 'LEGS',
+        equipment: 'MACHINE',
+        description: 'Enfoque de sobrecarga controlada para cuádriceps y femorales.',
+      },
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Dominadas Pronas',
+        muscleGroup: 'BACK',
+        equipment: 'BODYWEIGHT',
+        description: 'Tracción vertical para desarrollo de dorsal ancho y densidad de espalda.',
+      },
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Remo con Barra T',
+        muscleGroup: 'BACK',
+        equipment: 'BARBELL',
+        description: 'Grosor de espalda media, trapecios y romboides.',
+      },
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Press Militar de Hombro',
+        muscleGroup: 'SHOULDERS',
+        equipment: 'DUMBBELL',
+        description: 'Fuerza vertical y deltoides anterior/medio.',
+      },
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Curl de Bíceps en Banco Scott',
+        muscleGroup: 'ARMS',
+        equipment: 'BARBELL',
+        description: 'Aislamiento máximo de cabeza corta y larga del bíceps.',
+      },
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Extensiones de Tríceps en Polea',
+        muscleGroup: 'ARMS',
+        equipment: 'CABLE',
+        description: 'Extensión controlada para cabeza lateral y medial de tríceps.',
+      },
+    }),
+    prisma.exercise.create({
+      data: {
+        name: 'Plancha Abdominal Isométrica',
+        muscleGroup: 'CORE',
+        equipment: 'BODYWEIGHT',
+        description: 'Fuerza isométrica profunda del transverso abdominal.',
+      },
+    }),
+  ]);
 
-  // 8. Catálogo de Alimentos & Plan de Nutrición
-  const alimentos = [
-    { name: 'Pechuga de Pollo cocida', servingGrams: 100, calories: 165, proteinGrams: 31.0, carbsGrams: 0, fatGrams: 3.6, category: 'Proteínas' },
-    { name: 'Arroz blanco cocido', servingGrams: 100, calories: 130, proteinGrams: 2.7, carbsGrams: 28.2, fatGrams: 0.3, category: 'Carbohidratos' },
-    { name: 'Huevos enteros (unidad ~50g)', servingGrams: 50, calories: 72, proteinGrams: 6.3, carbsGrams: 0.4, fatGrams: 4.8, category: 'Proteínas / Grasas' },
-    { name: 'Avena en hojuelas', servingGrams: 100, calories: 389, proteinGrams: 16.9, carbsGrams: 66.3, fatGrams: 6.9, category: 'Carbohidratos / Fibra' },
-    { name: 'Aguacate / Palta Hass', servingGrams: 100, calories: 160, proteinGrams: 2.0, carbsGrams: 8.5, fatGrams: 14.7, category: 'Grasas Saludables' },
-    { name: 'Proteína Whey Isolate', servingGrams: 30, calories: 110, proteinGrams: 25.0, carbsGrams: 1.0, fatGrams: 0.5, category: 'Suplementos' },
-  ];
-
-  for (const food of alimentos) {
-    await prisma.foodItem.create({ data: food });
-  }
-
-  // 9. Plan Nutricional del Cliente
-  const planNutricional = await prisma.nutritionPlan.create({
+  // 6. Rutina de Ejemplo (Hipertrofia 4 Días)
+  const rutinaHipertrofia = await prisma.routine.create({
     data: {
-      title: 'Recomposición Corporal 2,400 kcal',
-      description: 'Déficit calórico moderado con alto aporte de proteína para preservar masa muscular.',
-      userId: member.id,
-      nutritionistId: nutritionist.id,
-      dailyCaloriesTarget: 2400.0,
-      targetProteinGrams: 165.0,
-      targetCarbsGrams: 260.0,
-      targetFatGrams: 65.0,
-      waterLitersTarget: 3.0,
-      notes: 'Distribuir en 4 comidas diarias. Consumir la mayor parte de carbohidratos alrededor del entrenamiento.',
+      name: 'Torso - Pierna Potencia e Hipertrofia',
+      description: 'Rutina clásica de 4 días enfocada en ganar masa muscular magra y fuerza estructural.',
+      goal: 'HYPERTROPHY',
+      difficulty: 'INTERMEDIATE',
+      daysPerWeek: 4,
     },
   });
 
-  const diaLunes = await prisma.mealDay.create({
+  await prisma.routineExercise.createMany({
+    data: [
+      {
+        routineId: rutinaHipertrofia.id,
+        exerciseId: exercises[0].id, // Press de Banca
+        dayNumber: 1,
+        sets: 4,
+        reps: '8-10',
+        restSeconds: 90,
+        notes: 'Calentamiento progresivo antes de series efectivas.',
+      },
+      {
+        routineId: rutinaHipertrofia.id,
+        exerciseId: exercises[4].id, // Dominadas
+        dayNumber: 1,
+        sets: 4,
+        reps: '10-12',
+        restSeconds: 90,
+        notes: 'Si es necesario, usar banda elástica de asistencia.',
+      },
+      {
+        routineId: rutinaHipertrofia.id,
+        exerciseId: exercises[2].id, // Sentadilla
+        dayNumber: 2,
+        sets: 4,
+        reps: '6-8',
+        restSeconds: 120,
+        notes: 'Profundidad paralela con espalda neutral.',
+      },
+      {
+        routineId: rutinaHipertrofia.id,
+        exerciseId: exercises[3].id, // Prensa
+        dayNumber: 2,
+        sets: 3,
+        reps: '12-15',
+        restSeconds: 75,
+        notes: 'Ritmo 3 segundos excéntrico.',
+      },
+    ],
+  });
+
+  // 7. Socios de Demostración (Activos, Por Vencer y Vencidos)
+  const now = new Date();
+  
+  // Socio 1: Activo con Plan Trimestral
+  const socio1 = await prisma.member.create({
     data: {
-      nutritionPlanId: planNutricional.id,
-      dayNumber: 1,
-      dayLabel: 'Lunes a Viernes (Días de Entrenamiento)',
+      code: 'GYM-1001',
+      documentNumber: '1020304050',
+      documentType: 'CC',
+      firstName: 'Mateo',
+      lastName: 'Giraldo Morales',
+      phone: '3157894561',
+      email: 'mateo.giraldo@ejemplo.com',
+      gender: 'MALE',
+      birthDate: '1995-04-12',
+      status: 'ACTIVE',
+      currentPlanId: planTrimestral.id,
+      planStartDate: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000), // Hace 20 días
+      planEndDate: new Date(now.getTime() + 70 * 24 * 60 * 60 * 1000),   // En 70 días
+      weight: 78.5,
+      height: 1.78,
+      notes: 'Objetivo: Aumento de masa muscular y fuerza en press.',
     },
   });
 
-  await prisma.meal.create({
+  // Socio 2: Por Vencer (En 2 días - Alerta Ámbar)
+  const socio2 = await prisma.member.create({
     data: {
-      mealDayId: diaLunes.id,
-      type: MealType.BREAKFAST,
-      customName: 'Desayuno Energético',
-      timeHour: '07:30 AM',
-      orderIndex: 1,
+      code: 'GYM-1002',
+      documentNumber: '1098765432',
+      documentType: 'CC',
+      firstName: 'Valentina',
+      lastName: 'Castro Rivas',
+      phone: '3004561234',
+      email: 'valentina.castro@ejemplo.com',
+      gender: 'FEMALE',
+      birthDate: '1998-09-22',
+      status: 'ACTIVE',
+      currentPlanId: planMensual.id,
+      planStartDate: new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000),
+      planEndDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000), // Vence en 2 días
+      weight: 59.2,
+      height: 1.65,
+      notes: 'Entrenamiento funcional y tonificación de tren inferior.',
     },
   });
 
-  console.log('✅ Base de datos sembrada con éxito:');
-  console.log(`- Administrador: ${admin.email}`);
-  console.log(`- Entrenador: ${trainer.email}`);
-  console.log(`- Nutricionista: ${nutritionist.email}`);
-  console.log(`- Miembro: ${member.email}`);
-  console.log(`- Ejercicios cargados: ${createdExercises.length}`);
-  console.log(`- Alimentos cargados: ${alimentos.length}`);
+  // Socio 3: Vencido (Hace 5 días - Alerta Roja)
+  const socio3 = await prisma.member.create({
+    data: {
+      code: 'GYM-1003',
+      documentNumber: '1033445566',
+      documentType: 'CC',
+      firstName: 'Andrés Felipe',
+      lastName: 'Ramírez Soto',
+      phone: '3128901234',
+      email: 'andres.ramirez@ejemplo.com',
+      gender: 'MALE',
+      birthDate: '1992-11-05',
+      status: 'EXPIRED',
+      currentPlanId: planMensual.id,
+      planStartDate: new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000),
+      planEndDate: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // Venció hace 5 días
+      weight: 84.0,
+      height: 1.82,
+      notes: 'Requiere renovación en recepción.',
+    },
+  });
+
+  // Socio 4: VIP Black Pass
+  const socio4 = await prisma.member.create({
+    data: {
+      code: 'GYM-1004',
+      documentNumber: '1077889900',
+      documentType: 'CC',
+      firstName: 'Camila',
+      lastName: 'Herrera Restrepo',
+      phone: '3189998877',
+      email: 'camila.herrera@ejemplo.com',
+      gender: 'FEMALE',
+      birthDate: '1996-02-18',
+      status: 'ACTIVE',
+      currentPlanId: planAnualVIP.id,
+      planStartDate: new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000),
+      planEndDate: new Date(now.getTime() + 320 * 24 * 60 * 60 * 1000),
+      weight: 62.0,
+      height: 1.70,
+      notes: 'Cliente VIP - Acceso zona spa y toalla incluida.',
+    },
+  });
+
+  // Asignar rutina al socio 1
+  await prisma.memberRoutine.create({
+    data: {
+      memberId: socio1.id,
+      routineId: rutinaHipertrofia.id,
+      active: true,
+    },
+  });
+
+  // 8. Pagos Registrados
+  await prisma.payment.createMany({
+    data: [
+      {
+        invoiceNumber: 'REC-2026-0001',
+        memberId: socio1.id,
+        planId: planTrimestral.id,
+        amount: 245000,
+        paymentMethod: 'TRANSFER',
+        notes: 'Pago transferencia Bancolombia ref #99482',
+        status: 'COMPLETED',
+      },
+      {
+        invoiceNumber: 'REC-2026-0002',
+        memberId: socio2.id,
+        planId: planMensual.id,
+        amount: 95000,
+        paymentMethod: 'CASH',
+        notes: 'Efectivo en caja recepción',
+        status: 'COMPLETED',
+      },
+      {
+        invoiceNumber: 'REC-2026-0003',
+        memberId: socio4.id,
+        planId: planAnualVIP.id,
+        amount: 780000,
+        paymentMethod: 'CARD',
+        notes: 'Tarjeta de crédito Visa terminada en 4412',
+        status: 'COMPLETED',
+      },
+    ],
+  });
+
+  // 9. Check-ins de Prueba (Hoy)
+  await prisma.checkIn.createMany({
+    data: [
+      {
+        memberId: socio1.id,
+        checkInTime: new Date(now.getTime() - 40 * 60 * 1000), // Hace 40 minutos (En sala)
+        status: 'GRANTED',
+        reason: 'Membresía activa (Trimestral)',
+        zone: 'PESAS',
+      },
+      {
+        memberId: socio4.id,
+        checkInTime: new Date(now.getTime() - 25 * 60 * 1000), // Hace 25 minutos (En sala)
+        status: 'GRANTED',
+        reason: 'Membresía activa (VIP Black)',
+        zone: 'CARDIO',
+      },
+    ],
+  });
+
+  console.log('✅ Base de datos inicializada exitosamente con planes, socios, ejercicios y configuración.');
 }
 
 main()
   .catch((e) => {
-    console.error('Error durante el seed:', e);
+    console.error('❌ Error en seed:', e);
     process.exit(1);
   })
   .finally(async () => {

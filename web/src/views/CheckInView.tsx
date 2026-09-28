@@ -33,7 +33,7 @@ export const CheckInView: React.FC<CheckInViewProps> = ({ onNavigate, onSelectMe
     try {
       const records = await api.getTodayCheckIns();
       setTodayEntries(records);
-      setActiveMembersInGym(records.filter((r) => r.status === 'GRANTED' && !r.checkOutTime));
+      setActiveMembersInGym(records.filter((r: any) => r.status === 'GRANTED' && !r.checkOutTime));
     } catch (err) {
       console.error('Error cargando check-ins:', err);
     }

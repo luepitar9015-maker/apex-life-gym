@@ -34,6 +34,38 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 // Tipos e Interfaces
 // -------------------------------------------------------------
 
+export interface Gym {
+  id: string;
+  code: string;
+  name: string;
+  city: string;
+  address: string;
+  phone?: string | null;
+  maxCapacity: number;
+  active: boolean;
+  _count?: {
+    members: number;
+    users: number;
+  };
+  users?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    active: boolean;
+  }>;
+}
+
+export interface GymAdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  active: boolean;
+  gymId?: string | null;
+  gym?: Gym | null;
+}
+
 export interface Member {
   id: string;
   code: string;
@@ -54,6 +86,10 @@ export interface Member {
   height?: number | null;
   notes?: string | null;
   medicalNotes?: string | null;
+  likedFoods?: string | null;
+  dislikedFoods?: string | null;
+  gymId?: string | null;
+  gym?: Gym | null;
   currentPlanId?: string | null;
   currentPlan?: MembershipPlan | null;
   planStartDate?: string | null;
@@ -63,6 +99,37 @@ export interface Member {
   payments?: Payment[];
   checkIns?: CheckInRecord[];
   routines?: any[];
+  diagnostics?: HealthDiagnostic[];
+}
+
+export interface HealthDiagnostic {
+  id: string;
+  memberId: string;
+  photoScanUrl?: string | null;
+  targetGoal: string;
+  diseases?: string | null;
+  injuries?: string | null;
+  disabilities?: string | null;
+  trainingExperience?: string | null;
+  bodyFatPercentage?: number | null;
+  muscleMassKg?: number | null;
+  bmi?: number | null;
+  biotype?: string | null;
+  aiClinicalSummary?: string | null;
+  prohibitedExercises?: string | null;
+  recommendedActions?: string | null;
+  createdAt: string;
+}
+
+export interface FoodItem {
+  id: string;
+  name: string;
+  category: string; // PROTEIN, CARB, FAT, VEGETABLE, FRUIT, DAIRY
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  unit?: string;
 }
 
 export interface MembershipPlan {
@@ -146,8 +213,37 @@ export interface Exercise {
   name: string;
   muscleGroup: 'CHEST' | 'BACK' | 'LEGS' | 'SHOULDERS' | 'ARMS' | 'CORE' | 'CARDIO';
   equipment?: string;
+  location?: 'GYM' | 'HOME' | 'BOTH';
   description?: string;
   imageUrl?: string;
+}
+
+export interface MealItem {
+  meal: string;
+  title: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  items: string[];
+}
+
+export interface NutritionPlan {
+  id: string;
+  memberId: string;
+  title: string;
+  targetCalories: number;
+  proteinGrams: number;
+  carbsGrams: number;
+  fatsGrams: number;
+  goal: string;
+  mealsJson: string;
+  meals?: MealItem[];
+  trainerNotes?: string | null;
+  generatedByAI: boolean;
+  reviewedByTrainer: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Routine {
@@ -156,7 +252,9 @@ export interface Routine {
   description?: string;
   goal: string;
   difficulty: string;
+  location?: string;
   daysPerWeek: number;
+  aiNotes?: string;
   exercises: Array<{
     id: string;
     dayNumber: number;
@@ -221,44 +319,17 @@ export const api = {
     return res.data;
   },
 
-  async renewMembership(id: string, planId: string, paymentMethod: string = 'CASH', notes?: string) {
-    return request<{ success: boolean; message: string; data: any }>(`/members/${id}/renew`, {
+  async renewMembership(memberId: string, planId: string, paymentMethod = 'CASH') {
+    return request<{ success: boolean; message: string; data: Member }>(`/members/${memberId}/renew`, {
       method: 'POST',
-      body: JSON.stringify({ planId, paymentMethod, notes }),
+      body: JSON.stringify({ planId, paymentMethod }),
     });
   },
 
-  async deleteMember(id: string) {
-    return request<{ success: boolean; message: string }>(`/members/${id}`, {
+  async deleteMember(memberId: string) {
+    return request<{ success: boolean; message: string }>(`/members/${memberId}`, {
       method: 'DELETE',
     });
-  },
-
-  // Check-In y Control de Acceso
-  async verifyAccess(identifier: string): Promise<AccessVerificationResult> {
-    return request<AccessVerificationResult>('/checkin/verify', {
-      method: 'POST',
-      body: JSON.stringify({ identifier }),
-    });
-  },
-
-  async registerEntry(identifier: string, zone: string = 'GENERAL') {
-    return request<{ success: boolean; granted: boolean; message: string; data: any }>('/checkin/entry', {
-      method: 'POST',
-      body: JSON.stringify({ identifier, zone }),
-    });
-  },
-
-  async registerCheckout(memberId: string) {
-    return request<{ success: boolean; message: string; data: any }>('/checkin/checkout', {
-      method: 'POST',
-      body: JSON.stringify({ memberId }),
-    });
-  },
-
-  async getTodayCheckIns(): Promise<CheckInRecord[]> {
-    const res = await request<{ success: boolean; data: CheckInRecord[] }>('/checkin/today');
-    return res.data;
   },
 
   // Planes
@@ -267,23 +338,82 @@ export const api = {
     return res.data;
   },
 
-  async createPlan(data: Partial<MembershipPlan>) {
-    return request<{ success: boolean; data: MembershipPlan }>('/plans', {
+  // Pagos y Caja
+  async processPayment(data: {
+    memberId: string;
+    planId: string;
+    amount: number;
+    paymentMethod: string;
+    notes?: string;
+  }): Promise<Payment> {
+    const res = await request<{ success: boolean; data: Payment; message: string }>('/payments', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-  },
-
-  // Pagos y Caja
-  async getPayments() {
-    const res = await request<{ success: boolean; data: { payments: Payment[]; summary: any } }>('/payments');
     return res.data;
   },
 
-  async createPayment(data: { memberId: string; planId?: string; amount: number; paymentMethod: string; notes?: string }) {
-    return request<{ success: boolean; message: string; data: Payment }>('/payments', {
+  async createPayment(data: {
+    memberId: string;
+    planId?: string;
+    amount: number;
+    paymentMethod: string;
+    notes?: string;
+  }): Promise<{ data: Payment; message: string }> {
+    const res = await request<{ success: boolean; data: Payment; message: string }>('/payments', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+    return res;
+  },
+
+  async getPayments(params: { search?: string; limit?: number } = {}): Promise<{ payments: Payment[]; summary: any }> {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    if (params.limit) query.append('limit', params.limit.toString());
+    const res = await request<{ success: boolean; data: { payments: Payment[]; summary: any } }>(`/payments?${query.toString()}`);
+    return res.data;
+  },
+
+  // Control de Acceso (Torniquete y Carnet QR)
+  async verifyAccess(code: string, zone = 'GENERAL'): Promise<AccessVerificationResult> {
+    const res = await request<{ success: boolean; granted: boolean; reason: string; data: any }>('/checkin/verify', {
+      method: 'POST',
+      body: JSON.stringify({ code, zone }),
+    });
+    return {
+      success: res.success,
+      granted: res.granted,
+      reason: res.reason,
+      daysRemaining: res.data?.daysRemaining || 0,
+      alreadyInGym: res.data?.alreadyInGym || false,
+      member: res.data?.member,
+    };
+  },
+
+  async getTodayCheckIns(): Promise<CheckInRecord[]> {
+    const res = await request<{ success: boolean; data: CheckInRecord[] }>('/checkin/today');
+    return res.data;
+  },
+
+  async registerEntry(memberId: string, zone = 'GENERAL') {
+    return request<{ success: boolean; message: string; data: any }>('/checkin/entry', {
+      method: 'POST',
+      body: JSON.stringify({ memberId, zone }),
+    });
+  },
+
+  async registerCheckOut(memberId: string) {
+    return request<{ success: boolean; message: string }>('/checkin/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ memberId }),
+    });
+  },
+
+  async registerCheckout(memberId: string) {
+    return request<{ success: boolean; message: string }>('/checkin/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ memberId }),
     });
   },
 
@@ -293,11 +423,9 @@ export const api = {
     return res.data;
   },
 
-  async createRoutine(data: any): Promise<Routine> {
-    const res = await request<{ success: boolean; data: Routine }>('/routines', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  async getExercises(muscleGroup?: string): Promise<Exercise[]> {
+    const query = muscleGroup ? `?muscleGroup=${muscleGroup}` : '';
+    const res = await request<{ success: boolean; data: Exercise[] }>(`/exercises${query}`);
     return res.data;
   },
 
@@ -306,12 +434,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ memberId, routineId }),
     });
-  },
-
-  async getExercises(muscleGroup?: string): Promise<Exercise[]> {
-    const query = muscleGroup && muscleGroup !== 'ALL' ? `?muscleGroup=${muscleGroup}` : '';
-    const res = await request<{ success: boolean; data: Exercise[] }>(`/exercises${query}`);
-    return res.data;
   },
 
   // Configuración
@@ -326,5 +448,162 @@ export const api = {
       body: JSON.stringify(data),
     });
     return res.data;
+  },
+
+  // -------------------------------------------------------------
+  // SuperAdmin: Gestión de Gimnasios / Sedes & Administradores
+  // -------------------------------------------------------------
+  async getGyms(): Promise<Gym[]> {
+    const res = await request<{ success: boolean; data: Gym[] }>('/gyms');
+    return res.data;
+  },
+
+  async createGym(data: {
+    name: string;
+    code: string;
+    city: string;
+    address: string;
+    phone?: string;
+    maxCapacity?: number;
+  }): Promise<Gym> {
+    const res = await request<{ success: boolean; message: string; data: Gym }>('/gyms', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  },
+
+  async updateGym(id: string, data: Partial<Gym>): Promise<Gym> {
+    const res = await request<{ success: boolean; message: string; data: Gym }>(`/gyms/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  },
+
+  async getGymAdmins(): Promise<GymAdminUser[]> {
+    const res = await request<{ success: boolean; data: GymAdminUser[] }>('/gyms/admins');
+    return res.data;
+  },
+
+  async createGymAdmin(data: {
+    name: string;
+    email: string;
+    password: string;
+    gymId?: string;
+    role?: string;
+  }): Promise<GymAdminUser> {
+    const res = await request<{ success: boolean; message: string; data: GymAdminUser }>('/gyms/admins', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  },
+
+  // -------------------------------------------------------------
+  // Diagnóstico con IA (Foto Escaneo + Anamnesis de Salud & Lesiones)
+  // -------------------------------------------------------------
+  async generateHealthDiagnosticAI(data: {
+    memberId: string;
+    targetGoal: string;
+    diseases?: string;
+    injuries?: string;
+    disabilities?: string;
+    trainingExperience?: string;
+    photoBase64?: string;
+    weight?: number;
+    height?: number;
+  }): Promise<HealthDiagnostic> {
+    const res = await request<{ success: boolean; message: string; data: HealthDiagnostic }>('/ai/diagnostic', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  },
+
+  async getMemberDiagnostic(memberId: string): Promise<HealthDiagnostic | null> {
+    const res = await request<{ success: boolean; data: HealthDiagnostic | null }>(`/ai/diagnostic/member/${memberId}`);
+    return res.data;
+  },
+
+  // -------------------------------------------------------------
+  // Catálogo de Alimentos & Preferencias
+  // -------------------------------------------------------------
+  async getFoodsCatalog(): Promise<FoodItem[]> {
+    const res = await request<{ success: boolean; data: FoodItem[] }>('/ai/foods');
+    return res.data;
+  },
+
+  async updateMemberFoodPreferences(memberId: string, data: { likedFoods: string[]; dislikedFoods: string[] }) {
+    return request<{ success: boolean; message: string; data: { likedFoods: string[]; dislikedFoods: string[] } }>(
+      `/ai/member-food-preferences/${memberId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  // -------------------------------------------------------------
+  // Inteligencia Artificial (Google Gemini) - Nutrición & Rutinas
+  // -------------------------------------------------------------
+  async generateNutritionAI(data: {
+    memberId: string;
+    goal: string;
+    dietaryRestrictions?: string;
+    likedFoods?: string[];
+    dislikedFoods?: string[];
+    trainingDaysPerWeek?: number;
+  }) {
+    return request<{ success: boolean; message: string; data: NutritionPlan }>('/ai/generate-nutrition', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getMemberNutrition(memberId: string): Promise<NutritionPlan | null> {
+    const res = await request<{ success: boolean; data: NutritionPlan | null }>(`/ai/nutrition/member/${memberId}`);
+    return res.data;
+  },
+
+  async updateNutritionPlan(id: string, data: Partial<NutritionPlan>) {
+    return request<{ success: boolean; message: string; data: NutritionPlan }>(`/ai/nutrition/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async generateRoutineAI(data: {
+    memberId?: string;
+    goal: string;
+    level: string;
+    location: string; // GYM, HOME, BOTH
+    daysPerWeek: number;
+    assignToMember?: boolean;
+  }) {
+    return request<{ success: boolean; message: string; data: Routine }>('/ai/generate-routine', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateRoutineByTrainer(id: string, data: Partial<Routine>) {
+    return request<{ success: boolean; message: string; data: Routine }>(`/ai/routine/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Autenticación
+  async login(email: string, password: string) {
+    const res = await request<{ success: boolean; token: string; user: any }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.token) {
+      localStorage.setItem('apex_token', res.token);
+      localStorage.setItem('apex_user', JSON.stringify(res.user));
+    }
+    return res;
   },
 };

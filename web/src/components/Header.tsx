@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, ShieldCheck, QrCode, User, Dumbbell, Shield } from 'lucide-react';
+import { Clock, ShieldCheck, QrCode, User, Dumbbell, Shield, LogOut, Crown } from 'lucide-react';
+import { UserRole } from './Sidebar';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
   onOpenQuickScan?: () => void;
-  activeRole: 'ADMIN' | 'TRAINER' | 'MEMBER';
-  onRoleChange: (role: 'ADMIN' | 'TRAINER' | 'MEMBER') => void;
+  activeRole: UserRole;
+  onRoleChange: (role: UserRole) => void;
+  currentUser?: any;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,6 +18,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenQuickScan,
   activeRole,
   onRoleChange,
+  currentUser,
+  onLogout,
 }) => {
   const [timeStr, setTimeStr] = useState('');
   const [dateStr, setDateStr] = useState('');
@@ -72,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        {/* Selector de Rol de Usuario (3 Tipos: Admin, Entrenador, Afiliado) */}
+        {/* Selector de Rol de Usuario (4 Roles: Superadmin, Admin, Entrenador, Afiliado) */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -82,6 +87,28 @@ export const Header: React.FC<HeaderProps> = ({
           padding: '3px',
           gap: '2px',
         }}>
+          <button
+            type="button"
+            onClick={() => onRoleChange('SUPERADMIN')}
+            style={{
+              border: 'none',
+              padding: '0.45rem 0.85rem',
+              borderRadius: '7px',
+              backgroundColor: activeRole === 'SUPERADMIN' ? '#a855f7' : 'transparent',
+              color: activeRole === 'SUPERADMIN' ? '#ffffff' : '#94a3b8',
+              fontWeight: 700,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Crown size={14} />
+            <span>Superusuario</span>
+          </button>
+
           <button
             type="button"
             onClick={() => onRoleChange('ADMIN')}
@@ -145,7 +172,7 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             <User size={14} />
-            <span>Afiliado / Socio</span>
+            <span>Afiliado</span>
           </button>
         </div>
 
@@ -186,6 +213,30 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <QrCode size={16} />
             <span>Acceso QR</span>
+          </button>
+        )}
+
+        {/* Botón Cerrar Sesión */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            title="Cerrar sesión o cambiar de cuenta"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '0.45rem 0.8rem',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              color: '#ef4444',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <LogOut size={14} />
+            <span>Salir</span>
           </button>
         )}
       </div>

@@ -1,5 +1,5 @@
 // APEX GYM - Motor de Base de Datos
-// Plataforma Integral de Gimnasio
+// Plataforma Integral de Gimnasio con Inteligencia Artificial Multisede
 
 datasource db {
   provider = "sqlite"
@@ -10,17 +10,46 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// -------------------------------------------------------------
+// Gimnasios / Sedes (Multi-tenant para Superadmin)
+// -------------------------------------------------------------
+model Gym {
+  id             String    @id @default(uuid())
+  code           String    @unique // ej: SEDE-01, SEDE-POBLADO
+  name           String    // ej: "APEX Gym Sede Poblado"
+  city           String    @default("Medellín")
+  address        String
+  phone          String?
+  maxCapacity    Int       @default(80)
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  users          User[]
+  members        Member[]
+}
+
+// -------------------------------------------------------------
+// Usuarios del Sistema (Superadmin, Admin de Gym, Entrenador, Recepción)
+// -------------------------------------------------------------
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
   name      String
-  role      String   @default("ADMIN") // ADMIN, RECEPTIONIST, TRAINER
+  role      String   @default("ADMIN") // SUPERADMIN, ADMIN, TRAINER, RECEPTIONIST
   active    Boolean  @default(true)
+  
+  gymId     String?
+  gym       Gym?     @relation(fields: [gymId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// -------------------------------------------------------------
+// Socios / Afiliados
+// -------------------------------------------------------------
 model Member {
   id               String       @id @default(uuid())
   code             String       @unique // ej: GYM-1001
@@ -42,6 +71,13 @@ model Member {
   height           Float?
   notes            String?
   
+  // Preferencias de alimentos del Afiliado
+  likedFoods       String?      // JSON array de alimentos favoritos
+  dislikedFoods    String?      // JSON array de alimentos que NO le gustan o alergias
+
+  gymId            String?
+  gym              Gym?         @relation(fields: [gymId], references: [id])
+
   currentPlanId    String?
   currentPlan      MembershipPlan? @relation(fields: [currentPlanId], references: [id])
   planStartDate    DateTime?
@@ -50,11 +86,60 @@ model Member {
   payments         Payment[]
   checkIns         CheckIn[]
   routines         MemberRoutine[]
+  nutritionPlans   NutritionPlan[]
+  diagnostics      HealthDiagnostic[]
 
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 }
 
+// -------------------------------------------------------------
+// Diagnóstico Fisiológico y con IA del Afiliado (Anamnesis + Escaneo)
+// -------------------------------------------------------------
+model HealthDiagnostic {
+  id                  String   @id @default(uuid())
+  memberId            String
+  member              Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  photoScanUrl        String?  // Foto del socio o base64 para análisis visual corporal
+  targetGoal          String   // Pérdida de grasa, Hipertrofia, Fuerza, Salud postural, etc.
+  diseases            String?  // Hipertensión, Diabetes, Asma, Problemas Cardíacos, etc.
+  injuries            String?  // Rodilla, Lumbar, Manguito rotador, etc.
+  disabilities        String?  // Discapacidades o restricciones motoras
+  trainingExperience  String?  // Sedentario, Principiante, Intermedio, Avanzado
+  
+  // Métricas Físicas Registradas
+  bodyFatPercentage   Float?   // % de grasa estimado por IA
+  muscleMassKg        Float?   // Masa magra estimada en kg
+  bmi                 Float?   // Índice de masa corporal
+  biotype             String?  // Ectomorfo, Mesomorfo, Endomorfo
+  
+  // Diagnóstico Generado por Google Gemini IA
+  aiClinicalSummary   String?  // Diagnóstico fisiológico y postural
+  prohibitedExercises String?  // Ejercicios estrictamente PROHIBIDOS por lesiones
+  recommendedActions  String?  // Estrategia de entrenamiento sugerida
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// -------------------------------------------------------------
+// Catálogo de Alimentos con Calorías y Macros
+// -------------------------------------------------------------
+model FoodItem {
+  id        String   @id @default(uuid())
+  name      String   // ej: Pechuga de pollo, Arroz integral, Aguacate
+  category  String   // PROTEIN, CARB, FAT, VEGETABLE, FRUIT, DAIRY
+  calories  Int      // kcal por 100g
+  protein   Float    // g por 100g
+  carbs     Float    // g por 100g
+  fats      Float    // g por 100g
+  unit      String   @default("100g")
+}
+
+// -------------------------------------------------------------
+// Planes de Membresía
+// -------------------------------------------------------------
 model MembershipPlan {
   id              String    @id @default(uuid())
   name            String    // ej: Pase Diario, Mensual Pro, Trimestral, Anual VIP
@@ -73,6 +158,9 @@ model MembershipPlan {
   updatedAt       DateTime  @updatedAt
 }
 
+// -------------------------------------------------------------
+// Pagos y Comprobantes
+// -------------------------------------------------------------
 model Payment {
   id             String         @id @default(uuid())
   invoiceNumber  String         @unique // ej: REC-2026-0001
@@ -87,6 +175,9 @@ model Payment {
   createdAt      DateTime       @default(now())
 }
 
+// -------------------------------------------------------------
+// Control de Acceso y Aforo
+// -------------------------------------------------------------
 model CheckIn {
   id           String    @id @default(uuid())
   memberId     String
@@ -98,11 +189,15 @@ model CheckIn {
   zone         String    @default("GENERAL") // GENERAL, PESAS, CARDIO, CLASES
 }
 
+// -------------------------------------------------------------
+// Catálogo de Ejercicios (Gimnasio y Casa)
+// -------------------------------------------------------------
 model Exercise {
   id          String   @id @default(uuid())
   name        String
   muscleGroup String   // CHEST, BACK, LEGS, SHOULDERS, ARMS, CORE, CARDIO
-  equipment   String?  // BARBELL, DUMBBELL, MACHINE, CABLE, BODYWEIGHT
+  equipment   String?  // BARBELL, DUMBBELL, MACHINE, CABLE, BODYWEIGHT, RESISTANCE_BAND, NONE
+  location    String   @default("GYM") // GYM, HOME, BOTH
   description String?
   imageUrl    String?
 
@@ -116,7 +211,9 @@ model Routine {
   description  String?
   goal         String            @default("HYPERTROPHY") // HYPERTROPHY, STRENGTH, FAT_LOSS, ENDURANCE
   difficulty   String            @default("INTERMEDIATE") // BEGINNER, INTERMEDIATE, ADVANCED
+  location     String            @default("GYM") // GYM, HOME, BOTH
   daysPerWeek  Int               @default(4)
+  aiNotes      String?
   
   exercises    RoutineExercise[]
   members      MemberRoutine[]
@@ -148,12 +245,33 @@ model MemberRoutine {
   active     Boolean  @default(true)
 }
 
+// -------------------------------------------------------------
+// Planes Nutricionales Inteligentes
+// -------------------------------------------------------------
+model NutritionPlan {
+  id                 String   @id @default(uuid())
+  memberId           String
+  member             Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  title              String   // ej: "Plan de Definición y Déficit Calórico Controlado 1900 kcal"
+  targetCalories     Int
+  proteinGrams       Int
+  carbsGrams         Int
+  fatsGrams          Int
+  goal               String   // FAT_LOSS, HYPERTROPHY, RECOMPOSITION, MAINTENANCE
+  mealsJson          String   // Estructura JSON con desayuno, almuerzo, meriendas y cena
+  trainerNotes       String?
+  generatedByAI      Boolean  @default(true)
+  reviewedByTrainer  Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
 model GymSetting {
   id             String   @id @default("singleton")
   gymName        String   @default("APEX GYM & FITNESS")
   nit            String   @default("901.884.212-9")
   phone          String   @default("+57 310 892 4410")
-  address        String   @default("Av. Principal #45-12, Centro Deportivo")
+  address        String   @default("Av. Las Palmas #24-10, Zona Fitness")
   currency       String   @default("COP ($)")
   maxCapacity    Int      @default(80)
   alertCapacity  Int      @default(70)

@@ -12,6 +12,8 @@ import paymentsRoutes from './modules/payments/payments.routes.js';
 import routinesRoutes from './modules/routines/routines.routes.js';
 import exercisesRoutes from './modules/exercises/exercises.routes.js';
 import settingsRoutes from './modules/settings/settings.routes.js';
+import aiRoutes from './modules/ai/ai.routes.js';
+import gymsRoutes from './modules/gyms/gyms.routes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -41,6 +43,8 @@ export const createApp = (): Express => {
   app.use('/api/routines', routinesRoutes);
   app.use('/api/exercises', exercisesRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/ai', aiRoutes);
+  app.use('/api/gyms', gymsRoutes);
 
   // Manejador global de errores
   app.use(errorHandler);

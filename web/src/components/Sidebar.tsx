@@ -10,20 +10,35 @@ import {
   Activity,
   User,
   Shield,
+  HeartPulse,
+  Building2,
 } from 'lucide-react';
+
+export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'TRAINER' | 'MEMBER';
 
 interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
   aforoInfo?: { current: number; max: number; percent: number };
-  activeRole: 'ADMIN' | 'TRAINER' | 'MEMBER';
+  activeRole: UserRole;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforoInfo, activeRole }) => {
   const getNavItems = () => {
+    if (activeRole === 'SUPERADMIN') {
+      return [
+        { id: 'superadmin', label: 'Consola Superusuario', icon: Shield, badge: 'SaaS' },
+        { id: 'diagnostic', label: 'Diagnóstico IA & Alimentos', icon: HeartPulse, badge: 'IA' },
+        { id: 'dashboard', label: 'Telemetría de Sedes', icon: LayoutDashboard, badge: null },
+        { id: 'members', label: 'Socios Globales', icon: Users, badge: null },
+        { id: 'routines', label: 'Catálogo de Rutinas', icon: Dumbbell, badge: null },
+      ];
+    }
+
     if (activeRole === 'TRAINER') {
       return [
         { id: 'trainer', label: 'Panel del Entrenador', icon: Dumbbell, badge: 'Coach' },
+        { id: 'diagnostic', label: 'Diagnóstico IA & Alimentos', icon: HeartPulse, badge: 'IA' },
         { id: 'routines', label: 'Rutinas & Biomecánica', icon: Activity, badge: null },
         { id: 'members', label: 'Directorio de Atletas', icon: Users, badge: null },
       ];
@@ -32,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforo
     if (activeRole === 'MEMBER') {
       return [
         { id: 'affiliate', label: 'Mi Carnet & Portal', icon: QrCode, badge: 'Socio' },
+        { id: 'diagnostic', label: 'Mi Diagnóstico & Dieta', icon: HeartPulse, badge: 'IA' },
         { id: 'routines', label: 'Mi Plan de Ejercicios', icon: Dumbbell, badge: null },
       ];
     }
@@ -39,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforo
     // Default: ADMIN
     return [
       { id: 'dashboard', label: 'Panel Principal', icon: LayoutDashboard, badge: null },
+      { id: 'diagnostic', label: 'Diagnóstico IA & Alimentos', icon: HeartPulse, badge: 'IA' },
       { id: 'checkin', label: 'Recepción & QR', icon: QrCode, badge: 'En vivo' },
       { id: 'members', label: 'Directorio de Socios', icon: Users, badge: null },
       { id: 'pos', label: 'Caja & Cobros', icon: CreditCard, badge: null },
@@ -52,6 +69,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforo
 
   const getRoleLabel = () => {
     switch (activeRole) {
+      case 'SUPERADMIN':
+        return { title: 'Superusuario SaaS', subtitle: 'Control Multi-Gimnasio', color: '#a855f7', initial: 'SU' };
       case 'ADMIN':
         return { title: 'Administrador GYM', subtitle: 'Control Total & Caja', color: '#10b981', initial: 'AD' };
       case 'TRAINER':
@@ -107,7 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforo
         </div>
       </div>
 
-      {/* Live Aforo Badge (Admin / Coach) */}
+      {/* Live Aforo Badge (Admin / Coach / SuperAdmin) */}
       {aforoInfo && activeRole !== 'MEMBER' && (
         <div style={{
           margin: '1.25rem 1.25rem 0.5rem 1.25rem',
@@ -173,8 +192,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, aforo
                   fontSize: '0.68rem',
                   padding: '2px 7px',
                   borderRadius: '6px',
-                  backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                  color: '#10b981',
+                  backgroundColor: item.badge === 'SaaS' ? 'rgba(168, 85, 247, 0.25)' : 'rgba(16, 185, 129, 0.2)',
+                  color: item.badge === 'SaaS' ? '#c084fc' : '#10b981',
                   fontWeight: 700,
                 }}>
                   {item.badge}

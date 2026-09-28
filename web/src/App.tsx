@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, UserRole } from './components/Sidebar';
 import { Header } from './components/Header';
 
 import { DashboardView } from './views/DashboardView';
@@ -11,16 +11,40 @@ import { AforoView } from './views/AforoView';
 import { SettingsView } from './views/SettingsView';
 import { AffiliatePortalView } from './views/AffiliatePortalView';
 import { TrainerView } from './views/TrainerView';
+import { SuperAdminView } from './views/SuperAdminView';
+import { DiagnosticFoodView } from './views/DiagnosticFoodView';
+import { LoginView } from './views/LoginView';
 
 import { api } from './services/api';
 
-export type UserRole = 'ADMIN' | 'TRAINER' | 'MEMBER';
-
 export const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeRole, setActiveRole] = useState<UserRole>('ADMIN');
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [aforoInfo, setAforoInfo] = useState({ current: 2, max: 60, percent: 3 });
+
+  // Verificar si hay sesión guardada en localStorage
+  useEffect(() => {
+    const savedUserStr = localStorage.getItem('apex_user');
+    if (savedUserStr) {
+      try {
+        const user = JSON.parse(savedUserStr);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        const role = (user.role as UserRole) || 'ADMIN';
+        setActiveRole(role);
+        if (role === 'SUPERADMIN') setCurrentView('superadmin');
+        else if (role === 'TRAINER') setCurrentView('trainer');
+        else if (role === 'MEMBER') setCurrentView('affiliate');
+        else setCurrentView('dashboard');
+      } catch (e) {
+        localStorage.removeItem('apex_user');
+        setIsAuthenticated(false);
+      }
+    }
+  }, []);
 
   // Sincronizar aforo para el Sidebar
   const syncAforo = async () => {
@@ -39,14 +63,34 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    syncAforo();
-    const interval = setInterval(syncAforo, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isAuthenticated) {
+      syncAforo();
+      const interval = setInterval(syncAforo, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated]);
+
+  const handleLoginSuccess = (user: any, role: UserRole) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setActiveRole(role);
+    if (role === 'SUPERADMIN') setCurrentView('superadmin');
+    else if (role === 'ADMIN') setCurrentView('dashboard');
+    else if (role === 'TRAINER') setCurrentView('trainer');
+    else if (role === 'MEMBER') setCurrentView('affiliate');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('apex_token');
+    localStorage.removeItem('apex_user');
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+  };
 
   const handleRoleChange = (newRole: UserRole) => {
     setActiveRole(newRole);
-    if (newRole === 'ADMIN') setCurrentView('dashboard');
+    if (newRole === 'SUPERADMIN') setCurrentView('superadmin');
+    else if (newRole === 'ADMIN') setCurrentView('dashboard');
     else if (newRole === 'TRAINER') setCurrentView('trainer');
     else if (newRole === 'MEMBER') setCurrentView('affiliate');
   };
@@ -62,6 +106,10 @@ export const App: React.FC = () => {
 
   const getHeaderInfo = () => {
     switch (currentView) {
+      case 'superadmin':
+        return { title: 'Consola Superusuario SaaS', subtitle: 'Administración centralizada de gimnasios, franquicias y administradores' };
+      case 'diagnostic':
+        return { title: 'Diagnóstico IA & Alimentos', subtitle: 'Escaneo corporal, detección de lesiones y nutrición adaptada a tus gustos' };
       case 'dashboard':
         return { title: 'Panel de Control Principal', subtitle: 'Telemetría del gimnasio y aforo en tiempo real' };
       case 'checkin':
@@ -71,19 +119,23 @@ export const App: React.FC = () => {
       case 'pos':
         return { title: 'Caja & Cobros (POS)', subtitle: 'Cobro de mensualidades, pases diarios y comprobantes de pago' };
       case 'routines':
-        return { title: 'Rutinas & Ejercicios', subtitle: 'Catálogo biomecánico, asignación a socios y cronómetro de descanso' };
+        return { title: 'Catálogo de Rutinas & Ejercicios', subtitle: 'Ejercicios para Gimnasio y En Casa con asistente de IA Gemini' };
       case 'aforo':
         return { title: 'Control de Aforo & Salas', subtitle: 'Ocupación perimétrica de salas y monitoreo de afluencia' };
       case 'settings':
         return { title: 'Configuración del Gimnasio', subtitle: 'Parámetros del negocio, NIT, horarios y aforo máximo' };
       case 'affiliate':
-        return { title: 'Portal del Afiliado / Socio', subtitle: 'Carnet digital virtual QR, membresía vigente y entrenamientos' };
+        return { title: 'Portal del Afiliado / Socio', subtitle: 'Carnet digital virtual QR, membresía vigente, dieta IA y entrenamientos' };
       case 'trainer':
-        return { title: 'Portal del Entrenador', subtitle: 'Supervisión de atletas, prescripción de rutinas y descansos' };
+        return { title: 'Portal del Entrenador & Asistente IA', subtitle: 'Supervisión biomecánica, edición directa de rutinas y nutrición con Google Gemini' };
       default:
         return { title: 'APEX GYM', subtitle: 'Sistema de Gestión' };
     }
   };
+
+  if (!isAuthenticated) {
+    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+  }
 
   const headerInfo = getHeaderInfo();
 
@@ -103,9 +155,15 @@ export const App: React.FC = () => {
           onOpenQuickScan={() => handleNavigate('checkin')}
           activeRole={activeRole}
           onRoleChange={handleRoleChange}
+          currentUser={currentUser}
+          onLogout={handleLogout}
         />
 
         <main className="content-body">
+          {currentView === 'superadmin' && <SuperAdminView />}
+
+          {currentView === 'diagnostic' && <DiagnosticFoodView />}
+
           {currentView === 'dashboard' && (
             <DashboardView
               onNavigate={handleNavigate}

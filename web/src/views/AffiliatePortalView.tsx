@@ -12,14 +12,20 @@ import {
   Activity,
   Printer,
   ChevronRight,
+  Salad,
+  Flame,
+  CheckCircle2,
+  Apple,
 } from 'lucide-react';
-import { api, Member, Routine } from '../services/api';
+import { api, Member, Routine, NutritionPlan, MealItem } from '../services/api';
 
 export const AffiliatePortalView: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [currentMember, setCurrentMember] = useState<Member | null>(null);
   const [routine, setRoutine] = useState<Routine | null>(null);
+  const [nutrition, setNutrition] = useState<NutritionPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingNutrition, setGeneratingNutrition] = useState(false);
 
   // Cronómetro del socio
   const [timerSeconds, setTimerSeconds] = useState(60);
@@ -36,18 +42,8 @@ export const AffiliatePortalView: React.FC = () => {
       setMembers(membersList);
 
       if (membersList.length > 0) {
-        // Cargar por defecto el primer socio con rutina o el primero
         const activeMember = membersList.find((m) => m.status === 'ACTIVE') || membersList[0];
-        const full = await api.getMemberById(activeMember.id);
-        setCurrentMember(full);
-
-        if (full.routines && full.routines.length > 0) {
-          setRoutine(full.routines[0].routine);
-        } else {
-          // Si no tiene, cargar la primera rutina general
-          const generalRoutines = await api.getRoutines();
-          if (generalRoutines.length > 0) setRoutine(generalRoutines[0]);
-        }
+        await handleSelectMember(activeMember.id);
       }
     } catch (err) {
       console.error('Error cargando portal afiliado:', err);
@@ -61,16 +57,42 @@ export const AffiliatePortalView: React.FC = () => {
       setLoading(true);
       const full = await api.getMemberById(id);
       setCurrentMember(full);
+
+      // Cargar Rutina
       if (full.routines && full.routines.length > 0) {
-        setRoutine(full.routines[0].routine);
+        const activeRoutine = full.routines.find((r: any) => r.active) || full.routines[0];
+        setRoutine(activeRoutine.routine);
       } else {
         const generalRoutines = await api.getRoutines();
         if (generalRoutines.length > 0) setRoutine(generalRoutines[0]);
       }
+
+      // Cargar Nutrición
+      const nutPlan = await api.getMemberNutrition(id);
+      setNutrition(nutPlan);
     } catch (err) {
       console.error('Error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateAffiliateNutrition = async () => {
+    if (!currentMember) return;
+    try {
+      setGeneratingNutrition(true);
+      const res = await api.generateNutritionAI({
+        memberId: currentMember.id,
+        goal: 'HYPERTROPHY',
+        dietaryRestrictions: 'Adaptado al plan de entrenamiento',
+        trainingDaysPerWeek: 4,
+      });
+      setNutrition(res.data);
+      alert('🥗 ¡Tu plan nutricional ha sido formulado por APEX AI con Google Gemini!');
+    } catch (err: any) {
+      alert(err.message || 'Error al generar nutrición con IA');
+    } finally {
+      setGeneratingNutrition(false);
     }
   };
 
@@ -96,7 +118,7 @@ export const AffiliatePortalView: React.FC = () => {
     : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', maxWidth: '1050px', margin: '0 auto' }}>
       {/* Selector de Socio para Simulación de Afiliado */}
       <div className="glass-card" style={{
         display: 'flex',
@@ -104,7 +126,7 @@ export const AffiliatePortalView: React.FC = () => {
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '1rem',
-        padding: '1rem 1.5rem',
+        padding: '0.85rem 1.5rem',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <User size={18} color="#06b6d4" />
@@ -233,7 +255,161 @@ export const AffiliatePortalView: React.FC = () => {
             </div>
           </div>
 
-          {/* Rutina de Entrenamiento Asignada al Socio */}
+          {/* SECCIÓN 1: PLAN NUTRICIONAL IA & MACROS */}
+          <div className="glass-card" style={{
+            border: '1px solid rgba(6, 182, 212, 0.25)',
+            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, rgba(16, 185, 129, 0.03) 100%)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Salad size={22} color="#06b6d4" />
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                    Mi Plan Nutricional & Macros IA
+                  </h3>
+                  {nutrition?.reviewedByTrainer && (
+                    <span style={{
+                      backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                      color: '#10b981',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}>
+                      <CheckCircle2 size={12} /> Aprobado por Entrenador
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '3px 0 0 0' }}>
+                  {nutrition?.title || 'Nutrición personalizada optimizada para tu rendimiento deportivo'}
+                </p>
+              </div>
+
+              <button
+                onClick={handleGenerateAffiliateNutrition}
+                disabled={generatingNutrition}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: '#06b6d4',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 12px rgba(6, 182, 212, 0.3)',
+                }}
+              >
+                <Sparkles size={14} />
+                <span>{generatingNutrition ? 'Gemini Calculando...' : 'Re-Calcular Macros con IA'}</span>
+              </button>
+            </div>
+
+            {nutrition ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Cuadros de Macronutrientes */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                  {/* Calorías */}
+                  <div style={{ padding: '0.85rem', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Meta Calórica Diaria</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', marginTop: '2px' }}>
+                      {nutrition.targetCalories} <span style={{ fontSize: '0.8rem', color: '#64748b' }}>kcal</span>
+                    </div>
+                  </div>
+
+                  {/* Proteínas */}
+                  <div style={{ padding: '0.85rem', borderRadius: '10px', backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700 }}>Proteínas</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+                      {nutrition.proteinGrams}g
+                    </div>
+                  </div>
+
+                  {/* Carbohidratos */}
+                  <div style={{ padding: '0.85rem', borderRadius: '10px', backgroundColor: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.25)' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700 }}>Carbohidratos</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#06b6d4', marginTop: '2px' }}>
+                      {nutrition.carbsGrams}g
+                    </div>
+                  </div>
+
+                  {/* Grasas */}
+                  <div style={{ padding: '0.85rem', borderRadius: '10px', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 700 }}>Grasas Saludables</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b', marginTop: '2px' }}>
+                      {nutrition.fatsGrams}g
+                    </div>
+                  </div>
+                </div>
+
+                {/* Comidas del Día */}
+                {nutrition.meals && nutrition.meals.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem' }}>
+                    {nutrition.meals.map((m, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '0.85rem 1rem',
+                          borderRadius: '10px',
+                          backgroundColor: 'rgba(255,255,255,0.02)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700, textTransform: 'uppercase' }}>
+                            {m.meal}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
+                            {m.calories} kcal
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f1f5f9' }}>
+                          {m.title}
+                        </div>
+                        <ul style={{ margin: '4px 0 0 0', paddingLeft: '1.1rem', fontSize: '0.78rem', color: '#94a3b8' }}>
+                          {m.items?.map((it, iIdx) => (
+                            <li key={iIdx}>{it}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Notas del Entrenador */}
+                {nutrition.trainerNotes && (
+                  <div style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)',
+                    fontSize: '0.82rem',
+                    color: '#94a3b8',
+                  }}>
+                    <strong style={{ color: '#06b6d4' }}>Indicaciones del Entrenador: </strong>
+                    {nutrition.trainerNotes}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <p style={{ color: '#94a3b8', fontSize: '0.88rem' }}>
+                  Aún no tienes un plan nutricional asignado. Presiona el botón para calcular tus macros con Google Gemini 2.5 Flash.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* SECCIÓN 2: RUTINA DE ENTRENAMIENTO ASIGNADA */}
           <div className="glass-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
@@ -251,30 +427,29 @@ export const AffiliatePortalView: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.75rem',
-                padding: '0.5rem 1rem',
+                padding: '0.45rem 0.85rem',
                 backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
               }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>DESCANSO:</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#10b981', fontVariantNumeric: 'tabular-nums' }}>
                   00:{timerSeconds < 10 ? `0${timerSeconds}` : timerSeconds}
-                </div>
+                </span>
                 <button
                   onClick={() => setTimerRunning(!timerRunning)}
                   style={{
                     backgroundColor: timerRunning ? '#f59e0b' : '#10b981',
                     border: 'none',
                     color: '#ffffff',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
+                    padding: '0.25rem 0.6rem',
+                    borderRadius: '5px',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                   }}
                 >
-                  <Play size={15} />
+                  {timerRunning ? 'Pausa' : 'Start'}
                 </button>
                 <button
                   onClick={() => {
@@ -311,7 +486,7 @@ export const AffiliatePortalView: React.FC = () => {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700 }}>
-                        Día {item.dayNumber}
+                        Día {item.dayNumber} • {item.exercise.location === 'HOME' ? '🏡 Casa' : '🏋️ Gym'}
                       </span>
                       <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
                         {item.restSeconds}s descanso

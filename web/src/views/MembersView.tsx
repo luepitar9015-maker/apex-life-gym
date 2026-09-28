@@ -242,8 +242,8 @@ export const MembersView: React.FC<MembersViewProps> = ({ onNavigate, selectedMe
 
       {/* Members Directory Table */}
       <div className="glass-card" style={{ padding: '0.5rem 0' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+        <div className="table-responsive" style={{ overflowX: 'auto' }}>
+          <table style={{ minWidth: '680px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', color: '#64748b' }}>
                 <th style={{ padding: '1rem 1.5rem' }}>Socio</th>
@@ -564,7 +564,7 @@ export const MembersView: React.FC<MembersViewProps> = ({ onNavigate, selectedMe
             </div>
 
             {/* Biometría y Notas */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div style={{ padding: '0.75rem', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.03)', textAlign: 'center' }}>
                 <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Peso</span>
                 <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>

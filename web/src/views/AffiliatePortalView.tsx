@@ -164,7 +164,7 @@ export const AffiliatePortalView: React.FC = () => {
             background: 'linear-gradient(135deg, #0b1329 0%, #06242a 100%)',
             border: '2px solid rgba(6, 182, 212, 0.4)',
             borderRadius: '20px',
-            padding: '2rem',
+            padding: 'clamp(1rem, 4vw, 2rem)',
             color: '#ffffff',
             boxShadow: '0 0 35px rgba(6, 182, 212, 0.25)',
             position: 'relative',

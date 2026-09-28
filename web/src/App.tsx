@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar, UserRole } from './components/Sidebar';
 import { Header } from './components/Header';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 import { DashboardView } from './views/DashboardView';
 import { CheckInView } from './views/CheckInView';
@@ -24,6 +25,7 @@ export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [aforoInfo, setAforoInfo] = useState({ current: 2, max: 60, percent: 3 });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Verificar si hay sesión guardada en localStorage
   useEffect(() => {
@@ -93,15 +95,18 @@ export const App: React.FC = () => {
     else if (newRole === 'ADMIN') setCurrentView('dashboard');
     else if (newRole === 'TRAINER') setCurrentView('trainer');
     else if (newRole === 'MEMBER') setCurrentView('affiliate');
+    setMobileMenuOpen(false);
   };
 
   const handleNavigate = (view: string) => {
     setCurrentView(view);
+    setMobileMenuOpen(false);
   };
 
   const handleSelectMemberForRenewal = (memberId: string) => {
     setSelectedMemberId(memberId);
     setCurrentView('members');
+    setMobileMenuOpen(false);
   };
 
   const getHeaderInfo = () => {
@@ -146,6 +151,8 @@ export const App: React.FC = () => {
         onNavigate={handleNavigate}
         aforoInfo={aforoInfo}
         activeRole={activeRole}
+        isOpenMobile={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
       <div className="main-content">
@@ -157,6 +164,7 @@ export const App: React.FC = () => {
           onRoleChange={handleRoleChange}
           currentUser={currentUser}
           onLogout={handleLogout}
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
 
         <main className="content-body">
@@ -197,6 +205,14 @@ export const App: React.FC = () => {
 
           {currentView === 'trainer' && <TrainerView />}
         </main>
+
+        {/* Barra de Navegación Inferior Nativa para Celulares */}
+        <MobileBottomNav
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          activeRole={activeRole}
+          onLogout={handleLogout}
+        />
       </div>
     </div>
   );

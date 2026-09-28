@@ -268,7 +268,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onSele
       </div>
 
       {/* Secciones Inferiores: Ocupación por Zonas & Alertas de Vencimiento */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
         {/* Alerta de Socios Próximos a Vencer */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>

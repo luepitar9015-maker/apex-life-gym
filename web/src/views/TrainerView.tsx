@@ -336,7 +336,7 @@ export const TrainerView: React.FC = () => {
       </div>
 
       {/* Grid: Lista de Atletas y Panel de Trabajo */}
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="responsive-trainer-grid">
         {/* Atletas a cargo */}
         <div className="glass-card">
           <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -707,11 +707,12 @@ export const TrainerView: React.FC = () => {
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                      <div className="table-responsive" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
                         {editableRoutine.exercises?.map((item: any, idx: number) => (
                           <div
                             key={item.id || idx}
                             style={{
+                              minWidth: '540px',
                               padding: '0.85rem 1rem',
                               borderRadius: '10px',
                               backgroundColor: 'rgba(255,255,255,0.02)',

@@ -280,7 +280,7 @@ export const DiagnosticFoodView: React.FC = () => {
       </div>
 
       {selectedMember && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+        <div className="responsive-two-col">
           {/* COLUMNA 1: ANAMNESIS & ESCANEO FOTOGRÁFICO */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Formulario de Salud */}
@@ -518,7 +518,7 @@ export const DiagnosticFoodView: React.FC = () => {
                 </div>
 
                 {/* Métricas Visuales */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.75rem' }}>
                   <div style={{ padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
                     <span style={{ fontSize: '0.7rem', color: '#64748b' }}>% Grasa Estimada</span>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#06b6d4' }}>
@@ -613,7 +613,7 @@ export const DiagnosticFoodView: React.FC = () => {
               </p>
 
               {/* Resumen de Gustos */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                 <div style={{ padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.08)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                   <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700 }}>
                     FAVORITOS ({likedFoods.length}):

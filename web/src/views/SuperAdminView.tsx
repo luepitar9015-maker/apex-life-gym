@@ -313,7 +313,7 @@ export const SuperAdminView: React.FC = () => {
 
       {/* CONTENIDO TAB 1: LISTADO DE GIMNASIOS */}
       {activeTab === 'GYMS' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '1.25rem' }}>
           {gyms.map((g) => (
             <div
               key={g.id}
@@ -390,8 +390,8 @@ export const SuperAdminView: React.FC = () => {
 
       {/* CONTENIDO TAB 2: ADMINISTRADORES */}
       {activeTab === 'ADMINS' && (
-        <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+        <div className="glass-card table-responsive" style={{ padding: 0, overflowX: 'auto' }}>
+          <table style={{ minWidth: '600px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ backgroundColor: 'rgba(255, 255, 255, 0.04)', color: '#94a3b8', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
                 <th style={{ padding: '1rem' }}>Nombre</th>

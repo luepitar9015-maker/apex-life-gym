@@ -65,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     // Default: ADMIN
     return [
       { id: 'dashboard', label: 'Panel Principal', icon: LayoutDashboard, badge: null },
+      { id: 'gym_esencial', label: 'GYM Esencial (Dashboard Blanco)', icon: LayoutDashboard, badge: 'Clean UI' },
       { id: 'diagnostic', label: 'Diagnóstico IA & Alimentos', icon: HeartPulse, badge: 'IA' },
       { id: 'checkin', label: 'Recepción & QR', icon: QrCode, badge: 'En vivo' },
       { id: 'members', label: 'Directorio de Socios', icon: Users, badge: null },

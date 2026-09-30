@@ -21,6 +21,7 @@ import { TLCHubScreen } from './src/screens/TLCHubScreen';
 import { TLCVideoAIScreen } from './src/screens/TLCVideoAIScreen';
 import { TrainersScreen } from './src/screens/TrainersScreen';
 import { AdminSystemScreen } from './src/screens/AdminSystemScreen';
+import { GymEsencialSocioScreen } from './src/screens/GymEsencialSocioScreen';
 import { MobileHeader, DEMO_USERS, MobileUser } from './src/components/MobileHeader';
 import { ColorPaletteModal } from './src/components/ColorPaletteModal';
 import { ThemeProvider, useTheme } from './src/styles/themeConfig';
@@ -47,6 +48,7 @@ const MainApp: React.FC = () => {
 
   // Pestañas dinámicas según el sistema activo y permisos de usuario
   const gymTabs = [
+    { id: 'gym_esencial', label: 'Gym Esencial', icon: ShieldCheck },
     { id: 'home', label: 'Mi Pase QR', icon: Home },
     { id: 'workout', label: 'Entrenar', icon: Dumbbell },
     { id: 'aiscan', label: 'Escaneo IA', icon: Sparkles },
@@ -91,6 +93,9 @@ const MainApp: React.FC = () => {
           <AdminSystemScreen currentUser={currentUser} />
         ) : activeSystem === 'gym' ? (
           <>
+            {activeTab === 'gym_esencial' && (
+              <GymEsencialSocioScreen onNavigateTab={(t) => setActiveTab(t)} />
+            )}
             {activeTab === 'home' && (
               <HomeScreen currentUser={currentUser} onNavigateTab={(t) => setActiveTab(t)} />
             )}

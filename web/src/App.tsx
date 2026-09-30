@@ -14,6 +14,7 @@ import { AffiliatePortalView } from './views/AffiliatePortalView';
 import { TrainerView } from './views/TrainerView';
 import { SuperAdminView } from './views/SuperAdminView';
 import { DiagnosticFoodView } from './views/DiagnosticFoodView';
+import { GymEsencialView } from './views/GymEsencialView';
 import { LoginView } from './views/LoginView';
 
 import { api } from './services/api';
@@ -117,6 +118,8 @@ export const App: React.FC = () => {
         return { title: 'Diagnóstico IA & Alimentos', subtitle: 'Escaneo corporal, detección de lesiones y nutrición adaptada a tus gustos' };
       case 'dashboard':
         return { title: 'Panel de Control Principal', subtitle: 'Telemetría del gimnasio y aforo en tiempo real' };
+      case 'gym_esencial':
+        return { title: 'GYM ESENCIAL - Dashboard Administrativo', subtitle: 'Diseño Institucional Blanco & Azul con Métricas, Socios, Clases y Facturación' };
       case 'checkin':
         return { title: 'Recepción & Control de Acceso', subtitle: 'Validación de carnet QR, DNI y registro de entradas/salidas' };
       case 'members':
@@ -176,6 +179,12 @@ export const App: React.FC = () => {
             <DashboardView
               onNavigate={handleNavigate}
               onSelectMemberForRenewal={handleSelectMemberForRenewal}
+            />
+          )}
+
+          {currentView === 'gym_esencial' && (
+            <GymEsencialView
+              onNavigate={handleNavigate}
             />
           )}
 

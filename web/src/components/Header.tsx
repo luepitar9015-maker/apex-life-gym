@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Plus, Calendar, Menu } from 'lucide-react';
+import { Search, Bell, Plus, Calendar, Menu, LogOut, User } from 'lucide-react';
 
 interface HeaderProps {
   onQuickAction?: (action: string) => void;
   onToggleMobileMenu?: () => void;
+  currentUser?: any;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onQuickAction = () => {},
-  onToggleMobileMenu
+  onToggleMobileMenu,
+  currentUser,
+  onLogout
 }) => {
   const [currentDate, setCurrentDate] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -45,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* Search Input */}
-        <div className="relative w-48 sm:w-72 md:w-80">
+        <div className="relative w-44 sm:w-72 md:w-80">
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
@@ -56,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Date & Quick Action Tools */}
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Date pill */}
         <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-gray-500 bg-gray-50 px-3.5 py-2 rounded-xl border border-gray-100">
           <Calendar size={14} className="text-blue-600" />
@@ -101,6 +105,18 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
+
+        {/* Logout Action */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            title="Cerrar Sesión"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 border border-gray-100 transition-all text-xs font-bold ml-1"
+          >
+            <LogOut size={16} />
+            <span className="hidden sm:inline">Salir</span>
+          </button>
+        )}
       </div>
     </header>
   );

@@ -19,7 +19,12 @@ import {
   CheckCircle2,
   Layers,
   Activity,
-  ArrowRight
+  ArrowRight,
+  Wrench,
+  Compass,
+  ShieldAlert,
+  HelpCircle,
+  Lightbulb
 } from 'lucide-react';
 import { EXERCISES_DATABASE, WEEKLY_ROUTINES } from '../data/exercisesData';
 import ExerciseAnimation from '../components/ExerciseAnimation';
@@ -29,10 +34,11 @@ export default function Rutinas() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState('TODOS');
   const [selectedExercise, setSelectedExercise] = useState(null);
+  const [modalTab, setModalTab] = useState('SIMULATOR'); // 'SIMULATOR' | 'BIOMECHANICS' | 'SAFETY'
   const [isAnimationPlaying, setIsAnimationPlaying] = useState(true);
 
   // Temporizador de descanso en el modal
-  const [restTimer, setRestTimer] = useState(null); // segundos restantes
+  const [restTimer, setRestTimer] = useState(null);
   const [isRestTimerRunning, setIsRestTimerRunning] = useState(false);
   const [initialRestDuration, setInitialRestDuration] = useState(60);
 
@@ -78,14 +84,11 @@ export default function Rutinas() {
 
   // Filtrado de ejercicios
   const filteredExercises = EXERCISES_DATABASE.filter((ex) => {
-    // Filtro por tab (GYM vs CASA)
     if (activeTab === 'GYM' && ex.location !== 'GYM') return false;
     if (activeTab === 'CASA' && ex.location !== 'CASA') return false;
 
-    // Filtro por grupo muscular
     if (selectedMuscle !== 'TODOS' && ex.muscleGroup !== selectedMuscle) return false;
 
-    // Filtro por texto de búsqueda
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchName = ex.name.toLowerCase().includes(q);
@@ -109,14 +112,14 @@ export default function Rutinas() {
         <div className="space-y-2 max-w-2xl relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
             <Sparkles size={14} className="text-blue-600 animate-spin-slow" />
-            <span>Biblioteca Biomecánica & Animaciones Gráficas</span>
+            <span>Simulador Biomecánico & Guía Técnica Real</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-blue-950 tracking-tight">
-            Catálogo de Rutinas, Máquinas & Casa
+            Biomecánica en Máquinas de GYM & Ejercicios en Casa
           </h1>
           <p className="text-gray-500 text-sm leading-relaxed">
-            Investigación exhaustiva de movimientos biomecánicos: ejercicios en máquinas guiadas de gimnasio
-            y rutinas funcionales en casa, con animaciones gráficas interactivas y guías de ejecución técnica.
+            Animaciones gráficas dinámicas con simulación biomecánica, ángulos articulares, sincronización
+            respiratoria, ajuste milimétrico de máquinas y consejos de élite para prevenir lesiones articulares.
           </p>
         </div>
 
@@ -241,7 +244,12 @@ export default function Rutinas() {
                             return (
                               <li
                                 key={eIdx}
-                                onClick={() => fullEx && setSelectedExercise(fullEx)}
+                                onClick={() => {
+                                  if (fullEx) {
+                                    setSelectedExercise(fullEx);
+                                    setModalTab('SIMULATOR');
+                                  }
+                                }}
                                 className={`text-[11px] flex items-center justify-between py-0.5 rounded px-1 transition-colors ${
                                   fullEx ? 'cursor-pointer hover:bg-blue-100/60 text-blue-900' : 'text-gray-600'
                                 }`}
@@ -267,7 +275,10 @@ export default function Rutinas() {
                       const firstEx = EXERCISES_DATABASE.find(
                         (e) => e.id === prog.days[0].exercises[0].exerciseId
                       );
-                      if (firstEx) setSelectedExercise(firstEx);
+                      if (firstEx) {
+                        setSelectedExercise(firstEx);
+                        setModalTab('SIMULATOR');
+                      }
                     }}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2"
                   >
@@ -382,16 +393,19 @@ export default function Rutinas() {
 
                       {/* CONTENEDOR PREVIEW ANIMACIÓN GRÁFICA */}
                       <div
-                        onClick={() => setSelectedExercise(exercise)}
-                        className="mx-5 bg-gradient-to-b from-gray-50 to-blue-50/30 rounded-2xl p-4 border border-gray-100 flex items-center justify-center cursor-pointer relative overflow-hidden group/anim min-h-[170px]"
+                        onClick={() => {
+                          setSelectedExercise(exercise);
+                          setModalTab('SIMULATOR');
+                        }}
+                        className="mx-5 bg-gradient-to-b from-gray-50 to-blue-50/30 rounded-2xl p-3 border border-gray-100 flex items-center justify-center cursor-pointer relative overflow-hidden group/anim min-h-[180px]"
                       >
                         <div className="w-full flex items-center justify-center">
                           <ExerciseAnimation exercise={exercise} isPlaying={false} />
                         </div>
-                        <div className="absolute inset-0 bg-blue-900/10 backdrop-blur-[2px] opacity-0 group-hover/anim:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="absolute inset-0 bg-blue-950/20 backdrop-blur-[2px] opacity-0 group-hover/anim:opacity-100 transition-opacity flex items-center justify-center">
                           <span className="bg-white text-blue-900 font-extrabold text-xs px-4 py-2 rounded-xl shadow-md flex items-center gap-1.5 transform translate-y-2 group-hover/anim:translate-y-0 transition-transform">
                             <Play size={14} className="fill-blue-900" />
-                            <span>Ver Animación en Vivo</span>
+                            <span>Ver Simulación & Técnica Pro</span>
                           </span>
                         </div>
                       </div>
@@ -415,7 +429,10 @@ export default function Rutinas() {
                     {/* BOTÓN INFERIOR */}
                     <div className="p-5 pt-0">
                       <button
-                        onClick={() => setSelectedExercise(exercise)}
+                        onClick={() => {
+                          setSelectedExercise(exercise);
+                          setModalTab('SIMULATOR');
+                        }}
                         className="w-full bg-gray-50 hover:bg-blue-600 text-gray-700 hover:text-white font-bold text-xs py-2.5 rounded-xl border border-gray-200 hover:border-blue-600 transition-all flex items-center justify-center gap-2 shadow-xs"
                       >
                         <Play size={14} />
@@ -434,12 +451,12 @@ export default function Rutinas() {
       {/* MODAL INTERACTIVO DE EJERCICIO CON ANIMACIÓN GRÁFICA & BIOMECÁNICA */}
       {/* ======================================================== */}
       {selectedExercise && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-blue-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-blue-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-5xl w-full max-h-[94vh] overflow-y-auto shadow-2xl border border-gray-100 flex flex-col">
             {/* MODAL HEADER */}
-            <div className="p-6 border-b border-gray-100 flex items-start justify-between gap-4 sticky top-0 bg-white/95 backdrop-blur-md z-10">
+            <div className="p-5 sm:p-6 border-b border-gray-100 flex items-start justify-between gap-4 sticky top-0 bg-white/95 backdrop-blur-md z-20">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span
                     className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-black ${
                       selectedExercise.location === 'GYM'
@@ -452,7 +469,7 @@ export default function Rutinas() {
                   </span>
                   <span className="text-xs font-semibold text-gray-500">• {selectedExercise.muscleGroup}</span>
                 </div>
-                <h2 className="text-xl md:text-2xl font-black text-gray-900">{selectedExercise.name}</h2>
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900">{selectedExercise.name}</h2>
                 <p className="text-xs text-gray-500 font-medium">
                   {selectedExercise.machineType} • Dificultad: <strong className="text-gray-800">{selectedExercise.level}</strong>
                 </p>
@@ -466,187 +483,348 @@ export default function Rutinas() {
               </button>
             </div>
 
+            {/* PESTAÑAS DENTRO DEL MODAL (SIMULADOR / BIOMECÁNICA / PREVENCIÓN) */}
+            <div className="flex border-b border-gray-100 px-6 bg-gray-50/50 sticky top-[85px] z-10">
+              <button
+                onClick={() => setModalTab('SIMULATOR')}
+                className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all ${
+                  modalTab === 'SIMULATOR'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <Play size={15} />
+                <span>Simulador Biomecánico & HUD</span>
+              </button>
+
+              <button
+                onClick={() => setModalTab('BIOMECHANICS')}
+                className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all ${
+                  modalTab === 'BIOMECHANICS'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <Compass size={15} />
+                <span>Técnica & Biomecánica Detallada</span>
+              </button>
+
+              <button
+                onClick={() => setModalTab('SAFETY')}
+                className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all ${
+                  modalTab === 'SAFETY'
+                    ? 'border-amber-600 text-amber-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <ShieldAlert size={15} />
+                <span>Prevención Articular & Errores</span>
+              </button>
+            </div>
+
             {/* MODAL BODY */}
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* COLUMNA IZQUIERDA: ANIMACIÓN GRÁFICA & CONTROLES */}
-              <div className="lg:col-span-5 space-y-4">
-                <div className="bg-gradient-to-b from-gray-50 to-blue-50/50 rounded-3xl p-6 border border-gray-100 flex flex-col items-center justify-center min-h-[300px]">
-                  <ExerciseAnimation exercise={selectedExercise} isPlaying={isAnimationPlaying} />
-                </div>
+            <div className="p-6">
+              {/* TAB 1: SIMULADOR BIOMECÁNICO */}
+              {modalTab === 'SIMULATOR' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* COLUMNA IZQUIERDA: ANIMACIÓN GRÁFICA & CONTROLES */}
+                  <div className="lg:col-span-7 space-y-4">
+                    <div className="bg-gradient-to-b from-gray-50 to-blue-50/30 rounded-3xl p-4 border border-gray-100">
+                      <ExerciseAnimation exercise={selectedExercise} isPlaying={isAnimationPlaying} />
+                    </div>
 
-                {/* CONTROLES DE ANIMACIÓN */}
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={() => setIsAnimationPlaying(!isAnimationPlaying)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors"
-                  >
-                    {isAnimationPlaying ? <Pause size={15} /> : <Play size={15} />}
-                    <span>{isAnimationPlaying ? 'Pausar Animación' : 'Reanudar Animación'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => setIsAnimationPlaying(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition-colors"
-                  >
-                    <RotateCcw size={14} />
-                    <span>Reiniciar</span>
-                  </button>
-                </div>
-
-                {/* TEMPORIZADOR DE DESCANSO ENTRE SERIES */}
-                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                      <Clock size={14} className="text-blue-600" />
-                      <span>Descanso entre Series</span>
-                    </span>
-                    {restTimer !== null && (
-                      <span className="font-mono text-base font-black text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-100">
-                        {Math.floor(restTimer / 60)}:{(restTimer % 60).toString().padStart(2, '0')}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Botones de tiempo rápido */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {[30, 45, 60, 90].map((sec) => (
+                    {/* CONTROLES DE ANIMACIÓN */}
+                    <div className="flex items-center justify-center gap-3">
                       <button
-                        key={sec}
-                        onClick={() => startRestTimer(sec)}
-                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          initialRestDuration === sec && isRestTimerRunning
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-400'
-                        }`}
+                        onClick={() => setIsAnimationPlaying(!isAnimationPlaying)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors"
                       >
-                        {sec}s
+                        {isAnimationPlaying ? <Pause size={15} /> : <Play size={15} />}
+                        <span>{isAnimationPlaying ? 'Pausar Animación' : 'Reanudar Animación'}</span>
                       </button>
-                    ))}
-                  </div>
 
-                  {/* Acciones de temporizador */}
-                  {isRestTimerRunning ? (
-                    <button
-                      onClick={stopRestTimer}
-                      className="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
-                    >
-                      Pausar Cronómetro
-                    </button>
-                  ) : restTimer !== null && restTimer < initialRestDuration ? (
-                    <div className="flex gap-2">
                       <button
-                        onClick={() => setIsRestTimerRunning(true)}
-                        className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors"
+                        onClick={() => setIsAnimationPlaying(true)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition-colors"
                       >
-                        Reanudar
-                      </button>
-                      <button
-                        onClick={resetRestTimer}
-                        className="px-3 py-1.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-300 transition-colors"
-                      >
-                        Reiniciar
+                        <RotateCcw size={14} />
+                        <span>Reiniciar Ciclo</span>
                       </button>
                     </div>
-                  ) : null}
-                </div>
-              </div>
+                  </div>
 
-              {/* COLUMNA DERECHA: GUÍA TÉCNICA PASO A PASO, RESPIRACIÓN & ERRORES */}
-              <div className="lg:col-span-7 space-y-5">
-                {/* MÚSCULOS & CADENCIA */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100">
-                    <span className="text-[10px] font-extrabold uppercase text-blue-900 tracking-wider block">
-                      Músculo Principal
-                    </span>
-                    <span className="text-xs font-bold text-blue-950 mt-0.5 block">
-                      {selectedExercise.primaryMuscle}
-                    </span>
-                    {selectedExercise.secondaryMuscle && (
-                      <span className="text-[11px] text-blue-700/80 mt-1 block">
-                        Secundario: {selectedExercise.secondaryMuscle}
-                      </span>
+                  {/* COLUMNA DERECHA: CRONÓMETRO Y RESUMEN RÁPIDO */}
+                  <div className="lg:col-span-5 space-y-5">
+                    {/* TEMPORIZADOR DE DESCANSO ENTRE SERIES */}
+                    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                          <Clock size={15} className="text-blue-600" />
+                          <span>Cronómetro de Descanso entre Series</span>
+                        </span>
+                        {restTimer !== null && (
+                          <span className="font-mono text-lg font-black text-blue-700 bg-white px-3 py-0.5 rounded-lg border border-blue-100 shadow-xs">
+                            {Math.floor(restTimer / 60)}:{(restTimer % 60).toString().padStart(2, '0')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Botones de tiempo rápido */}
+                      <div className="grid grid-cols-4 gap-2">
+                        {[30, 45, 60, 90].map((sec) => (
+                          <button
+                            key={sec}
+                            onClick={() => startRestTimer(sec)}
+                            className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                              initialRestDuration === sec && isRestTimerRunning
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-400'
+                            }`}
+                          >
+                            {sec} seg
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Acciones de temporizador */}
+                      {isRestTimerRunning ? (
+                        <button
+                          onClick={stopRestTimer}
+                          className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                        >
+                          Pausar Descanso
+                        </button>
+                      ) : restTimer !== null && restTimer < initialRestDuration ? (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setIsRestTimerRunning(true)}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors"
+                          >
+                            Reanudar
+                          </button>
+                          <button
+                            onClick={resetRestTimer}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 font-bold text-xs rounded-xl hover:bg-gray-300 transition-colors"
+                          >
+                            Reiniciar
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* TARJETAS RÁPIDAS DE BIOMECÁNICA */}
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100">
+                        <span className="text-[10px] font-black uppercase text-blue-900 tracking-wider block">
+                          🎯 Músculo Principal Agonista
+                        </span>
+                        <p className="text-sm font-black text-blue-950 mt-1">
+                          {selectedExercise.primaryMuscle}
+                        </p>
+                        {selectedExercise.secondaryMuscle && (
+                          <p className="text-xs text-blue-700 mt-0.5">
+                            Sinergistas: {selectedExercise.secondaryMuscle}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* PATRÓN RESPIRATORIO */}
+                      <div className="p-4 rounded-2xl bg-sky-50 border border-sky-100 flex items-start gap-3">
+                        <div className="p-2 rounded-xl bg-sky-500 text-white shrink-0 mt-0.5">
+                          <Wind size={16} />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-sky-950 uppercase tracking-wider">
+                            Respiración Biomecánica
+                          </h4>
+                          <p className="text-xs text-sky-900 mt-1 leading-relaxed">
+                            {selectedExercise.breathing}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* CADENCIA RECOMENDADA */}
+                      <div className="p-4 rounded-2xl bg-purple-50 border border-purple-100">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-extrabold text-purple-950 uppercase tracking-wider">
+                            ⏱️ Cadencia / Tempo
+                          </span>
+                          <span className="font-mono font-bold text-purple-700 bg-white px-2 py-0.5 rounded-md border border-purple-200">
+                            {selectedExercise.tempo}
+                          </span>
+                        </div>
+                        <p className="text-xs text-purple-800 mt-1.5 leading-relaxed">
+                          Controla la fase excéntrica sin usar la inercia del peso y acelera de forma explosiva en la contracción.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: BIOMECÁNICA & TÉCNICA DETALLADA */}
+              {modalTab === 'BIOMECHANICS' && (
+                <div className="space-y-6 max-w-4xl mx-auto">
+                  {/* EXPLICACIÓN BIOMECÁNICA FUNDAMENTAL */}
+                  {selectedExercise.biomechanicsExplanation && (
+                    <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-2">
+                      <div className="flex items-center gap-2 text-indigo-900 font-extrabold text-xs uppercase tracking-wider">
+                        <Compass size={16} />
+                        <span>Fundamento Biomecánico & Anatomía Funcional</span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-indigo-950 leading-relaxed font-medium">
+                        {selectedExercise.biomechanicsExplanation}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* AJUSTES DE LA MÁQUINA & SETUP INICIAL */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedExercise.machineSetup && (
+                      <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-2">
+                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                          <Wrench size={15} className="text-blue-600" />
+                          <span>1. Ajuste Milimétrico de la Máquina</span>
+                        </h4>
+                        <p className="text-xs text-gray-700 leading-relaxed font-medium">
+                          {selectedExercise.machineSetup}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedExercise.setupPosture && (
+                      <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 space-y-2">
+                        <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                          <Target size={15} className="text-emerald-600" />
+                          <span>2. Postura & Setup Inicial (Paso 0)</span>
+                        </h4>
+                        <p className="text-xs text-gray-700 leading-relaxed font-medium">
+                          {selectedExercise.setupPosture}
+                        </p>
+                      </div>
                     )}
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-100">
-                    <span className="text-[10px] font-extrabold uppercase text-purple-900 tracking-wider block">
-                      Cadencia / Tempo
-                    </span>
-                    <span className="text-xs font-bold text-purple-950 mt-0.5 block">
-                      {selectedExercise.tempo}
-                    </span>
-                    <span className="text-[11px] text-purple-700/80 mt-1 block">
-                      Control excéntrico + potencia concéntrica
-                    </span>
-                  </div>
-                </div>
-
-                {/* GUÍA DE RESPIRACIÓN BIOMECÁNICA */}
-                <div className="p-4 rounded-2xl bg-sky-50 border border-sky-100 flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-sky-500 text-white shrink-0">
-                    <Wind size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-extrabold text-sky-950 uppercase tracking-wider">
-                      Patrón de Respiración Correcto
-                    </h4>
-                    <p className="text-xs text-sky-900 mt-1 leading-relaxed">
-                      {selectedExercise.breathing}
-                    </p>
-                  </div>
-                </div>
-
-                {/* PASO A PASO BIOMECÁNICO */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <CheckCircle2 size={16} className="text-emerald-600" />
-                    <span>Ejecución Técnica Paso a Paso</span>
-                  </h4>
-
-                  <div className="space-y-2">
-                    {selectedExercise.steps.map((step, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100"
-                      >
-                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
-                          {idx + 1}
-                        </span>
-                        <p className="text-xs text-gray-700 leading-relaxed">{step}</p>
+                  {/* CUES MENTALES DE ÉLITE */}
+                  {selectedExercise.cues && (
+                    <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200/80 space-y-3">
+                      <h4 className="text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-2">
+                        <Lightbulb size={16} className="text-amber-600" />
+                        <span>Cues Mentales de Preparadores de Élite (Conexión Mente-Músculo)</span>
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {selectedExercise.cues.map((cue, cIdx) => (
+                          <div key={cIdx} className="bg-white/80 rounded-xl p-3 border border-amber-200 text-xs text-amber-950 font-semibold shadow-2xs">
+                            💡 "{cue}"
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  {/* DESGLOSE FASE EXCÉNTRICA VS CONCÉNTRICA */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedExercise.eccentricPhase && (
+                      <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 space-y-2">
+                        <span className="text-[10px] font-black uppercase text-blue-900 tracking-wider block">
+                          📉 Fase Excéntrica (Bajada / Elongación)
+                        </span>
+                        <p className="text-xs text-blue-950 leading-relaxed font-medium">
+                          {selectedExercise.eccentricPhase}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedExercise.concentricPhase && (
+                      <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2">
+                        <span className="text-[10px] font-black uppercase text-emerald-900 tracking-wider block">
+                          📈 Fase Concéntrica (Empuje / Contracción)
+                        </span>
+                        <p className="text-xs text-emerald-950 leading-relaxed font-medium">
+                          {selectedExercise.concentricPhase}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* PASO A PASO NUMERADO */}
+                  <div className="space-y-3 pt-2">
+                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-emerald-600" />
+                      <span>Protocolo de Ejecución Paso a Paso</span>
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedExercise.steps.map((step, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100"
+                        >
+                          <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center shrink-0 mt-0.5">
+                            {idx + 1}
+                          </span>
+                          <p className="text-xs text-gray-700 leading-relaxed font-medium">{step}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* ERRORES COMUNES A EVITAR */}
-                {selectedExercise.mistakes && selectedExercise.mistakes.length > 0 && (
-                  <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/60 space-y-2">
-                    <h4 className="text-xs font-extrabold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <AlertTriangle size={15} className="text-amber-600" />
-                      <span>Errores Comunes y Riesgo Lesivo a Evitar</span>
-                    </h4>
-                    <ul className="space-y-1.5">
-                      {selectedExercise.mistakes.map((mistake, mIdx) => (
-                        <li key={mIdx} className="text-xs text-amber-900 flex items-start gap-2">
-                          <span className="text-amber-600 font-bold shrink-0">•</span>
-                          <span>{mistake}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              {/* TAB 3: PREVENCIÓN ARTICULAR & ERRORES */}
+              {modalTab === 'SAFETY' && (
+                <div className="space-y-6 max-w-4xl mx-auto">
+                  {/* ALERTA DE RIESGO CLÍNICO / FISIOTERAPIA */}
+                  {selectedExercise.clinicalRisks && (
+                    <div className="p-5 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
+                      <h4 className="text-xs font-black text-rose-950 uppercase tracking-wider flex items-center gap-2">
+                        <ShieldAlert size={16} className="text-rose-600" />
+                        <span>Advertencia Fisioterapéutica & Desgaste Articular</span>
+                      </h4>
+                      <p className="text-xs sm:text-sm text-rose-900 leading-relaxed font-medium">
+                        {selectedExercise.clinicalRisks}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* ERRORES COMUNES DETALLADOS */}
+                  {selectedExercise.mistakes && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-black text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                        <AlertTriangle size={16} className="text-amber-600" />
+                        <span>Errores Críticos Frecuentes y Cómo Corregirlos</span>
+                      </h4>
+                      <div className="space-y-2.5">
+                        {selectedExercise.mistakes.map((mistake, mIdx) => (
+                          <div
+                            key={mIdx}
+                            className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80 flex items-start gap-3"
+                          >
+                            <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
+                              ✕
+                            </span>
+                            <div>
+                              <p className="text-xs font-bold text-amber-950">{mistake}</p>
+                              <p className="text-[11px] text-amber-800/90 mt-0.5">
+                                Corrección: Mantén la velocidad controlada y no aumentes el peso si este error ocurre.
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* MODAL FOOTER */}
             <div className="p-5 border-t border-gray-100 bg-gray-50/80 rounded-b-3xl flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500">
-                Gym Esencial • Biomecánica & Entrenamiento
+              <span className="text-xs font-semibold text-gray-500 hidden sm:inline">
+                Gym Esencial • Biomecánica & Entrenamiento de Alto Nivel
               </span>
               <button
                 onClick={() => setSelectedExercise(null)}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors ml-auto"
               >
                 Cerrar Visor
               </button>

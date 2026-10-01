@@ -1,279 +1,109 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, ShieldCheck, QrCode, User, Dumbbell, Shield, LogOut, Crown, Menu } from 'lucide-react';
-import { UserRole } from './Sidebar';
+import { Search, Bell, Plus, Calendar, Menu } from 'lucide-react';
 
 interface HeaderProps {
-  title: string;
-  subtitle?: string;
-  onOpenQuickScan?: () => void;
-  activeRole: UserRole;
-  onRoleChange: (role: UserRole) => void;
-  currentUser?: any;
-  onLogout?: () => void;
+  onQuickAction?: (action: string) => void;
   onToggleMobileMenu?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  title,
-  subtitle,
-  onOpenQuickScan,
-  activeRole,
-  onRoleChange,
-  currentUser,
-  onLogout,
-  onToggleMobileMenu,
+  onQuickAction = () => {},
+  onToggleMobileMenu
 }) => {
-  const [timeStr, setTimeStr] = useState('');
-  const [dateStr, setDateStr] = useState('');
+  const [currentDate, setCurrentDate] = useState('');
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setTimeStr(
-        now.toLocaleTimeString('es-CO', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true,
-        })
-      );
-      setDateStr(
-        now.toLocaleDateString('es-CO', {
-          weekday: 'short',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        })
-      );
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+    const now = new Date();
+    const formatted = new Intl.DateTimeFormat('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(now);
+    setCurrentDate(formatted.charAt(0).toUpperCase() + formatted.slice(1));
   }, []);
 
+  const notifications = [
+    { id: 1, title: 'Nueva reserva confirmada', text: 'Carlos Mendoza reservó Spinning 07:00', time: 'Hace 5m' },
+    { id: 2, title: 'Pago recibido', text: '$150.000 mensualidad de Andrea Torres', time: 'Hace 22m' },
+    { id: 3, title: 'Cupo límite alcanzado', text: 'Clase HIIT 18:00 está al 100% (20/20)', time: 'Hace 1h' },
+  ];
+
   return (
-    <header className="app-header" style={{
-      padding: '0.85rem 1.5rem',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: 'rgba(10, 14, 23, 0.95)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 30,
-      flexWrap: 'wrap',
-      gap: '0.75rem',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        {/* Botón Hamburguesa para Móvil */}
+    <header className="bg-white border-b border-gray-100 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+      <div className="flex items-center gap-3">
+        {/* Mobile menu toggle */}
         {onToggleMobileMenu && (
           <button
-            type="button"
             onClick={onToggleMobileMenu}
-            className="mobile-menu-trigger"
-            aria-label="Abrir Menú"
-            style={{
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              width: '38px',
-              height: '38px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#f8fafc',
-              cursor: 'pointer',
-            }}
+            className="lg:hidden p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-100"
+            aria-label="Abrir menú"
           >
             <Menu size={20} />
           </button>
         )}
 
-        <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.02em', margin: 0 }}>
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="header-subtitle-text" style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '2px', margin: 0 }}>
-              {subtitle}
-            </p>
-          )}
+        {/* Search Input */}
+        <div className="relative w-48 sm:w-72 md:w-80">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar socio, pago..."
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400"
+          />
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-        {/* Selector de Rol de Usuario (4 Roles con etiquetas responsive) */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '10px',
-          padding: '2px',
-          gap: '2px',
-        }}>
-          <button
-            type="button"
-            onClick={() => onRoleChange('SUPERADMIN')}
-            title="Superusuario SaaS"
-            style={{
-              border: 'none',
-              padding: '0.4rem 0.65rem',
-              borderRadius: '7px',
-              backgroundColor: activeRole === 'SUPERADMIN' ? '#a855f7' : 'transparent',
-              color: activeRole === 'SUPERADMIN' ? '#ffffff' : '#94a3b8',
-              fontWeight: 700,
-              fontSize: '0.74rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Crown size={13} />
-            <span className="role-btn-text">SaaS</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onRoleChange('ADMIN')}
-            title="Administrador Gym"
-            style={{
-              border: 'none',
-              padding: '0.4rem 0.65rem',
-              borderRadius: '7px',
-              backgroundColor: activeRole === 'ADMIN' ? '#10b981' : 'transparent',
-              color: activeRole === 'ADMIN' ? '#ffffff' : '#94a3b8',
-              fontWeight: 700,
-              fontSize: '0.74rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Shield size={13} />
-            <span className="role-btn-text">Admin</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onRoleChange('TRAINER')}
-            title="Entrenador / Coach"
-            style={{
-              border: 'none',
-              padding: '0.4rem 0.65rem',
-              borderRadius: '7px',
-              backgroundColor: activeRole === 'TRAINER' ? '#06b6d4' : 'transparent',
-              color: activeRole === 'TRAINER' ? '#ffffff' : '#94a3b8',
-              fontWeight: 700,
-              fontSize: '0.74rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Dumbbell size={13} />
-            <span className="role-btn-text">Coach</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onRoleChange('MEMBER')}
-            title="Afiliado / Socio"
-            style={{
-              border: 'none',
-              padding: '0.4rem 0.65rem',
-              borderRadius: '7px',
-              backgroundColor: activeRole === 'MEMBER' ? '#8b5cf6' : 'transparent',
-              color: activeRole === 'MEMBER' ? '#ffffff' : '#94a3b8',
-              fontWeight: 700,
-              fontSize: '0.74rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <User size={13} />
-            <span className="role-btn-text">Socio</span>
-          </button>
+      {/* Date & Quick Action Tools */}
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Date pill */}
+        <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-gray-500 bg-gray-50 px-3.5 py-2 rounded-xl border border-gray-100">
+          <Calendar size={14} className="text-blue-600" />
+          <span>{currentDate || 'Cargando fecha...'}</span>
         </div>
 
-        {/* Reloj (oculto en pantallas muy angostas para no saturar) */}
-        <div className="header-clock" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.4rem',
-          backgroundColor: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          padding: '0.35rem 0.65rem',
-          borderRadius: '8px',
-        }}>
-          <Clock size={14} color="#06b6d4" />
-          <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#f1f5f9', fontVariantNumeric: 'tabular-nums' }}>
-            {timeStr}
-          </span>
+        {/* Quick Add Member button */}
+        <button
+          onClick={() => onQuickAction('add-member')}
+          className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-500/25 transition-all"
+        >
+          <Plus size={16} />
+          <span>Nuevo Socio</span>
+        </button>
+
+        {/* Notification Bell */}
+        <div className="relative">
+          <button
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 flex items-center justify-center relative border border-gray-100 transition-colors"
+          >
+            <Bell size={18} />
+            <span className="w-2.5 h-2.5 bg-red-500 rounded-full absolute top-2 right-2 ring-2 ring-white"></span>
+          </button>
+
+          {/* Notifications dropdown */}
+          {notificationsOpen && (
+            <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-30 animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <h4 className="text-xs font-extrabold text-blue-900 uppercase tracking-wider">Notificaciones</h4>
+                <span className="text-[11px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full">3 Nuevas</span>
+              </div>
+              <div className="space-y-3 mt-3">
+                {notifications.map((n) => (
+                  <div key={n.id} className="p-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left">
+                    <p className="text-xs font-bold text-gray-800">{n.title}</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{n.text}</p>
+                    <span className="text-[10px] text-blue-600 font-semibold mt-1 inline-block">{n.time}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Quick Scan Button (Only for Admin & Reception) */}
-        {activeRole === 'ADMIN' && onOpenQuickScan && (
-          <button
-            onClick={onOpenQuickScan}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              backgroundColor: '#10b981',
-              color: '#ffffff',
-              border: 'none',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '0.78rem',
-              cursor: 'pointer',
-              boxShadow: '0 0 12px rgba(16, 185, 129, 0.35)',
-            }}
-          >
-            <QrCode size={15} />
-            <span className="desktop-btn-label">Acceso QR</span>
-          </button>
-        )}
-
-        {/* Botón Salir */}
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            title="Cerrar sesión"
-            className="header-logout-btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '0.4rem 0.65rem',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              color: '#ef4444',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            <LogOut size={13} />
-            <span className="desktop-btn-label">Salir</span>
-          </button>
-        )}
       </div>
     </header>
   );
 };
+
+export default Header;

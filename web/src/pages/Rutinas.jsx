@@ -24,17 +24,20 @@ import {
   Compass,
   ShieldAlert,
   HelpCircle,
-  Lightbulb
+  Lightbulb,
+  Video,
+  ExternalLink
 } from 'lucide-react';
 import { EXERCISES_DATABASE, WEEKLY_ROUTINES } from '../data/exercisesData';
 import ExerciseAnimation from '../components/ExerciseAnimation';
+import ExerciseVideoPlayer from '../components/ExerciseVideoPlayer';
 
 export default function Rutinas() {
   const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'GYM' | 'CASA' | 'PROGRAMS'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState('TODOS');
   const [selectedExercise, setSelectedExercise] = useState(null);
-  const [modalTab, setModalTab] = useState('SIMULATOR'); // 'SIMULATOR' | 'BIOMECHANICS' | 'SAFETY'
+  const [modalTab, setModalTab] = useState('VIDEO_DEMO'); // 'VIDEO_DEMO' | 'BIOMECHANICS' | 'SAFETY'
   const [isAnimationPlaying, setIsAnimationPlaying] = useState(true);
 
   // Temporizador de descanso en el modal
@@ -391,21 +394,38 @@ export default function Rutinas() {
                         </p>
                       </div>
 
-                      {/* CONTENEDOR PREVIEW ANIMACIÓN GRÁFICA */}
+                      {/* CONTENEDOR PREVIEW VÍDEO REAL CON PERSONA */}
                       <div
                         onClick={() => {
                           setSelectedExercise(exercise);
-                          setModalTab('SIMULATOR');
+                          setModalTab('VIDEO_DEMO');
                         }}
-                        className="mx-5 bg-gradient-to-b from-gray-50 to-blue-50/30 rounded-2xl p-3 border border-gray-100 flex items-center justify-center cursor-pointer relative overflow-hidden group/anim min-h-[180px]"
+                        className="mx-5 bg-slate-900 rounded-2xl overflow-hidden border border-gray-100 flex items-center justify-center cursor-pointer relative group/anim min-h-[185px] shadow-inner"
                       >
-                        <div className="w-full flex items-center justify-center">
-                          <ExerciseAnimation exercise={exercise} isPlaying={false} />
-                        </div>
-                        <div className="absolute inset-0 bg-blue-950/20 backdrop-blur-[2px] opacity-0 group-hover/anim:opacity-100 transition-opacity flex items-center justify-center">
-                          <span className="bg-white text-blue-900 font-extrabold text-xs px-4 py-2 rounded-xl shadow-md flex items-center gap-1.5 transform translate-y-2 group-hover/anim:translate-y-0 transition-transform">
+                        {exercise.youtubeId ? (
+                          <div
+                            className="w-full h-full absolute inset-0 bg-cover bg-center opacity-85 group-hover/anim:opacity-100 group-hover/anim:scale-105 transition-all duration-300"
+                            style={{ backgroundImage: `url(https://img.youtube.com/vi/${exercise.youtubeId}/mqdefault.jpg)` }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-black/30" />
+                            <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider backdrop-blur-xs shadow-xs">
+                              <Video size={10} />
+                              <span>Vídeo Real HD</span>
+                            </div>
+                            <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between text-white text-[11px] font-bold">
+                              <span>Persona en Vivo</span>
+                              <span className="bg-black/50 px-2 py-0.5 rounded text-[10px] text-gray-300">Técnica Pro</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full flex items-center justify-center">
+                            <ExerciseAnimation exercise={exercise} isPlaying={false} />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-blue-950/30 backdrop-blur-[1px] opacity-0 group-hover/anim:opacity-100 transition-opacity flex items-center justify-center z-10">
+                          <span className="bg-white text-blue-900 font-extrabold text-xs px-4 py-2 rounded-xl shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover/anim:translate-y-0 transition-transform">
                             <Play size={14} className="fill-blue-900" />
-                            <span>Ver Simulación & Técnica Pro</span>
+                            <span>Ver Vídeo Real con Persona</span>
                           </span>
                         </div>
                       </div>
@@ -431,12 +451,12 @@ export default function Rutinas() {
                       <button
                         onClick={() => {
                           setSelectedExercise(exercise);
-                          setModalTab('SIMULATOR');
+                          setModalTab('VIDEO_DEMO');
                         }}
-                        className="w-full bg-gray-50 hover:bg-blue-600 text-gray-700 hover:text-white font-bold text-xs py-2.5 rounded-xl border border-gray-200 hover:border-blue-600 transition-all flex items-center justify-center gap-2 shadow-xs"
+                        className="w-full bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold text-xs py-2.5 rounded-xl border border-blue-200 hover:border-blue-600 transition-all flex items-center justify-center gap-2 shadow-xs"
                       >
-                        <Play size={14} />
-                        <span>Ver Animación & Técnica Completa</span>
+                        <Video size={14} />
+                        <span>Ver Vídeo Real & Biomecánica</span>
                       </button>
                     </div>
                   </div>
@@ -483,18 +503,18 @@ export default function Rutinas() {
               </button>
             </div>
 
-            {/* PESTAÑAS DENTRO DEL MODAL (SIMULADOR / BIOMECÁNICA / PREVENCIÓN) */}
-            <div className="flex border-b border-gray-100 px-6 bg-gray-50/50 sticky top-[85px] z-10">
+            {/* PESTAÑAS DENTRO DEL MODAL (VÍDEO REAL / BIOMECÁNICA / PREVENCIÓN) */}
+            <div className="flex border-b border-gray-100 px-6 bg-gray-50/50 sticky top-[85px] z-10 flex-wrap">
               <button
-                onClick={() => setModalTab('SIMULATOR')}
+                onClick={() => setModalTab('VIDEO_DEMO')}
                 className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-all ${
-                  modalTab === 'SIMULATOR'
+                  modalTab === 'VIDEO_DEMO'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <Play size={15} />
-                <span>Simulador Biomecánico & HUD</span>
+                <Video size={16} />
+                <span>🎥 Vídeo Real con Persona en Vivo</span>
               </button>
 
               <button
@@ -524,33 +544,12 @@ export default function Rutinas() {
 
             {/* MODAL BODY */}
             <div className="p-6">
-              {/* TAB 1: SIMULADOR BIOMECÁNICO */}
-              {modalTab === 'SIMULATOR' && (
+              {/* TAB 1: VÍDEO REAL CON PERSONA & SIMULADOR BIOMECÁNICO */}
+              {modalTab === 'VIDEO_DEMO' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                  {/* COLUMNA IZQUIERDA: ANIMACIÓN GRÁFICA & CONTROLES */}
+                  {/* COLUMNA IZQUIERDA: REPRODUCTOR DE VÍDEO REAL CON PERSONA */}
                   <div className="lg:col-span-7 space-y-4">
-                    <div className="bg-gradient-to-b from-gray-50 to-blue-50/30 rounded-3xl p-4 border border-gray-100">
-                      <ExerciseAnimation exercise={selectedExercise} isPlaying={isAnimationPlaying} />
-                    </div>
-
-                    {/* CONTROLES DE ANIMACIÓN */}
-                    <div className="flex items-center justify-center gap-3">
-                      <button
-                        onClick={() => setIsAnimationPlaying(!isAnimationPlaying)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors"
-                      >
-                        {isAnimationPlaying ? <Pause size={15} /> : <Play size={15} />}
-                        <span>{isAnimationPlaying ? 'Pausar Animación' : 'Reanudar Animación'}</span>
-                      </button>
-
-                      <button
-                        onClick={() => setIsAnimationPlaying(true)}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition-colors"
-                      >
-                        <RotateCcw size={14} />
-                        <span>Reiniciar Ciclo</span>
-                      </button>
-                    </div>
+                    <ExerciseVideoPlayer exercise={selectedExercise} defaultMode="VIDEO" />
                   </div>
 
                   {/* COLUMNA DERECHA: CRONÓMETRO Y RESUMEN RÁPIDO */}

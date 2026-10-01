@@ -40,6 +40,7 @@ export const EXERCISES_DATABASE = [
       'Inhala y desciende el carro lentamente durante 3 segundos hasta alcanzar un ángulo de 90° en rodillas.',
       'Exhala y empuja con fuerza desde los talones hasta extender las piernas, manteniendo una micro-flexión protectora.'
     ],
+    youtubeId: 'IZxyjW7MPJQ',
     animationType: 'leg-press'
   },
   {
@@ -77,6 +78,7 @@ export const EXERCISES_DATABASE = [
       'Desciende lentamente en 3 segundos hasta que los muslos estén paralelos a la plataforma.',
       'Empuja con fuerza desde los talones hasta regresar arriba.'
     ],
+    youtubeId: '0tn5K9NlCfo',
     animationType: 'hack-squat'
   },
   {
@@ -114,6 +116,7 @@ export const EXERCISES_DATABASE = [
       'Pausa 1 segundo en la máxima contracción sintiendo ardor en los vastos musculares.',
       'Desciende con ritmo controlado en 2 segundos sin que el peso descanse.'
     ],
+    youtubeId: 'YyvSfVjQeL0',
     animationType: 'leg-extension'
   },
   {
@@ -151,6 +154,7 @@ export const EXERCISES_DATABASE = [
       'Sostén 1 segundo en el punto máximo de flexión.',
       'Retorna lentamente resistiendo la carga hasta la posición de estiramiento.'
     ],
+    youtubeId: '1Tq3EDt431E',
     animationType: 'leg-curl'
   },
   {
@@ -188,6 +192,7 @@ export const EXERCISES_DATABASE = [
       'Desciende controladamente hasta flexionar caderas.',
       'Empuja con los talones elevando la pelvis y contrayendo los glúteos 2 segundos arriba.'
     ],
+    youtubeId: 'SEdqd1n0cvg',
     animationType: 'hip-thrust'
   },
   {
@@ -221,6 +226,7 @@ export const EXERCISES_DATABASE = [
       'Sostén 1 segundo la máxima apertura sintiendo el lateral del glúteo.',
       'Regresa lentamente sin permitir que las pesas descansen.'
     ],
+    youtubeId: 'bW_6_n7fCjo',
     animationType: 'abductor'
   },
   {
@@ -253,6 +259,7 @@ export const EXERCISES_DATABASE = [
       'Pausa 1 segundo con los cojines en contacto.',
       'Abre las piernas de forma lenta y controlada en 2 segundos.'
     ],
+    youtubeId: 'pYQWl27tG_I',
     animationType: 'adductor'
   },
   {
@@ -285,6 +292,7 @@ export const EXERCISES_DATABASE = [
       'Empuja con las puntas de los pies elevándote al máximo posible.',
       'Sostén la contracción 2 segundos arriba antes de bajar.'
     ],
+    youtubeId: '-M4-G8p8fmc',
     animationType: 'standing-calf'
   },
   {
@@ -318,6 +326,7 @@ export const EXERCISES_DATABASE = [
       'Eleva los talones con fuerza hasta la máxima flexión plantar.',
       'Pausa 2 segundos arriba y repite.'
     ],
+    youtubeId: 'JbyjNymZOt0',
     animationType: 'seated-calf'
   },
   {
@@ -355,6 +364,7 @@ export const EXERCISES_DATABASE = [
       'Haz una breve pausa de 1 segundo sin rebotar en los topes.',
       'Empuja con fuerza desde los talones hasta regresar arriba.'
     ],
+    youtubeId: 'VcL6r1VqY6E',
     animationType: 'smith-squat'
   },
 
@@ -396,6 +406,7 @@ export const EXERCISES_DATABASE = [
       'Regresa lentamente en 3 segundos sintiendo la apertura y estiramiento del pecho.',
       'Repite el movimiento manteniendo el pecho elevado.'
     ],
+    youtubeId: 'sqOw2Y6u9as',
     animationType: 'chest-press'
   },
   {
@@ -428,6 +439,7 @@ export const EXERCISES_DATABASE = [
       'Empuja los mangos de forma ascendente con el pecho alto.',
       'Baja con control en 3 segundos sintiendo el estiramiento superior.'
     ],
+    youtubeId: '8iPEnn-ltC8',
     animationType: 'incline-chest-press'
   },
   {
@@ -465,6 +477,7 @@ export const EXERCISES_DATABASE = [
       'Mantén 1 segundo la contracción en el punto de contacto frontal.',
       'Abre lentamente resistiendo la carga.'
     ],
+    youtubeId: 'eGjt4lk6g34',
     animationType: 'pec-deck'
   },
   {
@@ -498,6 +511,7 @@ export const EXERCISES_DATABASE = [
       'Sostén 1 segundo la contracción máxima.',
       'Abre con suavidad controlando el retorno de los cables.'
     ],
+    youtubeId: 'taI4XduLpTk',
     animationType: 'cable-crossover'
   },
 
@@ -539,6 +553,7 @@ export const EXERCISES_DATABASE = [
       'Aprieta los dorsales 1 segundo cuando la barra toque el pecho alto.',
       'Controla la subida en 2 segundos hasta estirar los brazos por completo.'
     ],
+    youtubeId: 'CAwf7n6Luuc',
     animationType: 'lat-pulldown'
   },
   {
@@ -576,6 +591,7 @@ export const EXERCISES_DATABASE = [
       'Pellizca las escápulas fuertemente 1 segundo.',
       'Extiende los brazos lentamente sintiendo el estiramiento de la espalda media.'
     ],
+    youtubeId: 'GZbfZ033f74',
     animationType: 'seated-cable-row'
   },
   {
@@ -608,6 +624,7 @@ export const EXERCISES_DATABASE = [
       'Sostén 1 segundo la máxima contracción.',
       'Baja con control en 2 segundos hasta estirar los brazos.'
     ],
+    youtubeId: 'j3Igk5nyZE4',
     animationType: 'tbar-row'
   },
   {
@@ -640,6 +657,7 @@ export const EXERCISES_DATABASE = [
       'Tracciona con los dorsales hasta que tu barbilla supere los agarres.',
       'Baja de forma controlada hasta estirar los brazos casi por completo.'
     ],
+    youtubeId: '8Yp7W6pWb6M',
     animationType: 'assisted-pullup-dip'
   },
 
@@ -681,6 +699,7 @@ export const EXERCISES_DATABASE = [
       'Baja de forma controlada en 3 segundos hasta que las manos queden a la altura de las orejas.',
       'Vuelve a empujar con potencia.'
     ],
+    youtubeId: 'WvLMauqrnK8',
     animationType: 'shoulder-press'
   },
   {
@@ -714,6 +733,7 @@ export const EXERCISES_DATABASE = [
       'Pausa 1 segundo arriba sintiendo el deltoides lateral.',
       'Baja despacio en 2 segundos.'
     ],
+    youtubeId: '3VcKaXpzqRo',
     animationType: 'lateral-raise-machine'
   },
   {
@@ -747,6 +767,7 @@ export const EXERCISES_DATABASE = [
       'Aprieta la parte posterior de los hombros 1 segundo.',
       'Regresa lentamente al centro.'
     ],
+    youtubeId: '2k3vj8YpZio',
     animationType: 'rear-delt-fly'
   },
   {
@@ -779,6 +800,7 @@ export const EXERCISES_DATABASE = [
       'Pausa 1 segundo a la altura del hombro.',
       'Desciende con control en 2 segundos.'
     ],
+    youtubeId: 'PPrzBWZDOhA',
     animationType: 'cable-lateral-raise'
   },
 
@@ -820,6 +842,7 @@ export const EXERCISES_DATABASE = [
       'Contrae fuertemente el tríceps 1 segundo abajo.',
       'Sube con control hasta que los antebrazos queden paralelos al suelo.'
     ],
+    youtubeId: '2-LAMcpzODU',
     animationType: 'triceps-pushdown'
   },
   {
@@ -853,6 +876,7 @@ export const EXERCISES_DATABASE = [
       'Aprieta los tríceps 1 segundo abajo.',
       'Sube despacio en 2 segundos hasta los 90° de flexión.'
     ],
+    youtubeId: 'sM6XUdt2ur4',
     animationType: 'seated-dip-machine'
   },
   {
@@ -890,6 +914,7 @@ export const EXERCISES_DATABASE = [
       'Aprieta 1 segundo arriba sintiendo el pico del bíceps.',
       'Desciende despacio en 2 segundos hasta casi estirar el brazo.'
     ],
+    youtubeId: 'fIWP-FRFNU0',
     animationType: 'preacher-curl'
   },
   {
@@ -923,6 +948,7 @@ export const EXERCISES_DATABASE = [
       'Aprieta fuertemente los bíceps en el punto más alto durante 1 segundo.',
       'Desciende con control en 2 segundos.'
     ],
+    youtubeId: 'NFzTWp2qpiE',
     animationType: 'cable-biceps-curl'
   },
 
@@ -959,6 +985,7 @@ export const EXERCISES_DATABASE = [
       'Sostén la compresión 1 segundo expulsando todo el aire.',
       'Vuelve a la posición inicial en 2 segundos de forma controlada.'
     ],
+    youtubeId: 'K7M54Y66fM8',
     animationType: 'seated-abs-machine'
   },
   {
@@ -996,6 +1023,7 @@ export const EXERCISES_DATABASE = [
       'Sostén 1 segundo la contracción expulsando todo el aire.',
       'Vuelve a la posición inicial estirando suavemente el abdomen.'
     ],
+    youtubeId: '2fORO4v1Vp4',
     animationType: 'cable-crunch'
   },
   {
@@ -1029,6 +1057,7 @@ export const EXERCISES_DATABASE = [
       'Eleva el cuerpo hasta quedar en perfecta línea recta con las piernas.',
       'Sostén 1 segundo y repite.'
     ],
+    youtubeId: 'ph3pddpKzzw',
     animationType: 'hyperextension'
   },
 
@@ -1066,6 +1095,7 @@ export const EXERCISES_DATABASE = [
       'Mantén el braceo natural y zancada elástica.',
       'Finaliza con vuelta a la calma de 3 minutos.'
     ],
+    youtubeId: '8i3Vwdh084s',
     animationType: 'treadmill'
   },
   {
@@ -1098,6 +1128,7 @@ export const EXERCISES_DATABASE = [
       'Aumenta la velocidad gradualmente manteniendo la espalda erguida.',
       'Sostiene la sesión durante 15 a 30 minutos según tu capacidad.'
     ],
+    youtubeId: 'D3E1Z4G8yVo',
     animationType: 'stairmaster'
   },
   {
@@ -1130,6 +1161,7 @@ export const EXERCISES_DATABASE = [
       'Comienza a pedalear suave ajustando la resistencia.',
       'Mantén la cadencia entre 80-90 RPM.'
     ],
+    youtubeId: 'a_F11pB33g8',
     animationType: 'cardio'
   },
   {
@@ -1163,6 +1195,7 @@ export const EXERCISES_DATABASE = [
       'Inclina levemente el torso y tira de la empuñadura hacia las costillas.',
       'Regresa en orden inverso: estira brazos, inclina torso y flexiona piernas.'
     ],
+    youtubeId: 'H0r_ZPXF-e8',
     animationType: 'cardio'
   },
 
@@ -1204,6 +1237,7 @@ export const EXERCISES_DATABASE = [
       'Toca o acércate a 2 cm del suelo con el pecho.',
       'Empuja con fuerza el piso hasta volver a la posición de plancha.'
     ],
+    youtubeId: 'IODxDxX7oi4',
     animationType: 'push-up'
   },
   {
@@ -1241,6 +1275,7 @@ export const EXERCISES_DATABASE = [
       'Empuja con las palmas y extiende los codos con fuerza en 1 segundo.',
       'Contrae los tríceps arriba y repite.'
     ],
+    youtubeId: 'J0DnG1_S92I',
     animationType: 'diamond-push-up'
   },
   {
@@ -1278,6 +1313,7 @@ export const EXERCISES_DATABASE = [
       'Pausa 1 segundo abajo sin perder tensión muscular.',
       'Empuja con los talones y regresa a la posición inicial extendiendo caderas.'
     ],
+    youtubeId: 'C_VtOYc6j5c',
     animationType: 'air-squat'
   },
   {
@@ -1315,6 +1351,7 @@ export const EXERCISES_DATABASE = [
       'La rodilla trasera debe quedar a escasos centímetros del piso.',
       'Empuja con el talón delantero y repite antes de cambiar de pierna.'
     ],
+    youtubeId: '2C-uNgKwPLE',
     animationType: 'bulgarian-squat'
   },
   {
@@ -1352,6 +1389,7 @@ export const EXERCISES_DATABASE = [
       'Pausa 1 segundo y empuja con la fuerza de los tríceps.',
       'Extiende los brazos por completo en la parte alta.'
     ],
+    youtubeId: '0326dy_-CzM',
     animationType: 'chair-dips'
   },
   {
@@ -1389,6 +1427,7 @@ export const EXERCISES_DATABASE = [
       'Aprieta los glúteos con fuerza en el punto más alto durante 2 segundos.',
       'Baja con control sin descansar totalmente en el suelo y repite.'
     ],
+    youtubeId: 'wPM8icPu6H8',
     animationType: 'glute-bridge'
   },
   {
@@ -1425,6 +1464,7 @@ export const EXERCISES_DATABASE = [
       'Contrae fuertemente glúteos, abdomen y muslos para formar una tabla recta.',
       'Mantén la vista fija en el suelo y respira rítmicamente durante el tiempo establecido.'
     ],
+    youtubeId: 'pSHjTRCQxIw',
     animationType: 'plank'
   },
   {
@@ -1461,6 +1501,7 @@ export const EXERCISES_DATABASE = [
       'Regrésala e inmediatamente adelanta la rodilla opuesta.',
       'Alterna con un ritmo fluido y constante simulando una carrera en el suelo.'
     ],
+    youtubeId: 'nmwgirgXLYM',
     animationType: 'mountain-climbers'
   },
   {
@@ -1498,6 +1539,7 @@ export const EXERCISES_DATABASE = [
       'Alterna el lado girando desde el torso en un movimiento controlado.',
       'Repite sintiendo la contracción en los laterales del abdomen.'
     ],
+    youtubeId: '9FGilxCbdz8',
     animationType: 'bicycle-crunches'
   },
   {
@@ -1535,6 +1577,7 @@ export const EXERCISES_DATABASE = [
       'Salta en vertical con los brazos estirados hacia el techo.',
       'Aterriza con suavidad flexionando rodillas e inicia la siguiente repetición.'
     ],
+    youtubeId: 'auBLPXO8Fww',
     animationType: 'burpees'
   }
 ];

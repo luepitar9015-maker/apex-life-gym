@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -13,7 +13,7 @@ import {
   X
 } from 'lucide-react';
 
-export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'TRAINER' | 'MEMBER';
+export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'TRAINER' | 'MEMBER' | 'RECEPTIONIST' | 'ADMIN_TLC';
 
 const navIcons: Record<string, React.ElementType> = {
   Dashboard: LayoutDashboard,
@@ -54,29 +54,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile = false,
   onCloseMobile
 }) => {
+  const [gymBrand, setGymBrand] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gym_config');
+      return saved ? JSON.parse(saved) : { name: 'GYM ESENCIAL', logo: '' };
+    } catch {
+      return { name: 'GYM ESENCIAL', logo: '' };
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const saved = localStorage.getItem('gym_config');
+        if (saved) setGymBrand(JSON.parse(saved));
+      } catch {}
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('gym_config_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('gym_config_updated', handleUpdate);
+    };
+  }, []);
+
   const content = (
     <aside className="w-64 bg-white border-r border-gray-100 flex flex-col justify-between p-6 shadow-sm min-h-screen h-full">
       <div>
         {/* Brand Logo & Mobile close */}
-        <div className="flex items-center justify-between mb-10 pl-1">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-2xl shadow-inner border border-blue-100">
-              🏋️
+        <div className="flex items-center justify-between mb-8 pl-1">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-2xl shadow-inner border border-blue-100 overflow-hidden shrink-0">
+              {gymBrand.logo ? (
+                <img src={gymBrand.logo} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <span>🏋️</span>
+              )}
             </div>
-            <div>
-              <h1 className="text-xl font-extrabold tracking-tight text-blue-900 leading-tight">
-                GYM
-                <span className="block text-blue-600 font-black text-sm tracking-wider">
-                  ESENCIAL
-                </span>
+            <div className="min-w-0">
+              <h1 className="text-base font-black tracking-tight text-blue-900 leading-tight truncate">
+                {gymBrand.name || 'GYM ESENCIAL'}
               </h1>
+              <span className="block text-blue-600 font-extrabold text-[11px] tracking-wider uppercase">
+                Panel GYM
+              </span>
             </div>
           </div>
 
           {onCloseMobile && (
             <button
               onClick={onCloseMobile}
-              className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+              className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 shrink-0"
             >
               <X size={20} />
             </button>
@@ -116,14 +144,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Admin Quick Profile Footer */}
       <div className="pt-6 border-t border-gray-100">
         <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 border border-gray-100">
-          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center justify-center text-sm">
+          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center justify-center text-sm shrink-0">
             AD
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-gray-900 truncate">Admin Principal</p>
-            <p className="text-[11px] text-green-600 font-medium flex items-center gap-1">
+            <p className="text-xs font-bold text-gray-900 truncate">Administrador GYM</p>
+            <p className="text-[11px] text-green-600 font-medium flex items-center gap-1 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
-              Sede Central
+              {gymBrand.name || 'Sede Central'}
             </p>
           </div>
         </div>

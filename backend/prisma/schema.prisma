@@ -37,7 +37,7 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      String   @default("ADMIN") // SUPERADMIN, ADMIN, TRAINER, RECEPTIONIST
+  role      String   @default("ADMIN") // SUPERADMIN, ADMIN, TRAINER, RECEPTIONIST, ADMIN_TLC
   active    Boolean  @default(true)
   
   gymId     String?

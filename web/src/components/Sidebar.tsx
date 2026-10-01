@@ -10,6 +10,7 @@ import {
   BarChart3,
   Settings,
   ChevronRight,
+  ShieldCheck,
   X
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ const navIcons: Record<string, React.ElementType> = {
   Inventario: Package,
   Reportes: BarChart3,
   'Configuración': Settings,
+  'Usuarios & Permisos': ShieldCheck,
 };
 
 export const menuItems = [
@@ -38,7 +40,8 @@ export const menuItems = [
   "Clases",
   "Inventario",
   "Reportes",
-  "Configuración"
+  "Configuración",
+  "Usuarios & Permisos"
 ];
 
 interface SidebarProps {

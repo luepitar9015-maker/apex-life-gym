@@ -13,6 +13,7 @@ import Clases from './pages/Clases';
 import Inventario from './pages/Inventario';
 import Reportes from './pages/Reportes';
 import Configuracion from './pages/Configuracion';
+import UsuariosPermisos from './pages/UsuariosPermisos';
 
 export const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -97,6 +98,8 @@ export const App: React.FC = () => {
         return <Reportes />;
       case 'Configuración':
         return <Configuracion />;
+      case 'Usuarios & Permisos':
+        return <UsuariosPermisos activeRole={activeRole} currentUser={currentUser} />;
       default:
         return <Dashboard onNavigate={(tab: string) => setActiveTab(tab)} />;
     }

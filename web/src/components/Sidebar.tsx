@@ -18,6 +18,7 @@ export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'TRAINER' | 'MEMBER' | 'RECEPTIO
 
 const navIcons: Record<string, React.ElementType> = {
   Dashboard: LayoutDashboard,
+  Afiliados: Users,
   Socios: Users,
   'Membresías': CreditCard,
   Pagos: CreditCard,
@@ -32,7 +33,7 @@ const navIcons: Record<string, React.ElementType> = {
 
 export const menuItems = [
   "Dashboard",
-  "Socios",
+  "Afiliados",
   "Membresías",
   "Pagos",
   "Entrenadores",

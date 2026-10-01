@@ -57,7 +57,7 @@ export const App: React.FC = () => {
     if (role === 'TRAINER') {
       setActiveTab('Rutinas');
     } else if (role === 'MEMBER') {
-      setActiveTab('Socios');
+      setActiveTab('Afiliados');
     } else {
       setActiveTab('Dashboard');
     }
@@ -80,6 +80,7 @@ export const App: React.FC = () => {
     switch (activeTab) {
       case 'Dashboard':
         return <Dashboard onNavigate={(tab: string) => setActiveTab(tab)} />;
+      case 'Afiliados':
       case 'Socios':
         return <Socios />;
       case 'Membresías':

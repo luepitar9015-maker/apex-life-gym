@@ -11,15 +11,77 @@ import {
   Settings,
   ChevronRight,
   ShieldCheck,
+  Building2,
+  QrCode,
+  Sparkles,
+  ShoppingBag,
+  Activity,
+  HeartPulse,
+  User,
   X
 } from 'lucide-react';
 
 export type UserRole = 'SUPERADMIN' | 'ADMIN' | 'TRAINER' | 'MEMBER' | 'RECEPTIONIST' | 'ADMIN_TLC';
 
+export const ROLE_MENU_ITEMS: Record<UserRole, string[]> = {
+  SUPERADMIN: [
+    'Dashboard',
+    'Sedes & Franquicias',
+    'Socios',
+    'Diagnóstico IA & Biometría',
+    'Usuarios & Permisos',
+    'Reportes',
+    'Configuración',
+  ],
+  ADMIN: [
+    'Dashboard',
+    'Socios',
+    'Check-In & Aforo',
+    'Diagnóstico IA & Biometría',
+    'Punto de Venta (POS)',
+    'Rutinas',
+    'Membresías',
+    'Clases',
+    'Inventario',
+    'Reportes',
+    'Usuarios & Permisos',
+    'Configuración',
+  ],
+  ADMIN_TLC: [
+    'Dashboard',
+    'Socios',
+    'Diagnóstico IA & Biometría',
+    'Inventario',
+    'Reportes',
+  ],
+  RECEPTIONIST: [
+    'Check-In & Aforo',
+    'Socios',
+    'Punto de Venta (POS)',
+    'Clases',
+  ],
+  TRAINER: [
+    'Diagnóstico IA & Biometría',
+    'Rutinas',
+    'Socios',
+    'Clases',
+  ],
+  MEMBER: [
+    'Mi Portal & Carnet',
+    'Diagnóstico IA & Biometría',
+    'Rutinas',
+    'Clases',
+  ],
+};
+
 const navIcons: Record<string, React.ElementType> = {
   Dashboard: LayoutDashboard,
+  'Sedes & Franquicias': Building2,
   Afiliados: Users,
   Socios: Users,
+  'Check-In & Aforo': QrCode,
+  'Diagnóstico IA & Biometría': Sparkles,
+  'Punto de Venta (POS)': ShoppingBag,
   'Membresías': CreditCard,
   Pagos: CreditCard,
   Entrenadores: UserCheck,
@@ -27,13 +89,18 @@ const navIcons: Record<string, React.ElementType> = {
   Clases: Calendar,
   Inventario: Package,
   Reportes: BarChart3,
+  'Mi Portal & Carnet': QrCode,
   'Configuración': Settings,
   'Usuarios & Permisos': ShieldCheck,
 };
 
 export const menuItems = [
   "Dashboard",
-  "Afiliados",
+  "Sedes & Franquicias",
+  "Socios",
+  "Check-In & Aforo",
+  "Diagnóstico IA & Biometría",
+  "Punto de Venta (POS)",
   "Membresías",
   "Pagos",
   "Entrenadores",
@@ -50,13 +117,17 @@ interface SidebarProps {
   onSelect?: (item: string) => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  activeRole?: UserRole;
+  currentUser?: any;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeItem = "Dashboard",
   onSelect = () => {},
   isOpenMobile = false,
-  onCloseMobile
+  onCloseMobile,
+  activeRole = 'ADMIN',
+  currentUser
 }) => {
   const [gymBrand, setGymBrand] = useState(() => {
     try {
@@ -115,9 +186,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Navigation list */}
+        {/* Navigation list filtrada por rol */}
         <nav className="space-y-1.5">
-          {menuItems.map((item) => {
+          {(ROLE_MENU_ITEMS[activeRole] || menuItems).map((item) => {
             const Icon = navIcons[item] || LayoutDashboard;
             const isActive = activeItem === item;
 
@@ -145,18 +216,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Admin Quick Profile Footer */}
+      {/* User Profile Footer */}
       <div className="pt-6 border-t border-gray-100">
-        <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 border border-gray-100">
-          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center justify-center text-sm shrink-0">
-            AD
+        <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-gray-50 border border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs shadow-sm shrink-0">
+            {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : activeRole.slice(0, 2)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-gray-900 truncate">Administrador GYM</p>
-            <p className="text-[11px] text-green-600 font-medium flex items-center gap-1 truncate">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
-              {gymBrand.name || 'Sede Central'}
+            <p className="text-xs font-bold text-gray-900 truncate">
+              {currentUser?.name || 'Usuario Activo'}
             </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse shrink-0"></span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 truncate">
+                {activeRole}
+              </span>
+            </div>
           </div>
         </div>
       </div>

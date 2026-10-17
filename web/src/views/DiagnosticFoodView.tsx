@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Activity,
   Camera,
@@ -17,16 +17,44 @@ import {
   ChevronRight,
   ShieldAlert,
   Info,
+  Scale,
+  Dumbbell,
+  Printer,
+  Save,
+  RefreshCw,
+  Utensils,
+  ChevronDown
 } from 'lucide-react';
-import { api, Member, HealthDiagnostic, FoodItem } from '../services/api';
+import { api, Member, HealthDiagnostic, FoodItem, NutritionPlan, MealItem } from '../services/api';
 
-export const DiagnosticFoodView: React.FC = () => {
+interface DiagnosticFoodViewProps {
+  currentUser?: any;
+  activeRole?: string;
+  initialMemberId?: string | null;
+}
+
+export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
+  currentUser,
+  activeRole = 'ADMIN',
+  initialMemberId
+}) => {
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [diagnostic, setDiagnostic] = useState<HealthDiagnostic | null>(null);
+  const [nutritionPlan, setNutritionPlan] = useState<NutritionPlan | null>(null);
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [foodSearch, setFoodSearch] = useState('');
   const [foodCategoryFilter, setFoodCategoryFilter] = useState('ALL');
+
+  // Métricas Biométricas Principales
+  const [weight, setWeight] = useState<number>(75);
+  const [height, setHeight] = useState<number>(175); // cm
+  const [age, setAge] = useState<number>(28);
+  const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE');
+  const [activityFactor, setActivityFactor] = useState<number>(1.55); // 1.2, 1.375, 1.55, 1.725
+  const [bodyFat, setBodyFat] = useState<number>(16.0); // %
+  const [biotype, setBiotype] = useState<'ECTOMORFO' | 'MESOMORFO' | 'ENDOMORFO'>('MESOMORFO');
+  const [savingMetrics, setSavingMetrics] = useState(false);
 
   // Listas de Gustos y Rechazos
   const [likedFoods, setLikedFoods] = useState<string[]>([]);
@@ -34,7 +62,7 @@ export const DiagnosticFoodView: React.FC = () => {
   const [savingPreferences, setSavingPreferences] = useState(false);
 
   // Formulario de Diagnóstico / Anamnesis
-  const [targetGoal, setTargetGoal] = useState('Hipertrofia Muscular y Definición');
+  const [targetGoal, setTargetGoal] = useState('Hipertrofia Muscular y Masa Magra');
   const [diseases, setDiseases] = useState('');
   const [injuries, setInjuries] = useState('');
   const [disabilities, setDisabilities] = useState('');
@@ -57,42 +85,79 @@ export const DiagnosticFoodView: React.FC = () => {
       setFoods(foodList);
 
       if (mList.length > 0) {
-        selectMember(mList[0]);
+        // Si el usuario es un socio (MEMBER), buscar su propio registro
+        if (currentUser?.role === 'MEMBER' || activeRole === 'MEMBER') {
+          const self = mList.find(
+            (m) =>
+              m.documentNumber === currentUser?.documentNumber ||
+              m.id === currentUser?.id ||
+              m.email === currentUser?.email
+          ) || mList[0];
+          selectMember(self);
+        } else if (initialMemberId) {
+          const target = mList.find((m) => m.id === initialMemberId) || mList[0];
+          selectMember(target);
+        } else {
+          selectMember(mList[0]);
+        }
       }
     } catch (err) {
-      console.error('Error cargando diagnóstico:', err);
+      console.error('Error cargando datos iniciales:', err);
     }
   };
 
   const selectMember = async (member: Member) => {
     setSelectedMember(member);
+
+    // Cargar métricas existentes del socio
+    const currentWeight = member.weight && member.weight > 30 ? member.weight : 75;
+    const currentHeight = member.height
+      ? (member.height < 3 ? Math.round(member.height * 100) : member.height)
+      : 175;
+
+    setWeight(currentWeight);
+    setHeight(currentHeight);
+    if (member.gender === 'FEMALE') setGender('FEMALE');
+    else setGender('MALE');
+
     try {
       // Cargar diagnóstico previo si existe
       const diag = await api.getMemberDiagnostic(member.id);
       setDiagnostic(diag);
       if (diag) {
-        setTargetGoal(diag.targetGoal || 'Hipertrofia Muscular');
-        setDiseases(diag.diseases || '');
-        setInjuries(diag.injuries || '');
-        setDisabilities(diag.disabilities || '');
-        setTrainingExperience(diag.trainingExperience || 'INTERMEDIO');
+        if (diag.targetGoal) setTargetGoal(diag.targetGoal);
+        if (diag.diseases) setDiseases(diag.diseases);
+        if (diag.injuries) setInjuries(diag.injuries);
+        if (diag.disabilities) setDisabilities(diag.disabilities);
+        if (diag.trainingExperience) setTrainingExperience(diag.trainingExperience);
+        if (diag.bodyFatPercentage) setBodyFat(diag.bodyFatPercentage);
+        if (diag.biotype) {
+          const b = diag.biotype.toUpperCase();
+          if (b.includes('ECTO')) setBiotype('ECTOMORFO');
+          else if (b.includes('ENDO')) setBiotype('ENDOMORFO');
+          else setBiotype('MESOMORFO');
+        }
       }
+
+      // Cargar plan de nutrición previo
+      const nutPlan = await api.getMemberNutrition(member.id);
+      setNutritionPlan(nutPlan);
 
       // Cargar gustos de comida guardados
       if (member.likedFoods) {
         try {
           setLikedFoods(JSON.parse(member.likedFoods));
-        } catch (e) {
+        } catch {
           setLikedFoods(member.likedFoods.split(',').map((s) => s.trim()));
         }
       } else {
-        setLikedFoods([]);
+        setLikedFoods(['Pechuga de pollo', 'Huevos enteros', 'Arroz blanco', 'Avena en hojuelas', 'Aguacate']);
       }
 
       if (member.dislikedFoods) {
         try {
           setDislikedFoods(JSON.parse(member.dislikedFoods));
-        } catch (e) {
+        } catch {
           setDislikedFoods(member.dislikedFoods.split(',').map((s) => s.trim()));
         }
       } else {
@@ -100,6 +165,91 @@ export const DiagnosticFoodView: React.FC = () => {
       }
     } catch (err) {
       console.error('Error cargando ficha del socio:', err);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // CÁLCULOS BIOMÉTRICOS Y METABÓLICOS EN VIVO
+  // --------------------------------------------------------------------------
+  const heightInMeters = height > 0 ? height / 100 : 1.75;
+  const bmi = useMemo(() => {
+    if (heightInMeters <= 0 || weight <= 0) return 22.5;
+    return parseFloat((weight / (heightInMeters * heightInMeters)).toFixed(1));
+  }, [weight, heightInMeters]);
+
+  const bmiDetails = useMemo(() => {
+    if (bmi < 18.5) return { category: 'Bajo peso', color: '#3b82f6', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+    if (bmi < 25.0) return { category: 'Peso Normal / Saludable', color: '#10b981', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    if (bmi < 30.0) return { category: 'Sobrepeso', color: '#f59e0b', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+    if (bmi < 35.0) return { category: 'Obesidad Grado I', color: '#f97316', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+    return { category: 'Obesidad Grado II / III', color: '#ef4444', bg: 'bg-red-50 text-red-700 border-red-200' };
+  }, [bmi]);
+
+  // Masa magra estimada
+  const muscleMassKg = useMemo(() => {
+    const fatKg = (weight * bodyFat) / 100;
+    return parseFloat((weight - fatKg).toFixed(1));
+  }, [weight, bodyFat]);
+
+  // Tasa Metabólica Basal (Mifflin-St Jeor)
+  const tmb = useMemo(() => {
+    if (gender === 'MALE') {
+      return Math.round(10 * weight + 6.25 * height - 5 * age + 5);
+    } else {
+      return Math.round(10 * weight + 6.25 * height - 5 * age - 161);
+    }
+  }, [weight, height, age, gender]);
+
+  // Gasto Energético Total Diario (TDEE)
+  const tdee = useMemo(() => {
+    return Math.round(tmb * activityFactor);
+  }, [tmb, activityFactor]);
+
+  // Calorías Meta según Objetivo
+  const targetCalories = useMemo(() => {
+    if (targetGoal.toLowerCase().includes('grasa') || targetGoal.toLowerCase().includes('definición')) {
+      return Math.max(1400, tdee - 450); // Déficit moderado
+    } else if (targetGoal.toLowerCase().includes('hipertrofia') || targetGoal.toLowerCase().includes('masa')) {
+      return tdee + 350; // Superávit magro
+    } else if (targetGoal.toLowerCase().includes('fuerza')) {
+      return tdee + 200;
+    }
+    return tdee; // Mantenimiento
+  }, [tdee, targetGoal]);
+
+  // Desglose de Macronutrientes
+  const macros = useMemo(() => {
+    const proteinGrams = Math.round(weight * 2.0); // 2g por kg
+    const fatGrams = Math.round(weight * 0.9); // 0.9g por kg
+    const remainingCalories = targetCalories - (proteinGrams * 4 + fatGrams * 9);
+    const carbsGrams = Math.max(80, Math.round(remainingCalories / 4));
+
+    return {
+      proteinGrams,
+      fatGrams,
+      carbsGrams,
+      proteinKcal: proteinGrams * 4,
+      fatKcal: fatGrams * 9,
+      carbsKcal: carbsGrams * 4,
+    };
+  }, [weight, targetCalories]);
+
+  // --------------------------------------------------------------------------
+  // ACCIONES Y LLAMADOS API
+  // --------------------------------------------------------------------------
+  const handleSavePhysicalMetrics = async () => {
+    if (!selectedMember) return;
+    try {
+      setSavingMetrics(true);
+      await api.updateMember(selectedMember.id, {
+        weight,
+        height: parseFloat(heightInMeters.toFixed(2)),
+      });
+      alert('💾 ¡Datos físicos actualizados correctamente en el perfil del socio!');
+    } catch (err: any) {
+      alert(err.message || 'Error guardando datos físicos');
+    } finally {
+      setSavingMetrics(false);
     }
   };
 
@@ -121,19 +271,20 @@ export const DiagnosticFoodView: React.FC = () => {
       const res = await api.generateHealthDiagnosticAI({
         memberId: selectedMember.id,
         targetGoal,
-        diseases,
-        injuries,
-        disabilities,
+        diseases: diseases.trim() || 'Ninguna',
+        injuries: injuries.trim() || 'Ninguna',
+        disabilities: disabilities.trim() || 'Ninguna',
         trainingExperience,
         photoBase64: photoPreview || undefined,
-        weight: selectedMember.weight || 75,
-        height: selectedMember.height || 1.75,
+        weight,
+        height: heightInMeters,
       });
 
       setDiagnostic(res);
-      alert('✨ ¡Diagnóstico con Google Gemini completado! Se han calculado tus métricas y detectado precauciones biomecánicas.');
+      if (res.bodyFatPercentage) setBodyFat(res.bodyFatPercentage);
+      alert('✨ ¡Diagnóstico con Google Gemini completado! Se han detectado precauciones biomecánicas y adaptaciones.');
     } catch (err: any) {
-      alert(err.message || 'Error al generar diagnóstico');
+      alert(err.message || 'Error al generar diagnóstico con IA');
     } finally {
       setAnalyzingDiagnostic(false);
     }
@@ -144,7 +295,6 @@ export const DiagnosticFoodView: React.FC = () => {
       setLikedFoods(likedFoods.filter((f) => f !== foodName));
     } else {
       setLikedFoods([...likedFoods, foodName]);
-      // Quitar de no deseados si estaba
       setDislikedFoods(dislikedFoods.filter((f) => f !== foodName));
     }
   };
@@ -154,7 +304,6 @@ export const DiagnosticFoodView: React.FC = () => {
       setDislikedFoods(dislikedFoods.filter((f) => f !== foodName));
     } else {
       setDislikedFoods([...dislikedFoods, foodName]);
-      // Quitar de deseados si estaba
       setLikedFoods(likedFoods.filter((f) => f !== foodName));
     }
   };
@@ -167,7 +316,7 @@ export const DiagnosticFoodView: React.FC = () => {
         likedFoods,
         dislikedFoods,
       });
-      alert('✅ Preferencias alimentarias guardadas con éxito para este socio.');
+      alert('✅ Preferencias alimentarias guardadas con éxito.');
     } catch (err: any) {
       alert(err.message || 'Error al guardar preferencias');
     } finally {
@@ -186,17 +335,22 @@ export const DiagnosticFoodView: React.FC = () => {
 
       const res = await api.generateNutritionAI({
         memberId: selectedMember.id,
-        goal: targetGoal.includes('Grasa') ? 'FAT_LOSS' : 'HYPERTROPHY',
+        goal: targetGoal.toLowerCase().includes('grasa') ? 'FAT_LOSS' : 'HYPERTROPHY',
         likedFoods,
         dislikedFoods,
       });
 
-      alert(`🥗 ¡Plan Nutricional con IA generado con éxito! Se priorizaron tus ${likedFoods.length} alimentos favoritos y se excluyeron los ${dislikedFoods.length} alimentos vetados.`);
+      setNutritionPlan(res.data);
+      alert(`🥗 ¡Plan Nutricional con IA generado con éxito! Se estructuraron las comidas respetando tus ${likedFoods.length} alimentos favoritos.`);
     } catch (err: any) {
       alert(err.message || 'Error generando nutrición con IA');
     } finally {
       setGeneratingDietWithFoods(false);
     }
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   const filteredFoods = foods.filter((f) => {
@@ -206,556 +360,641 @@ export const DiagnosticFoodView: React.FC = () => {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* Banner Principal */}
-      <div className="glass-card" style={{
-        background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)',
-        border: '1px solid rgba(6, 182, 212, 0.3)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '1rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{
-            width: '52px',
-            height: '52px',
-            borderRadius: '14px',
-            backgroundColor: 'rgba(6, 182, 212, 0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <HeartPulse size={28} color="#06b6d4" />
+    <div className="space-y-8 font-['Plus_Jakarta_Sans',sans-serif]">
+      {/* Encabezado y Selector de Perfil */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-inner shrink-0">
+            <HeartPulse size={30} />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-                Diagnóstico Fisiológico con IA & Selección de Alimentos
-              </h2>
-              <span style={{
-                backgroundColor: 'rgba(6, 182, 212, 0.2)',
-                color: '#06b6d4',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-              }}>
-                VISION & BIO-DATA
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl font-black text-blue-950 tracking-tight">
+                Ficha Biometría & Diagnóstico IA
+              </h1>
+              <span className="bg-blue-100 text-blue-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Masa Corporal & Nutrición
               </span>
             </div>
-            <p style={{ fontSize: '0.84rem', color: '#94a3b8', margin: '3px 0 0 0' }}>
-              Escaneo corporal por fotografía, detección de lesiones/enfermedades, cálculo de % de grasa y armado de dieta personalizada por gustos.
+            <p className="text-xs sm:text-sm text-gray-500 font-medium mt-1">
+              Registro antropométrico, cálculo de IMC, prevención de lesiones por IA y cálculo metabólico.
             </p>
           </div>
         </div>
 
-        {/* Selector de Socio */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <User size={16} color="#06b6d4" />
-          <select
-            value={selectedMember?.id || ''}
-            onChange={(e) => {
-              const m = members.find((item) => item.id === e.target.value);
-              if (m) selectMember(m);
-            }}
-            style={{
-              padding: '0.55rem 1rem',
-              borderRadius: '8px',
-              backgroundColor: '#1e293b',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#ffffff',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-            }}
+        {/* Selector de Socio o Badge Fijo para Socio */}
+        <div className="flex items-center gap-3">
+          {currentUser?.role !== 'MEMBER' && activeRole !== 'MEMBER' ? (
+            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-2xl border border-gray-200">
+              <User size={16} className="text-gray-400 shrink-0" />
+              <select
+                value={selectedMember?.id || ''}
+                onChange={(e) => {
+                  const m = members.find((item) => item.id === e.target.value);
+                  if (m) selectMember(m);
+                }}
+                className="bg-transparent text-xs sm:text-sm font-bold text-gray-800 focus:outline-none cursor-pointer max-w-[200px] truncate"
+              >
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.firstName} {m.lastName} ({m.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+              <span className="text-xs font-extrabold text-blue-900">
+                Mi Perfil: {selectedMember?.firstName} {selectedMember?.lastName}
+              </span>
+            </div>
+          )}
+
+          <button
+            onClick={handlePrint}
+            title="Imprimir Ficha Completa"
+            className="p-2.5 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 transition-colors flex items-center gap-1.5 text-xs font-bold shrink-0"
           >
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.firstName} {m.lastName} ({m.code})
-              </option>
-            ))}
-          </select>
+            <Printer size={16} />
+            <span className="hidden sm:inline">Imprimir Ficha</span>
+          </button>
         </div>
       </div>
 
       {selectedMember && (
-        <div className="responsive-two-col">
-          {/* COLUMNA 1: ANAMNESIS & ESCANEO FOTOGRÁFICO */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {/* Formulario de Salud */}
-            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Activity size={18} color="#06b6d4" />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-                  1. Cuestionario de Salud & Antecedentes Clínicos
-                </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* =========================================================================
+              COLUMNA IZQUIERDA: DATOS FÍSICOS, IMC Y DIAGNÓSTICO IA (7 COLS)
+             ========================================================================= */}
+          <div className="lg:col-span-7 space-y-8">
+            
+            {/* 1. MÓDULO DE REGISTRO FÍSICO Y COMPOSICIÓN CORPORAL */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <Scale size={20} className="text-blue-600" />
+                  <h2 className="text-lg font-black text-gray-900">
+                    1. Datos Físicos & Composición Corporal
+                  </h2>
+                </div>
+                <button
+                  onClick={handleSavePhysicalMetrics}
+                  disabled={savingMetrics}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow-sm transition-all disabled:opacity-50"
+                >
+                  <Save size={14} />
+                  <span>{savingMetrics ? 'Guardando...' : 'Guardar Datos'}</span>
+                </button>
               </div>
 
-              {/* ¿Qué desea mejorar? */}
+              {/* Fila de Controles Físicos */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {/* Peso */}
+                <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100">
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                    Peso (kg)
+                  </label>
+                  <div className="flex items-baseline gap-1">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="30"
+                      max="250"
+                      value={weight}
+                      onChange={(e) => setWeight(parseFloat(e.target.value) || 0)}
+                      className="w-full text-xl font-black text-blue-950 bg-transparent focus:outline-none"
+                    />
+                    <span className="text-xs font-bold text-gray-400">kg</span>
+                  </div>
+                </div>
+
+                {/* Estatura */}
+                <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100">
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                    Estatura (cm)
+                  </label>
+                  <div className="flex items-baseline gap-1">
+                    <input
+                      type="number"
+                      step="1"
+                      min="100"
+                      max="230"
+                      value={height}
+                      onChange={(e) => setHeight(parseInt(e.target.value) || 0)}
+                      className="w-full text-xl font-black text-blue-950 bg-transparent focus:outline-none"
+                    />
+                    <span className="text-xs font-bold text-gray-400">cm</span>
+                  </div>
+                </div>
+
+                {/* % Grasa Corporal */}
+                <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100">
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                    % Grasa
+                  </label>
+                  <div className="flex items-baseline gap-1">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="3"
+                      max="55"
+                      value={bodyFat}
+                      onChange={(e) => setBodyFat(parseFloat(e.target.value) || 0)}
+                      className="w-full text-xl font-black text-cyan-600 bg-transparent focus:outline-none"
+                    />
+                    <span className="text-xs font-bold text-gray-400">%</span>
+                  </div>
+                </div>
+
+                {/* Edad */}
+                <div className="bg-gray-50/70 p-3.5 rounded-2xl border border-gray-100">
+                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                    Edad
+                  </label>
+                  <div className="flex items-baseline gap-1">
+                    <input
+                      type="number"
+                      step="1"
+                      min="12"
+                      max="90"
+                      value={age}
+                      onChange={(e) => setAge(parseInt(e.target.value) || 0)}
+                      className="w-full text-xl font-black text-gray-800 bg-transparent focus:outline-none"
+                    />
+                    <span className="text-xs font-bold text-gray-400">años</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* TARJETA DESTACADA: IMC (ÍNDICE DE MASA CORPORAL) CALCULADO EN VIVO */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-cyan-50/50 border border-blue-100">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-600">
+                      Índice de Masa Corporal (IMC)
+                    </span>
+                    <div className="flex items-baseline gap-3 mt-0.5">
+                      <span className="text-3xl font-black text-blue-950">{bmi}</span>
+                      <span className={`text-xs font-extrabold px-3 py-1 rounded-full border ${bmiDetails.bg}`}>
+                        {bmiDetails.category}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[11px] font-bold text-gray-500">Masa Magra Estimada</span>
+                    <p className="text-lg font-black text-emerald-600">{muscleMassKg} kg</p>
+                  </div>
+                </div>
+
+                {/* Semáforo visual del IMC */}
+                <div className="space-y-1.5 pt-2">
+                  <div className="h-2.5 w-full bg-gray-200 rounded-full flex overflow-hidden">
+                    <div className="w-[18.5%] bg-blue-400" title="Bajo peso (< 18.5)" />
+                    <div className="w-[26%] bg-emerald-500" title="Normal (18.5 - 24.9)" />
+                    <div className="w-[20%] bg-amber-400" title="Sobrepeso (25 - 29.9)" />
+                    <div className="w-[20%] bg-orange-500" title="Obesidad I (30 - 34.9)" />
+                    <div className="w-[15.5%] bg-red-500" title="Obesidad II/III (≥ 35)" />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold text-gray-400 px-0.5">
+                    <span>16</span>
+                    <span>18.5 (Normal)</span>
+                    <span>25.0</span>
+                    <span>30.0</span>
+                    <span>35+</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Selector de Biotipo / Somatotipo con Explicación */}
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
-                  ¿Qué desea mejorar / Objetivo Principal?:
+                <label className="block text-xs font-extrabold text-gray-700 mb-2">
+                  Biotipo Morfológico (Somatotipo)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setBiotype('ECTOMORFO')}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      biotype === 'ECTOMORFO'
+                        ? 'border-blue-600 bg-blue-50/50 shadow-xs'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <p className="text-xs font-extrabold text-blue-950">Ectomorfo</p>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-tight">
+                      Metabolismo rápido, contextura delgada. Requiere superávit calórico y descansos prolongados.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBiotype('MESOMORFO')}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      biotype === 'MESOMORFO'
+                        ? 'border-blue-600 bg-blue-50/50 shadow-xs'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <p className="text-xs font-extrabold text-blue-950">Mesomorfo</p>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-tight">
+                      Estructura atlética natural, buena respuesta a hipertrofia. Óptima ganancia de masa magra.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setBiotype('ENDOMORFO')}
+                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                      biotype === 'ENDOMORFO'
+                        ? 'border-blue-600 bg-blue-50/50 shadow-xs'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <p className="text-xs font-extrabold text-blue-950">Endomorfo</p>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-tight">
+                      Estructura ósea ancha y alta fuerza. Tendencia a retener grasa, prioridad en déficit controlado.
+                    </p>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. ANAMNESIS CLÍNICA Y DIAGNÓSTICO CON IA */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-5">
+              <div className="flex items-center gap-2.5 pb-4 border-b border-gray-100">
+                <Activity size={20} className="text-blue-600" />
+                <h2 className="text-lg font-black text-gray-900">
+                  2. Anamnesis Fisiológica & Diagnóstico con IA
+                </h2>
+              </div>
+
+              {/* Objetivo Principal */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Objetivo Físico Principal
                 </label>
                 <select
                   value={targetGoal}
                   onChange={(e) => setTargetGoal(e.target.value)}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '0.6rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#1e293b',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                  }}
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="Hipertrofia Muscular y Masa Magra">Aumento de Masa Muscular (Hipertrofia)</option>
                   <option value="Pérdida de Grasa y Definición">Pérdida de Grasa Corporal & Definición</option>
                   <option value="Salud Postural y Corrección de Espalda">Salud Postural & Corrección de Espalda</option>
                   <option value="Fuerza Máxima y Potencia">Fuerza Máxima & Levantamientos Pesados</option>
-                  <option value="Acondicionamiento Físico y Salud Cardiovascular">Acondicionamiento & Salud Cardiovascular</option>
+                  <option value="Acondicionamiento Físico y Salud Cardiovascular">Acondicionamiento Físico General</option>
                 </select>
               </div>
 
-              {/* Enfermedades */}
+              {/* Lesiones Previas o Activas (Alerta Biomecánica) */}
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
-                  ¿Padece alguna Enfermedad? (Hipertensión, diabetes, asma, etc.):
+                <label className="block text-xs font-extrabold text-red-600 mb-1.5 flex items-center gap-1.5">
+                  <AlertTriangle size={15} />
+                  <span>Lesiones Previas o Activas (Rodilla, Columna, Hombro, Cuello...)</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="ej: Hipertensión arterial leve, Asma inducida por ejercicio... o Ninguna"
-                  value={diseases}
-                  onChange={(e) => setDiseases(e.target.value)}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '0.6rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#1e293b',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                  }}
-                />
-              </div>
-
-              {/* Lesiones Previas o Activas */}
-              <div>
-                <label style={{ fontSize: '0.78rem', color: '#f87171', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <AlertTriangle size={14} />
-                  <span>¿Tiene Lesiones Previas o Activas? (Rodilla, lumbar, hombro, hernias...):</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="ej: Condromalacia rotuliana en rodilla derecha, molestia en manguito rotador... o Ninguna"
+                  placeholder="ej: Hernia discal L5-S1, molestia en manguito rotador derecho... o Ninguna"
                   value={injuries}
                   onChange={(e) => setInjuries(e.target.value)}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '0.6rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#1e293b',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                  }}
+                  className="w-full px-3.5 py-2.5 bg-red-50/30 border border-red-200 rounded-xl text-xs sm:text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500/20 placeholder:text-gray-400"
                 />
-                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                  La IA detectará automáticamente ejercicios peligrosos para vetarlos de tu rutina.
-                </span>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  La IA vetará automáticamente los ejercicios que sobrecarguen estas articulaciones.
+                </p>
               </div>
 
-              {/* Discapacidades o Limitaciones */}
+              {/* Enfermedades / Patologías */}
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
-                  Discapacidades o Limitaciones de Movilidad:
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Enfermedades o Restricciones (Hipertensión, asma, diabetes, etc.)
                 </label>
                 <input
                   type="text"
-                  placeholder="ej: Movilidad reducida en tobillo izquierdo... o Ninguna"
-                  value={disabilities}
-                  onChange={(e) => setDisabilities(e.target.value)}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '0.6rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#1e293b',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                  }}
+                  placeholder="ej: Hipertensión arterial controlada, Asma inducida... o Ninguna"
+                  value={diseases}
+                  onChange={(e) => setDiseases(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-gray-400"
                 />
               </div>
 
               {/* Nivel de Experiencia */}
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
-                  Nivel de Experiencia Deportiva:
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Nivel de Experiencia Deportiva
                 </label>
                 <select
                   value={trainingExperience}
                   onChange={(e) => setTrainingExperience(e.target.value)}
-                  style={{
-                    width: '100%',
-                    marginTop: '4px',
-                    padding: '0.6rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#1e293b',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                  }}
+                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="SEDENTARIO">Sedentario (Iniciando desde cero)</option>
-                  <option value="PRINCIPIANTE">Principiante (Menos de 6 meses)</option>
+                  <option value="PRINCIPIANTE">Principiante (1 a 6 meses)</option>
                   <option value="INTERMEDIO">Intermedio (6 meses a 2 años)</option>
                   <option value="AVANZADO">Avanzado / Atleta (Más de 2 años)</option>
                 </select>
               </div>
 
-              {/* Escaneo de Fotografía Corporal */}
+              {/* Escaneo de Fotografía Corporal para Visión IA */}
               <div>
-                <label style={{ fontSize: '0.78rem', color: '#06b6d4', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Camera size={14} />
-                  <span>Escaneo Fotográfico Corporal (Opcional para Visión IA):</span>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                  <Camera size={15} className="text-blue-600" />
+                  <span>Foto Frontal o Perfil para Escaneo Visual IA (Opcional)</span>
                 </label>
-                <div style={{
-                  marginTop: '6px',
-                  padding: '1.25rem',
-                  borderRadius: '10px',
-                  border: '2px dashed rgba(6, 182, 212, 0.3)',
-                  backgroundColor: 'rgba(6, 182, 212, 0.03)',
-                  textAlign: 'center',
-                }}>
+                <div className="p-4 rounded-2xl border-2 border-dashed border-gray-200 text-center bg-gray-50/50">
                   {photoPreview ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <div className="flex flex-col items-center gap-2">
                       <img
                         src={photoPreview}
-                        alt="Previsualización Corporal"
-                        style={{ maxHeight: '160px', borderRadius: '8px', objectFit: 'contain' }}
+                        alt="Foto corporal"
+                        className="max-h-36 rounded-xl object-contain shadow-xs"
                       />
                       <button
                         type="button"
                         onClick={() => setPhotoPreview(null)}
-                        style={{
-                          fontSize: '0.75rem',
-                          color: '#ef4444',
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                        }}
+                        className="text-xs font-bold text-red-600 hover:underline"
                       >
-                        Eliminar foto
+                        Remover foto
                       </button>
                     </div>
                   ) : (
                     <div>
-                      <Upload size={24} color="#06b6d4" style={{ margin: '0 auto 6px auto' }} />
-                      <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 6px 0' }}>
-                        Arrastra o selecciona la fotografía del socio de frente o perfil
+                      <Upload size={24} className="mx-auto text-gray-400 mb-1" />
+                      <p className="text-xs text-gray-500 font-medium mb-1">
+                        Cargar imagen del socio para análisis postural y somatotipo
                       </p>
                       <input
                         type="file"
                         accept="image/*"
                         onChange={handlePhotoUpload}
-                        style={{ fontSize: '0.75rem', color: '#cbd5e1' }}
+                        className="text-xs text-gray-500 cursor-pointer"
                       />
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Botón de Ejecutar Diagnóstico IA */}
               <button
                 type="button"
                 onClick={handleRunAIDiagnostic}
                 disabled={analyzingDiagnostic}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  backgroundColor: '#06b6d4',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '0.75rem 1.25rem',
-                  borderRadius: '10px',
-                  fontWeight: 800,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 0 16px rgba(6, 182, 212, 0.4)',
-                  marginTop: '0.5rem',
-                }}
+                className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-2xl text-sm shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <Sparkles size={18} />
-                <span>{analyzingDiagnostic ? 'Google Gemini Analizando Biotipo...' : 'Diagnosticar con IA Ahora'}</span>
+                <span>
+                  {analyzingDiagnostic
+                    ? 'Google Gemini Analizando Fisiología...'
+                    : 'Generar Diagnóstico Fisiológico con IA'}
+                </span>
               </button>
+
+              {/* RESULTADOS DEL DIAGNÓSTICO IA */}
+              {diagnostic && (
+                <div className="mt-4 p-5 rounded-2xl bg-blue-50/40 border border-blue-100 space-y-4 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={18} className="text-emerald-600" />
+                      <h3 className="text-sm font-extrabold text-blue-950">
+                        Diagnóstico Emitido por IA
+                      </h3>
+                    </div>
+                    <span className="text-[11px] font-bold text-blue-700 bg-blue-100/70 px-2.5 py-0.5 rounded-full">
+                      Biotipo: {diagnostic.biotype || biotype}
+                    </span>
+                  </div>
+
+                  {/* ALERTA DE SEGURIDAD ROJA: EJERCICIOS PROHIBIDOS */}
+                  {diagnostic.prohibitedExercises && (
+                    <div className="p-4 rounded-xl bg-red-50 border border-red-200 space-y-1">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-red-700 uppercase tracking-wider">
+                        <ShieldAlert size={16} />
+                        <span>Ejercicios Prohibidos por Lesión:</span>
+                      </div>
+                      <p className="text-xs text-red-800 font-semibold leading-relaxed">
+                        {diagnostic.prohibitedExercises}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Dictamen Clínico */}
+                  {diagnostic.aiClinicalSummary && (
+                    <div className="text-xs text-gray-700 space-y-1">
+                      <p className="font-extrabold text-gray-900">Análisis Postural & Clínico:</p>
+                      <p className="leading-relaxed bg-white/70 p-3 rounded-xl border border-gray-100">
+                        {diagnostic.aiClinicalSummary}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Recomendaciones */}
+                  {diagnostic.recommendedActions && (
+                    <div className="text-xs text-gray-700 space-y-1">
+                      <p className="font-extrabold text-emerald-800">Plan de Adaptación Recomendado:</p>
+                      <p className="leading-relaxed bg-white/70 p-3 rounded-xl border border-gray-100">
+                        {diagnostic.recommendedActions}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-
-            {/* Resultados del Diagnóstico IA */}
-            {diagnostic && (
-              <div className="glass-card" style={{
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.05) 100%)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <CheckCircle2 size={20} color="#10b981" />
-                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-                      Resultado del Diagnóstico Fisiológico IA
-                    </h4>
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                    Biotipo: <strong style={{ color: '#10b981' }}>{diagnostic.biotype || 'Mesomorfo'}</strong>
-                  </span>
-                </div>
-
-                {/* Métricas Visuales */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.75rem' }}>
-                  <div style={{ padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>% Grasa Estimada</span>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#06b6d4' }}>
-                      {diagnostic.bodyFatPercentage}%
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Masa Magra (kg)</span>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981' }}>
-                      {diagnostic.muscleMassKg} kg
-                    </div>
-                  </div>
-
-                  <div style={{ padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#64748b' }}>IMC Corporal</span>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc' }}>
-                      {diagnostic.bmi}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Alerta Roja de Ejercicios Prohibidos */}
-                {diagnostic.prohibitedExercises && (
-                  <div style={{
-                    padding: '0.85rem 1rem',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontWeight: 800, fontSize: '0.85rem' }}>
-                      <ShieldAlert size={16} />
-                      <span>EJERCICIOS PROHIBIDOS / CONTRAINDICADOS POR LESIÓN:</span>
-                    </div>
-                    <p style={{ fontSize: '0.82rem', color: '#fca5a5', margin: 0 }}>
-                      {diagnostic.prohibitedExercises}
-                    </p>
-                  </div>
-                )}
-
-                {/* Diagnóstico Clínico */}
-                <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
-                  <strong style={{ color: '#f1f5f9' }}>Dictamen Fisiológico: </strong>
-                  {diagnostic.aiClinicalSummary}
-                </div>
-
-                {/* Recomendación */}
-                <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
-                  <strong style={{ color: '#10b981' }}>Recomendaciones de Adaptación: </strong>
-                  {diagnostic.recommendedActions}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* COLUMNA 2: CATÁLOGO DE ALIMENTOS & GUSTOS/RECHAZOS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Salad size={18} color="#10b981" />
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-                    2. Preferencias Alimentarias & Calorías
-                  </h3>
+          {/* =========================================================================
+              COLUMNA DERECHA: PLAN DE NUTRICIÓN ESPECÍFICA & ALIMENTOS (5 COLS)
+             ========================================================================= */}
+          <div className="lg:col-span-5 space-y-8">
+            
+            {/* 3. CALCULADORA METABÓLICA Y MACRONUTRIENTES */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-2.5">
+                  <Flame size={20} className="text-amber-500" />
+                  <h2 className="text-lg font-black text-gray-900">
+                    3. Nutrición & Calorías Específicas
+                  </h2>
                 </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    onClick={handleSaveFoodPreferences}
-                    disabled={savingPreferences}
-                    style={{
-                      padding: '0.45rem 0.85rem',
-                      borderRadius: '8px',
-                      backgroundColor: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      color: '#ffffff',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {savingPreferences ? 'Guardando...' : 'Guardar Preferencias'}
-                  </button>
-                </div>
+                <span className="text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                  Mifflin-St Jeor
+                </span>
               </div>
 
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
-                Marca con <strong style={{ color: '#10b981' }}>Me gusta (Favorito)</strong> los alimentos que deseas en tu dieta, y con <strong style={{ color: '#ef4444' }}>No me gusta (Veto)</strong> los alimentos que rechazas o te causan alergia.
-              </p>
-
-              {/* Resumen de Gustos */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                <div style={{ padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.08)', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 700 }}>
-                    FAVORITOS ({likedFoods.length}):
-                  </span>
-                  <div style={{ fontSize: '0.78rem', color: '#f1f5f9', marginTop: '4px', maxHeight: '50px', overflowY: 'auto' }}>
-                    {likedFoods.length > 0 ? likedFoods.join(', ') : 'Ninguno seleccionado'}
-                  </div>
-                </div>
-
-                <div style={{ padding: '0.75rem', backgroundColor: 'rgba(239, 68, 68, 0.08)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#ef4444', fontWeight: 700 }}>
-                    RECHAZADOS / VETADOS ({dislikedFoods.length}):
-                  </span>
-                  <div style={{ fontSize: '0.78rem', color: '#f1f5f9', marginTop: '4px', maxHeight: '50px', overflowY: 'auto' }}>
-                    {dislikedFoods.length > 0 ? dislikedFoods.join(', ') : 'Ninguno vetado'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Buscador & Filtro de Alimentos */}
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <Search size={15} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                  <input
-                    type="text"
-                    placeholder="Buscar alimento o fruta..."
-                    value={foodSearch}
-                    onChange={(e) => setFoodSearch(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem 0.5rem 2rem',
-                      borderRadius: '8px',
-                      backgroundColor: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: '#ffffff',
-                      fontSize: '0.82rem',
-                    }}
-                  />
-                </div>
-
+              {/* Selector de Nivel de Actividad */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1.5">
+                  Factor de Actividad Física Semanal
+                </label>
                 <select
-                  value={foodCategoryFilter}
-                  onChange={(e) => setFoodCategoryFilter(e.target.value)}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    borderRadius: '8px',
-                    backgroundColor: '#1e293b',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#ffffff',
-                    fontSize: '0.82rem',
-                  }}
+                  value={activityFactor}
+                  onChange={(e) => setActivityFactor(parseFloat(e.target.value))}
+                  className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none cursor-pointer"
                 >
-                  <option value="ALL">Todas las Categorías</option>
-                  <option value="PROTEIN">Proteínas Magras</option>
-                  <option value="CARB">Carbohidratos Complejos</option>
-                  <option value="FAT">Grasas Saludables</option>
-                  <option value="VEGETABLE">Verduras y Hortalizas</option>
-                  <option value="FRUIT">Frutas</option>
-                  <option value="DAIRY">Lácteos</option>
+                  <option value={1.2}>Sedentario (Poco o ningún ejercicio)</option>
+                  <option value={1.375}>Ligero (Entrenamiento 1-3 días/sem)</option>
+                  <option value={1.55}>Moderado (Entrenamiento 3-5 días/sem)</option>
+                  <option value={1.725}>Intenso (Entrenamiento pesado 6-7 días/sem)</option>
                 </select>
               </div>
 
-              {/* Lista de Alimentos con Calorías y Macros */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '420px', overflowY: 'auto' }}>
-                {filteredFoods.map((item) => {
-                  const isLiked = likedFoods.includes(item.name);
-                  const isDisliked = dislikedFoods.includes(item.name);
+              {/* Métricas Energéticas */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase">TMB Basal</span>
+                  <p className="text-base font-black text-gray-900 mt-0.5">{tmb} <span className="text-[10px] font-bold">kcal</span></p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase">TDEE Gasto</span>
+                  <p className="text-base font-black text-gray-900 mt-0.5">{tdee} <span className="text-[10px] font-bold">kcal</span></p>
+                </div>
+                <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100">
+                  <span className="text-[10px] font-black text-emerald-700 uppercase">Meta Diaria</span>
+                  <p className="text-base font-black text-emerald-800 mt-0.5">{targetCalories} <span className="text-[10px] font-bold">kcal</span></p>
+                </div>
+              </div>
+
+              {/* Barras de Macronutrientes */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-gray-700 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"></span>
+                    Proteínas (2.0 g/kg)
+                  </span>
+                  <span className="font-black text-blue-900">{macros.proteinGrams}g ({macros.proteinKcal} kcal)</span>
+                </div>
+                <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                  <div className="bg-blue-600 h-full rounded-full" style={{ width: `${Math.min(100, (macros.proteinKcal / targetCalories) * 100)}%` }} />
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-gray-700 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                    Carbohidratos
+                  </span>
+                  <span className="font-black text-amber-900">{macros.carbsGrams}g ({macros.carbsKcal} kcal)</span>
+                </div>
+                <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                  <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, (macros.carbsKcal / targetCalories) * 100)}%` }} />
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-extrabold text-gray-700 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                    Grasas Saludables
+                  </span>
+                  <span className="font-black text-emerald-900">{macros.fatGrams}g ({macros.fatKcal} kcal)</span>
+                </div>
+                <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, (macros.fatKcal / targetCalories) * 100)}%` }} />
+                </div>
+              </div>
+            </div>
+
+            {/* 4. SELECCIÓN DE ALIMENTOS: GUSTOS Y VETOS */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <Salad size={18} className="text-emerald-600" />
+                  <h3 className="text-base font-black text-gray-900">
+                    Preferencias de Alimentos
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveFoodPreferences}
+                  disabled={savingPreferences}
+                  className="text-xs font-extrabold text-blue-600 hover:underline disabled:opacity-50"
+                >
+                  {savingPreferences ? 'Guardando...' : 'Guardar Gustos'}
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500 font-medium">
+                Marca los alimentos que te gustan para priorizarlos en tu menú diario, o veta los que rechazas por gusto o alergia.
+              </p>
+
+              {/* Resumen de Gustos */}
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                  <span className="font-extrabold text-emerald-800 block mb-1">
+                    Favoritos ({likedFoods.length})
+                  </span>
+                  <p className="text-[11px] text-gray-600 truncate">
+                    {likedFoods.length > 0 ? likedFoods.join(', ') : 'Ninguno seleccionado'}
+                  </p>
+                </div>
+                <div className="p-3 rounded-2xl bg-red-50/60 border border-red-100">
+                  <span className="font-extrabold text-red-800 block mb-1">
+                    Vetados ({dislikedFoods.length})
+                  </span>
+                  <p className="text-[11px] text-gray-600 truncate">
+                    {dislikedFoods.length > 0 ? dislikedFoods.join(', ') : 'Ninguno vetado'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Buscador de Alimentos */}
+              <div className="relative">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar pollo, arroz, avena, aguacate..."
+                  value={foodSearch}
+                  onChange={(e) => setFoodSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+
+              {/* Lista Scrollable de Alimentos */}
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {filteredFoods.slice(0, 15).map((food) => {
+                  const isLiked = likedFoods.includes(food.name);
+                  const isDisliked = dislikedFoods.includes(food.name);
 
                   return (
                     <div
-                      key={item.id}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        borderRadius: '10px',
-                        backgroundColor: isLiked
-                          ? 'rgba(16, 185, 129, 0.12)'
+                      key={food.id}
+                      className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                        isLiked
+                          ? 'bg-emerald-50/70 border-emerald-200'
                           : isDisliked
-                          ? 'rgba(239, 68, 68, 0.1)'
-                          : 'rgba(255, 255, 255, 0.02)',
-                        border: isLiked
-                          ? '1px solid #10b981'
-                          : isDisliked
-                          ? '1px solid #ef4444'
-                          : '1px solid rgba(255, 255, 255, 0.05)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
+                          ? 'bg-red-50/70 border-red-200'
+                          : 'bg-white border-gray-100 hover:bg-gray-50'
+                      }`}
                     >
                       <div>
-                        <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.88rem' }}>
-                          {item.name}
-                        </div>
-                        <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
-                          <strong style={{ color: '#f59e0b' }}>{item.calories} kcal</strong> por 100g • P: {item.protein}g • C: {item.carbs}g • G: {item.fats}g
-                        </div>
+                        <p className="font-extrabold text-gray-900">{food.name}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {food.calories} kcal • P: {food.protein}g • C: {food.carbs}g • G: {food.fats}g
+                        </p>
                       </div>
 
-                      {/* Botones de Me Gusta / No Me Gusta */}
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
-                          onClick={() => toggleLikedFood(item.name)}
-                          title="Me gusta (Priorizar en dieta)"
-                          style={{
-                            padding: '0.4rem 0.65rem',
-                            borderRadius: '6px',
-                            border: 'none',
-                            backgroundColor: isLiked ? '#10b981' : 'rgba(255,255,255,0.06)',
-                            color: isLiked ? '#ffffff' : '#94a3b8',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '0.74rem',
-                            fontWeight: 700,
-                          }}
+                          onClick={() => toggleLikedFood(food.name)}
+                          title="Me gusta"
+                          className={`p-1.5 rounded-lg border transition-colors ${
+                            isLiked
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-emerald-600'
+                          }`}
                         >
                           <ThumbsUp size={13} />
-                          <span>Me gusta</span>
                         </button>
-
                         <button
                           type="button"
-                          onClick={() => toggleDislikedFood(item.name)}
-                          title="No me gusta / Alergia (Veto estricto)"
-                          style={{
-                            padding: '0.4rem 0.65rem',
-                            borderRadius: '6px',
-                            border: 'none',
-                            backgroundColor: isDisliked ? '#ef4444' : 'rgba(255,255,255,0.06)',
-                            color: isDisliked ? '#ffffff' : '#94a3b8',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '0.74rem',
-                            fontWeight: 700,
-                          }}
+                          onClick={() => toggleDislikedFood(food.name)}
+                          title="No me gusta"
+                          className={`p-1.5 rounded-lg border transition-colors ${
+                            isDisliked
+                              ? 'bg-red-600 text-white border-red-600'
+                              : 'bg-gray-50 text-gray-500 border-gray-200 hover:text-red-600'
+                          }`}
                         >
                           <ThumbsDown size={13} />
-                          <span>No me gusta</span>
                         </button>
                       </div>
                     </div>
@@ -763,39 +1002,82 @@ export const DiagnosticFoodView: React.FC = () => {
                 })}
               </div>
 
-              {/* Botón Maestro: Armar Plan de Alimentación con IA */}
+              {/* Botón de Generar Dieta Específica con IA */}
               <button
                 type="button"
                 onClick={handleGenerateDietFromFoods}
                 disabled={generatingDietWithFoods}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  backgroundColor: '#10b981',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '0.85rem 1.25rem',
-                  borderRadius: '10px',
-                  fontWeight: 800,
-                  fontSize: '0.92rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)',
-                  marginTop: '0.5rem',
-                }}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold rounded-2xl text-sm shadow-md shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                <Sparkles size={18} />
+                <Utensils size={17} />
                 <span>
                   {generatingDietWithFoods
-                    ? 'Gemini Armando Plan Nutricional Correcto...'
-                    : 'Armar Plan de Alimentación Correcto con IA'}
+                    ? 'Gemini Armando Menú Nutricional...'
+                    : 'Armar Plan de Alimentación con IA'}
                 </span>
               </button>
             </div>
+
+            {/* 5. VISOR DEL MENÚ DE COMIDAS ESTRUCTURADO */}
+            {nutritionPlan && (
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm space-y-5 animate-in fade-in">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                  <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                    <CheckCircle2 size={18} className="text-emerald-600" />
+                    <span>Plan Nutricional Activo</span>
+                  </h3>
+                  <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                    {nutritionPlan.targetCalories} kcal
+                  </span>
+                </div>
+
+                <p className="text-xs font-extrabold text-blue-950">
+                  {nutritionPlan.title}
+                </p>
+
+                {/* Comidas Desglosadas */}
+                <div className="space-y-3">
+                  {(() => {
+                    let meals: MealItem[] = [];
+                    try {
+                      meals = JSON.parse(nutritionPlan.mealsJson);
+                    } catch {
+                      meals = [
+                        { meal: 'Desayuno', title: 'Huevos revueltos con avena y fruta', calories: 480, protein: 32, carbs: 55, fats: 14, items: ['3 Huevos enteros', '60g Avena', '1 Banano'] },
+                        { meal: 'Almuerzo', title: 'Pechuga a la plancha con arroz y aguacate', calories: 650, protein: 48, carbs: 70, fats: 18, items: ['180g Pechuga de pollo', '150g Arroz blanco', '50g Aguacate'] },
+                        { meal: 'Merienda', title: 'Yogurt griego con frutos secos', calories: 320, protein: 22, carbs: 24, fats: 12, items: ['150g Yogurt griego natural', '25g Almendras'] },
+                        { meal: 'Cena', title: 'Pescado o atún con ensalada y papa', calories: 450, protein: 38, carbs: 40, fats: 12, items: ['160g Filete de pescado blanco', '150g Papa cocida', 'Ensalada verde'] },
+                      ];
+                    }
+
+                    return meals.map((m, idx) => (
+                      <div key={idx} className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-extrabold text-blue-900">{m.meal}</span>
+                          <span className="font-black text-emerald-700">{m.calories} kcal</span>
+                        </div>
+                        <p className="text-xs font-bold text-gray-800">{m.title}</p>
+                        {m.items && m.items.length > 0 && (
+                          <p className="text-[11px] text-gray-500 leading-tight">
+                            {m.items.join(' • ')}
+                          </p>
+                        )}
+                        <div className="flex gap-3 text-[10px] font-bold text-gray-400 pt-0.5">
+                          <span>P: {m.protein}g</span>
+                          <span>C: {m.carbs}g</span>
+                          <span>G: {m.fats}g</span>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
   );
 };
+
+export default DiagnosticFoodView;

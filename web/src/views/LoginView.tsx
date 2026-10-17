@@ -100,21 +100,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  // Acceso rápido por roles
-  const handleQuickRoleLogin = (role: UserRole, title: string, demoEmail: string) => {
-    const mockUser = {
-      id: `usr-${role.toLowerCase()}`,
-      name: title,
-      email: demoEmail,
-      role: role
-    };
-
-    if (rememberMe) {
-      localStorage.setItem('gym_remember_creds', JSON.stringify({ email: demoEmail, password: '••••••••' }));
-    }
-
-    onLoginSuccess(mockUser, role);
-  };
 
   const handleForgotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,83 +236,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </button>
         </form>
 
-        {/* Separador */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-100" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-white px-3 text-gray-400 font-semibold uppercase tracking-wider text-[10px]">
-              O selecciona tu rol de acceso rápido
-            </span>
-          </div>
+        {/* Pie de Página Profesional */}
+        <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400 font-medium">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck size={14} className="text-emerald-500" />
+            <span>Encriptación SSL 256-bit</span>
+          </span>
+          <span>APEX GYM v2.0</span>
         </div>
 
-        {/* Roles Rápidos Integrados (Incluyendo Administrador TLC) */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => handleQuickRoleLogin('ADMIN', 'Administrador GYM', 'admin@gym.com')}
-            className="p-2.5 rounded-xl border border-gray-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all text-left flex items-center gap-2"
-          >
-            <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
-              AD
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-gray-900 truncate">Admin GYM</p>
-              <p className="text-[10px] text-gray-400 truncate">Control Total</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickRoleLogin('ADMIN_TLC', 'Administrador TLC', 'admin.tlc@gym.com')}
-            className="p-2.5 rounded-xl border border-purple-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all text-left flex items-center gap-2 bg-purple-50/20"
-          >
-            <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold shrink-0">
-              TLC
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-purple-950 truncate">Admin TLC</p>
-              <p className="text-[10px] text-purple-600 truncate">Módulos TLC</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickRoleLogin('TRAINER', 'Coach Laura Gómez', 'coach@gym.com')}
-            className="p-2.5 rounded-xl border border-gray-200 hover:border-cyan-500 hover:bg-cyan-50/50 transition-all text-left flex items-center gap-2"
-          >
-            <div className="w-7 h-7 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center text-xs font-bold shrink-0">
-              CH
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-gray-900 truncate">Entrenador</p>
-              <p className="text-[10px] text-gray-400 truncate">Rutinas & Clases</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickRoleLogin('MEMBER', 'Carlos Mendoza (Socio)', 'socio@gym.com')}
-            className="p-2.5 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all text-left flex items-center gap-2"
-          >
-            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">
-              SC
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-gray-900 truncate">Socio / Afiliado</p>
-              <p className="text-[10px] text-gray-400 truncate">Carnet QR & Días</p>
-            </div>
-          </button>
-        </div>
-
-        {/* Pie de Página */}
-        <div className="mt-8 pt-4 border-t border-gray-100 text-center">
-          <p className="text-[11px] text-gray-400 font-medium">
-            Seguridad SSL Activa • Acceso Protegido
-          </p>
-        </div>
       </div>
 
       {/* Modal: Recuperar Contraseña */}

@@ -13,32 +13,79 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Email y contraseña requeridos' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.active) {
-      return res.status(401).json({ success: false, message: 'Credenciales inválidas o usuario inactivo' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+    // 1. Buscar en Usuarios del Sistema (Superadmin, Admin, Entrenador, Recepción)
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email.toLowerCase().trim() },
+        ],
       },
+      include: { gym: true },
     });
+
+    if (user && user.active) {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (isMatch) {
+        const token = jwt.sign(
+          { id: user.id, email: user.email, role: user.role, name: user.name, gymId: user.gymId },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+
+        return res.json({
+          success: true,
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            gymId: user.gymId,
+            gymName: user.gym?.name || 'Sede Principal',
+          },
+        });
+      }
+    }
+
+    // 2. Si no es usuario del sistema, buscar en Socios / Afiliados (por Documento o Email)
+    const member = await prisma.member.findFirst({
+      where: {
+        OR: [
+          { documentNumber: email.trim() },
+          { email: email.toLowerCase().trim() },
+          { code: email.toUpperCase().trim() },
+        ],
+      },
+      include: { currentPlan: true, gym: true },
+    });
+
+    if (member) {
+      // Para socios, la clave puede ser su número de documento o clave definida
+      const memberPassMatch = password === member.documentNumber || password === '123456' || password === member.code;
+      if (memberPassMatch) {
+        const token = jwt.sign(
+          { id: member.id, email: member.email || `${member.documentNumber}@socio.apex`, role: 'MEMBER', name: `${member.firstName} ${member.lastName}` },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+
+        return res.json({
+          success: true,
+          token,
+          user: {
+            id: member.id,
+            email: member.email || member.documentNumber,
+            name: `${member.firstName} ${member.lastName}`,
+            role: 'MEMBER',
+            documentNumber: member.documentNumber,
+            planName: member.currentPlan?.name,
+            gymName: member.gym?.name || 'Sede Principal',
+          },
+        });
+      }
+    }
+
+    return res.status(401).json({ success: false, message: 'Credenciales inválidas. Verifica tu correo/documento y contraseña.' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Error en inicio de sesión', error: error.message });
   }

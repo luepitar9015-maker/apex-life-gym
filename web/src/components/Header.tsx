@@ -106,6 +106,23 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
+        {/* User Role Pill */}
+        {currentUser && (
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100">
+            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-[10px] flex items-center justify-center">
+              {currentUser.name ? currentUser.name.slice(0, 2).toUpperCase() : 'US'}
+            </div>
+            <div className="text-left">
+              <p className="text-[11px] font-extrabold text-blue-950 leading-tight truncate max-w-[120px]">
+                {currentUser.name || 'Usuario'}
+              </p>
+              <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider">
+                {currentUser.role || 'ADMIN'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Logout Action */}
         {onLogout && (
           <button

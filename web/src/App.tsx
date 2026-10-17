@@ -3,12 +3,20 @@ import Sidebar, { UserRole } from './components/Sidebar';
 import Header from './components/Header';
 import LoginView from './views/LoginView';
 
-import Dashboard from './pages/Dashboard';
-import Socios from './pages/Socios';
+// Vistas de Producción Conectadas a la Base de Datos & IA
+import { DashboardView } from './views/DashboardView';
+import { MembersView } from './views/MembersView';
+import { CheckInView } from './views/CheckInView';
+import { DiagnosticFoodView } from './views/DiagnosticFoodView';
+import { POSView } from './views/POSView';
+import { RoutinesView } from './views/RoutinesView';
+import { SuperAdminView } from './views/SuperAdminView';
+import { AffiliatePortalView } from './views/AffiliatePortalView';
+
+// Módulos Auxiliares de Administración
 import Membresias from './pages/Membresias';
 import Pagos from './pages/Pagos';
 import Entrenadores from './pages/Entrenadores';
-import Rutinas from './pages/Rutinas';
 import Clases from './pages/Clases';
 import Inventario from './pages/Inventario';
 import Reportes from './pages/Reportes';
@@ -42,7 +50,7 @@ export const App: React.FC = () => {
     }
   });
 
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [activeTab, setActiveTab] = useState<string>('Dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLoginSuccess = (user: any, role: UserRole) => {
@@ -53,11 +61,15 @@ export const App: React.FC = () => {
     localStorage.setItem('gym_active_user', JSON.stringify(user));
     localStorage.setItem('gym_active_role', role);
 
-    // Si entra como Administrador TLC o Entrenador, selecciona la pestaña apropiada
-    if (role === 'TRAINER') {
-      setActiveTab('Rutinas');
+    // Enrutamiento inicial según el rol del usuario (RBAC)
+    if (role === 'SUPERADMIN') {
+      setActiveTab('Dashboard');
+    } else if (role === 'TRAINER') {
+      setActiveTab('Diagnóstico IA & Biometría');
+    } else if (role === 'RECEPTIONIST') {
+      setActiveTab('Check-In & Aforo');
     } else if (role === 'MEMBER') {
-      setActiveTab('Afiliados');
+      setActiveTab('Mi Portal & Carnet');
     } else {
       setActiveTab('Dashboard');
     }
@@ -69,9 +81,11 @@ export const App: React.FC = () => {
     localStorage.removeItem('gym_is_authenticated');
     localStorage.removeItem('gym_active_user');
     localStorage.removeItem('gym_active_role');
+    localStorage.removeItem('apex_token');
+    localStorage.removeItem('apex_user');
   };
 
-  // Si no está autenticado, muestra la nueva pantalla de ingreso
+  // Si no está autenticado, muestra la pantalla de inicio limpia y profesional
   if (!isAuthenticated) {
     return <LoginView onLoginSuccess={handleLoginSuccess} />;
   }
@@ -79,18 +93,33 @@ export const App: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'Dashboard':
-        return <Dashboard onNavigate={(tab: string) => setActiveTab(tab)} />;
+        return <DashboardView onNavigate={(tab: string) => setActiveTab(tab)} />;
+      case 'Sedes & Franquicias':
+        return <SuperAdminView />;
       case 'Afiliados':
       case 'Socios':
-        return <Socios />;
+        return <MembersView onNavigate={(tab: string) => setActiveTab(tab)} />;
+      case 'Check-In & Aforo':
+        return <CheckInView onNavigate={(tab: string) => setActiveTab(tab)} />;
+      case 'Diagnóstico IA & Biometría':
+        return (
+          <DiagnosticFoodView
+            currentUser={currentUser}
+            activeRole={activeRole}
+          />
+        );
+      case 'Punto de Venta (POS)':
+        return <POSView />;
+      case 'Rutinas':
+        return <RoutinesView />;
+      case 'Mi Portal & Carnet':
+        return <AffiliatePortalView />;
       case 'Membresías':
         return <Membresias />;
       case 'Pagos':
         return <Pagos />;
       case 'Entrenadores':
         return <Entrenadores />;
-      case 'Rutinas':
-        return <Rutinas />;
       case 'Clases':
         return <Clases />;
       case 'Inventario':
@@ -102,21 +131,23 @@ export const App: React.FC = () => {
       case 'Usuarios & Permisos':
         return <UsuariosPermisos activeRole={activeRole} currentUser={currentUser} />;
       default:
-        return <Dashboard onNavigate={(tab: string) => setActiveTab(tab)} />;
+        return <DashboardView onNavigate={(tab: string) => setActiveTab(tab)} />;
     }
   };
 
   return (
     <div className="flex bg-gray-50 min-h-screen text-gray-800">
-      {/* Sidebar de navegación */}
+      {/* Sidebar de navegación con filtrado estricto por Rol (RBAC) */}
       <Sidebar
         activeItem={activeTab}
         onSelect={(item) => setActiveTab(item)}
         isOpenMobile={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        activeRole={activeRole}
+        currentUser={currentUser}
       />
 
-      {/* Área Principal con Header y Vistas */}
+      {/* Área Principal con Header y Vistas de Producción */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -127,19 +158,16 @@ export const App: React.FC = () => {
           }}
         />
 
-        {/* Banner informativo de rol especial (ej: ADMIN_TLC) */}
-        {activeRole === 'ADMIN_TLC' && (
-          <div className="bg-purple-50 border-b border-purple-100 px-8 py-2.5 flex items-center justify-between text-xs text-purple-900 font-bold">
+        {/* Banner de Rol Especial si aplica */}
+        {activeRole === 'SUPERADMIN' && (
+          <div className="bg-blue-900 text-white px-6 py-2 flex items-center justify-between text-xs font-bold shadow-xs">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
-              <span>Sesión activa: Administrador de TLC (Módulos exclusivos en desarrollo)</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Modo Superadministrador Global • Vista Multi-Sede y Control Maestro</span>
             </div>
-            <button
-              onClick={() => setActiveRole('ADMIN')}
-              className="text-[11px] text-purple-700 hover:underline"
-            >
-              Cambiar a vista General
-            </button>
+            <span className="text-[11px] text-blue-200 uppercase tracking-wider font-extrabold">
+              Acceso Nivel 1
+            </span>
           </div>
         )}
 

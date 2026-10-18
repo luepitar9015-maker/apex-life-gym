@@ -52,8 +52,46 @@ export const App: React.FC = () => {
     }
   });
 
-  const [activeTab, setActiveTab] = useState<string>('Dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    try {
+      const savedRole = (localStorage.getItem('gym_active_role') as UserRole) || 'ADMIN';
+      const savedTab = localStorage.getItem('gym_active_tab');
+
+      if (savedRole === 'MEMBER') {
+        const memberAllowedTabs = [
+          'Mi Portal & Carnet',
+          'Diagnóstico IA & Biometría',
+          'Nutrición',
+          'Rutinas',
+          'Clases',
+        ];
+        if (savedTab && memberAllowedTabs.includes(savedTab)) {
+          return savedTab;
+        }
+        return 'Mi Portal & Carnet';
+      }
+
+      if (savedRole === 'TRAINER') {
+        return savedTab || 'Diagnóstico IA & Biometría';
+      }
+      if (savedRole === 'RECEPTIONIST') {
+        return savedTab || 'Check-In & Aforo';
+      }
+
+      return savedTab || 'Dashboard';
+    } catch {
+      return 'Dashboard';
+    }
+  });
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleNavigateTab = (tab: string) => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('gym_active_tab', tab);
+    } catch {}
+  };
 
   const handleLoginSuccess = (user: any, role: UserRole) => {
     setCurrentUser(user);
@@ -64,17 +102,21 @@ export const App: React.FC = () => {
     localStorage.setItem('gym_active_role', role);
 
     // Enrutamiento inicial según el rol del usuario (RBAC)
+    let initialTab = 'Dashboard';
     if (role === 'SUPERADMIN') {
-      setActiveTab('Dashboard');
+      initialTab = 'Dashboard';
     } else if (role === 'TRAINER') {
-      setActiveTab('Diagnóstico IA & Biometría');
+      initialTab = 'Diagnóstico IA & Biometría';
     } else if (role === 'RECEPTIONIST') {
-      setActiveTab('Check-In & Aforo');
+      initialTab = 'Check-In & Aforo';
     } else if (role === 'MEMBER') {
-      setActiveTab('Mi Portal & Carnet');
+      initialTab = 'Mi Portal & Carnet';
     } else {
-      setActiveTab('Dashboard');
+      initialTab = 'Dashboard';
     }
+
+    setActiveTab(initialTab);
+    localStorage.setItem('gym_active_tab', initialTab);
   };
 
   const handleLogout = () => {
@@ -83,6 +125,7 @@ export const App: React.FC = () => {
     localStorage.removeItem('gym_is_authenticated');
     localStorage.removeItem('gym_active_user');
     localStorage.removeItem('gym_active_role');
+    localStorage.removeItem('gym_active_tab');
     localStorage.removeItem('apex_token');
     localStorage.removeItem('apex_user');
   };
@@ -102,16 +145,35 @@ export const App: React.FC = () => {
   }
 
   const renderContent = () => {
+    // Protección estricta: Si el rol es MEMBER y está en Dashboard u otra vista administrativa
+    if (
+      activeRole === 'MEMBER' &&
+      (activeTab === 'Dashboard' ||
+        activeTab === 'Socios' ||
+        activeTab === 'Afiliados' ||
+        activeTab === 'Check-In & Aforo' ||
+        activeTab === 'Sedes & Franquicias' ||
+        activeTab === 'Punto de Venta (POS)' ||
+        activeTab === 'Membresías' ||
+        activeTab === 'Pagos' ||
+        activeTab === 'Inventario' ||
+        activeTab === 'Reportes' ||
+        activeTab === 'Configuración' ||
+        activeTab === 'Usuarios & Permisos')
+    ) {
+      return <AffiliatePortalView />;
+    }
+
     switch (activeTab) {
       case 'Dashboard':
-        return <DashboardView onNavigate={(tab: string) => setActiveTab(tab)} />;
+        return <DashboardView onNavigate={(tab: string) => handleNavigateTab(tab)} />;
       case 'Sedes & Franquicias':
         return <SuperAdminView />;
       case 'Afiliados':
       case 'Socios':
-        return <MembersView onNavigate={(tab: string) => setActiveTab(tab)} />;
+        return <MembersView onNavigate={(tab: string) => handleNavigateTab(tab)} />;
       case 'Check-In & Aforo':
-        return <CheckInView onNavigate={(tab: string) => setActiveTab(tab)} />;
+        return <CheckInView onNavigate={(tab: string) => handleNavigateTab(tab)} />;
       case 'Diagnóstico IA & Biometría':
         return (
           <DiagnosticFoodView
@@ -124,7 +186,7 @@ export const App: React.FC = () => {
           <NutritionView
             currentUser={currentUser}
             activeRole={activeRole}
-            onNavigate={(tab: string) => setActiveTab(tab)}
+            onNavigate={(tab: string) => handleNavigateTab(tab)}
           />
         );
       case 'Punto de Venta (POS)':
@@ -150,7 +212,8 @@ export const App: React.FC = () => {
       case 'Usuarios & Permisos':
         return <UsuariosPermisos activeRole={activeRole} currentUser={currentUser} />;
       default:
-        return <DashboardView onNavigate={(tab: string) => setActiveTab(tab)} />;
+        if (activeRole === 'MEMBER') return <AffiliatePortalView />;
+        return <DashboardView onNavigate={(tab: string) => handleNavigateTab(tab)} />;
     }
   };
 
@@ -159,7 +222,7 @@ export const App: React.FC = () => {
       {/* Sidebar de navegación con filtrado estricto por Rol (RBAC) */}
       <Sidebar
         activeItem={activeTab}
-        onSelect={(item) => setActiveTab(item)}
+        onSelect={(item) => handleNavigateTab(item)}
         isOpenMobile={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
         activeRole={activeRole}
@@ -171,9 +234,10 @@ export const App: React.FC = () => {
         <Header
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
           currentUser={currentUser}
+          activeRole={activeRole}
           onLogout={handleLogout}
           onQuickAction={(action) => {
-            if (action === 'add-member') setActiveTab('Socios');
+            if (action === 'add-member') handleNavigateTab('Socios');
           }}
         />
 

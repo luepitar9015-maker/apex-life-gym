@@ -5,6 +5,7 @@ interface HeaderProps {
   onQuickAction?: (action: string) => void;
   onToggleMobileMenu?: () => void;
   currentUser?: any;
+  activeRole?: string;
   onLogout?: () => void;
 }
 
@@ -12,10 +13,15 @@ export const Header: React.FC<HeaderProps> = ({
   onQuickAction = () => {},
   onToggleMobileMenu,
   currentUser,
+  activeRole,
   onLogout
 }) => {
   const [currentDate, setCurrentDate] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  const role = (activeRole || currentUser?.role || '').toUpperCase();
+  const isMember = role === 'MEMBER';
+  const canAddMember = !isMember && (role === 'ADMIN' || role === 'SUPERADMIN' || role === 'RECEPTIONIST' || role === 'ADMIN_TLC');
 
   useEffect(() => {
     const now = new Date();
@@ -53,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar socio, pago..."
+            placeholder={isMember ? "Buscar en mi portal, rutinas..." : "Buscar socio, pago..."}
             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400"
           />
         </div>
@@ -67,14 +73,16 @@ export const Header: React.FC<HeaderProps> = ({
           <span>{currentDate || 'Cargando fecha...'}</span>
         </div>
 
-        {/* Quick Add Member button */}
-        <button
-          onClick={() => onQuickAction('add-member')}
-          className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-500/25 transition-all"
-        >
-          <Plus size={16} />
-          <span>Nuevo Socio</span>
-        </button>
+        {/* Quick Add Member button (solo para administradores / recepcionistas) */}
+        {canAddMember && (
+          <button
+            onClick={() => onQuickAction('add-member')}
+            className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-500/25 transition-all"
+          >
+            <Plus size={16} />
+            <span>Nuevo Socio</span>
+          </button>
+        )}
 
         {/* Notification Bell */}
         <div className="relative">

@@ -18,6 +18,7 @@ import {
   Activity,
   HeartPulse,
   User,
+  Salad,
   X
 } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export const ROLE_MENU_ITEMS: Record<UserRole, string[]> = {
     'Sedes & Franquicias',
     'Socios',
     'Diagnóstico IA & Biometría',
+    'Nutrición',
     'Usuarios & Permisos',
     'Reportes',
     'Configuración',
@@ -38,6 +40,7 @@ export const ROLE_MENU_ITEMS: Record<UserRole, string[]> = {
     'Socios',
     'Check-In & Aforo',
     'Diagnóstico IA & Biometría',
+    'Nutrición',
     'Punto de Venta (POS)',
     'Rutinas',
     'Membresías',
@@ -51,17 +54,20 @@ export const ROLE_MENU_ITEMS: Record<UserRole, string[]> = {
     'Dashboard',
     'Socios',
     'Diagnóstico IA & Biometría',
+    'Nutrición',
     'Inventario',
     'Reportes',
   ],
   RECEPTIONIST: [
     'Check-In & Aforo',
     'Socios',
+    'Nutrición',
     'Punto de Venta (POS)',
     'Clases',
   ],
   TRAINER: [
     'Diagnóstico IA & Biometría',
+    'Nutrición',
     'Rutinas',
     'Socios',
     'Clases',
@@ -69,6 +75,7 @@ export const ROLE_MENU_ITEMS: Record<UserRole, string[]> = {
   MEMBER: [
     'Mi Portal & Carnet',
     'Diagnóstico IA & Biometría',
+    'Nutrición',
     'Rutinas',
     'Clases',
   ],
@@ -81,6 +88,7 @@ const navIcons: Record<string, React.ElementType> = {
   Socios: Users,
   'Check-In & Aforo': QrCode,
   'Diagnóstico IA & Biometría': Sparkles,
+  'Nutrición': Salad,
   'Punto de Venta (POS)': ShoppingBag,
   'Membresías': CreditCard,
   Pagos: CreditCard,
@@ -100,6 +108,7 @@ export const menuItems = [
   "Socios",
   "Check-In & Aforo",
   "Diagnóstico IA & Biometría",
+  "Nutrición",
   "Punto de Venta (POS)",
   "Membresías",
   "Pagos",

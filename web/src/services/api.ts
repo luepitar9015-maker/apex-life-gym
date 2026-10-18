@@ -233,9 +233,9 @@ export interface MealItem {
   meal: string;
   title: string;
   calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
   items: string[];
 }
 
@@ -606,6 +606,7 @@ export const api = {
     likedFoods?: string[];
     dislikedFoods?: string[];
     trainingDaysPerWeek?: number;
+    [key: string]: any;
   }) {
     return request<{ success: boolean; message: string; data: NutritionPlan }>('/ai/generate-nutrition', {
       method: 'POST',

@@ -12,6 +12,7 @@ import { POSView } from './views/POSView';
 import { RoutinesView } from './views/RoutinesView';
 import { SuperAdminView } from './views/SuperAdminView';
 import { AffiliatePortalView } from './views/AffiliatePortalView';
+import { NutritionView } from './views/NutritionView';
 
 // Módulos Auxiliares de Administración
 import Membresias from './pages/Membresias';
@@ -106,6 +107,14 @@ export const App: React.FC = () => {
           <DiagnosticFoodView
             currentUser={currentUser}
             activeRole={activeRole}
+          />
+        );
+      case 'Nutrición':
+        return (
+          <NutritionView
+            currentUser={currentUser}
+            activeRole={activeRole}
+            onNavigate={(tab: string) => setActiveTab(tab)}
           />
         );
       case 'Punto de Venta (POS)':

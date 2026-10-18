@@ -22,6 +22,8 @@ import {
   HeartPulse,
   Activity,
   UserCheck,
+  Pill,
+  Camera,
 } from 'lucide-react';
 import { api, Member, Routine, Exercise, NutritionPlan, MealItem, CheckInRecord, HealthDiagnostic, DAYS_OF_WEEK, getDayName, getTodayDayNumber } from '../services/api';
 
@@ -1538,6 +1540,54 @@ export const TrainerView: React.FC = () => {
                       </button>
                     </div>
 
+                    {/* TDEE y Diagnóstico Metabólico */}
+                    {(() => {
+                      let parsedNotes: any = null;
+                      if (editableNutrition.trainerNotes) {
+                        try {
+                          parsedNotes = JSON.parse(editableNutrition.trainerNotes);
+                        } catch {
+                          parsedNotes = null;
+                        }
+                      }
+                      const maintCals = editableNutrition.maintenanceCalories || parsedNotes?.maintenanceCalories;
+                      const biotype = parsedNotes?.biotype || currentDiagnostic?.biotype;
+
+                      return (
+                        <div style={{
+                          padding: '0.85rem 1rem',
+                          borderRadius: '10px',
+                          backgroundColor: 'rgba(6, 182, 212, 0.06)',
+                          border: '1px solid rgba(6, 182, 212, 0.2)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '0.75rem',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Flame size={18} color="#06b6d4" />
+                            <div>
+                              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Gasto de Mantenimiento Estimado (TDEE): </span>
+                              <strong style={{ color: '#ffffff', fontSize: '0.88rem' }}>{maintCals ? `${maintCals} kcal` : 'Calculado con Mifflin-St Jeor'}</strong>
+                            </div>
+                          </div>
+                          {biotype && (
+                            <div style={{
+                              backgroundColor: 'rgba(6, 182, 212, 0.15)',
+                              color: '#06b6d4',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                            }}>
+                              Somatotipo: {biotype}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Macros Editables */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
                       {/* Calorías */}
@@ -1632,6 +1682,58 @@ export const TrainerView: React.FC = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Protocolo de Suplementación Inteligente */}
+                    {(() => {
+                      let parsedNotes: any = null;
+                      if (editableNutrition.trainerNotes) {
+                        try {
+                          parsedNotes = JSON.parse(editableNutrition.trainerNotes);
+                        } catch {
+                          parsedNotes = null;
+                        }
+                      }
+                      const supps = editableNutrition.supplements || parsedNotes?.supplements || [];
+                      if (!supps || supps.length === 0) return null;
+
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Pill size={16} color="#ec4899" />
+                            <h4 style={{ fontSize: '0.88rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                              Suplementación Recomendada por la IA
+                            </h4>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.65rem' }}>
+                            {supps.map((s: any, idx: number) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  padding: '0.75rem 0.85rem',
+                                  borderRadius: '8px',
+                                  backgroundColor: 'rgba(236, 72, 153, 0.04)',
+                                  border: '1px solid rgba(236, 72, 153, 0.2)',
+                                  fontSize: '0.78rem',
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                  <strong style={{ color: '#fdf2f8', fontSize: '0.85rem' }}>{s.name}</strong>
+                                  <span style={{ color: '#ec4899', fontWeight: 700, fontSize: '0.7rem' }}>{s.timing}</span>
+                                </div>
+                                <div style={{ color: '#94a3b8' }}>Dosis: <strong style={{ color: '#f1f5f9' }}>{s.dosage}</strong></div>
+                                <div style={{ color: '#cbd5e1', fontSize: '0.72rem', marginTop: '2px' }}>{s.reason}</div>
+                                {s.caution && (
+                                  <div style={{ color: '#f59e0b', fontSize: '0.7rem', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <AlertTriangle size={11} color="#f59e0b" />
+                                    <span>{s.caution}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Notas del Coach */}
                     <div>

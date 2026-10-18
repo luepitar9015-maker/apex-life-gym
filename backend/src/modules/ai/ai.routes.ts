@@ -9,9 +9,13 @@ import {
   getMemberNutrition,
   updateNutritionPlan,
   updateRoutineByTrainer,
+  handleCompleteOnboardingAI,
 } from './ai.controller.js';
 
 const router = Router();
+
+// Onboarding y Diagnóstico Biométrico 360° con IA
+router.post('/onboarding-360', handleCompleteOnboardingAI);
 
 // Diagnóstico IA (Anamnesis + Escaneo Visual)
 router.post('/diagnostic', handleGenerateDiagnostic);

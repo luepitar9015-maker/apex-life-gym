@@ -407,11 +407,24 @@ export const getMemberNutrition = async (req: Request, res: Response) => {
       return res.json({ success: true, data: null });
     }
 
+    let extraData: any = {};
+    if (plan.trainerNotes) {
+      try {
+        extraData = JSON.parse(plan.trainerNotes);
+      } catch {
+        extraData = {};
+      }
+    }
+
     res.json({
       success: true,
       data: {
         ...plan,
         meals: JSON.parse(plan.mealsJson),
+        maintenanceCalories: extraData.maintenanceCalories,
+        supplements: extraData.supplements,
+        recommendations: extraData.recommendations,
+        biotype: extraData.biotype,
       },
     });
   } catch (error: any) {
@@ -439,12 +452,25 @@ export const updateNutritionPlan = async (req: Request, res: Response) => {
       include: { member: true },
     });
 
+    let extraData: any = {};
+    if (updated.trainerNotes) {
+      try {
+        extraData = JSON.parse(updated.trainerNotes);
+      } catch {
+        extraData = {};
+      }
+    }
+
     res.json({
       success: true,
       message: 'Plan nutricional revisado y actualizado por el Entrenador con éxito',
       data: {
         ...updated,
         meals: JSON.parse(updated.mealsJson),
+        maintenanceCalories: extraData.maintenanceCalories,
+        supplements: extraData.supplements,
+        recommendations: extraData.recommendations,
+        biotype: extraData.biotype,
       },
     });
   } catch (error: any) {
@@ -497,5 +523,218 @@ export const updateRoutineByTrainer = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Error al actualizar rutina', error: error.message });
+  }
+};
+
+// -------------------------------------------------------------
+// Onboarding y Diagnóstico Biométrico 360° con Inteligencia Artificial
+// -------------------------------------------------------------
+export const handleCompleteOnboardingAI = async (req: Request, res: Response) => {
+  try {
+    const {
+      memberId,
+      photoBase64,
+      weight,
+      height,
+      age = 26,
+      gender = 'MALE',
+      targetGoal = 'HYPERTROPHY',
+      trainingDays = [1, 3, 5],
+      location = 'GYM',
+      trainingExperience = 'PRINCIPIANTE',
+      diseases = '',
+      injuries = '',
+      disabilities = '',
+      likedFoods = [],
+      dislikedFoods = [],
+    } = req.body;
+
+    const member = await prisma.member.findUnique({ where: { id: memberId } });
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Socio no encontrado' });
+    }
+
+    const currentWeight = weight ? parseFloat(weight) : (member.weight || 74);
+    const currentHeight = height ? parseFloat(height) : (member.height || 1.75);
+
+    // 1. Actualizar datos base del socio en el sistema
+    await prisma.member.update({
+      where: { id: member.id },
+      data: {
+        weight: currentWeight,
+        height: currentHeight,
+        gender: gender || member.gender,
+        likedFoods: JSON.stringify(likedFoods),
+        dislikedFoods: JSON.stringify(dislikedFoods),
+      },
+    });
+
+    // 2. Ejecutar Diagnóstico Fisiológico con IA (Gemini Multimodal / Visión)
+    const diagnosticAI = await analyzeHealthDiagnosticAI({
+      memberName: `${member.firstName} ${member.lastName}`,
+      gender,
+      age: parseInt(age),
+      weight: currentWeight,
+      height: currentHeight,
+      targetGoal,
+      diseases,
+      injuries,
+      disabilities,
+      trainingExperience,
+      photoBase64,
+    });
+
+    const savedDiagnostic = await prisma.healthDiagnostic.create({
+      data: {
+        memberId: member.id,
+        photoScanUrl: photoBase64 ? 'PHOTO_ATTACHED_AND_SCANNED' : null,
+        targetGoal,
+        diseases: diseases || null,
+        injuries: injuries || null,
+        disabilities: disabilities || null,
+        trainingExperience,
+        bodyFatPercentage: diagnosticAI.bodyFatPercentage,
+        muscleMassKg: diagnosticAI.muscleMassKg,
+        bmi: diagnosticAI.bmi,
+        biotype: diagnosticAI.biotype,
+        aiClinicalSummary: diagnosticAI.aiClinicalSummary,
+        prohibitedExercises: diagnosticAI.prohibitedExercises,
+        recommendedActions: diagnosticAI.recommendedActions,
+      },
+    });
+
+    // 3. Generar Plan Nutricional IA con Alimentos Favoritos y Suplementación
+    const nutritionAI = await generateNutritionPlanAI({
+      memberId: member.id,
+      memberName: `${member.firstName} ${member.lastName}`,
+      gender,
+      age: parseInt(age),
+      weight: currentWeight,
+      height: currentHeight,
+      goal: targetGoal,
+      likedFoods,
+      dislikedFoods,
+      diseases,
+      trainingDaysPerWeek: Array.isArray(trainingDays) && trainingDays.length > 0 ? trainingDays.length : 4,
+    });
+
+    const savedNutrition = await prisma.nutritionPlan.create({
+      data: {
+        memberId: member.id,
+        title: nutritionAI.title,
+        targetCalories: nutritionAI.targetCalories,
+        proteinGrams: nutritionAI.proteinGrams,
+        carbsGrams: nutritionAI.carbsGrams,
+        fatsGrams: nutritionAI.fatsGrams,
+        goal: nutritionAI.goal,
+        mealsJson: JSON.stringify(nutritionAI.meals),
+        trainerNotes: JSON.stringify({
+          maintenanceCalories: nutritionAI.maintenanceCalories,
+          supplements: nutritionAI.supplements,
+          recommendations: nutritionAI.recommendations,
+          biotype: diagnosticAI.biotype,
+        }),
+        generatedByAI: true,
+        reviewedByTrainer: false,
+      },
+    });
+
+    // 4. Generar Rutina Adaptada por Días de la Semana
+    const routineAI = await generateRoutineAI({
+      memberId: member.id,
+      memberName: `${member.firstName} ${member.lastName}`,
+      goal: targetGoal,
+      level: trainingExperience,
+      location,
+      daysPerWeek: Array.isArray(trainingDays) && trainingDays.length > 0 ? trainingDays.length : 4,
+      trainingDays: Array.isArray(trainingDays) && trainingDays.length > 0 ? trainingDays : [1, 3, 5],
+      prohibitedExercises: diagnosticAI.prohibitedExercises,
+    });
+
+    // Guardar Rutina en BD
+    const createdRoutine = await prisma.routine.create({
+      data: {
+        name: routineAI.name,
+        description: routineAI.description,
+        goal: routineAI.goal,
+        difficulty: routineAI.difficulty,
+        daysPerWeek: routineAI.daysPerWeek,
+        location: routineAI.location,
+        aiNotes: routineAI.aiNotes,
+      },
+    });
+
+    // Guardar los ejercicios de la rutina
+    for (const day of routineAI.days) {
+      for (const ex of day.exercises) {
+        let existingEx = await prisma.exercise.findFirst({
+          where: { name: { equals: ex.exerciseName } },
+        });
+
+        if (!existingEx) {
+          existingEx = await prisma.exercise.create({
+            data: {
+              name: ex.exerciseName,
+              muscleGroup: (ex.muscleGroup as any) || 'CORE',
+              location: location === 'HOME' ? 'HOME' : 'GYM',
+              description: ex.notes,
+            },
+          });
+        }
+
+        await prisma.routineExercise.create({
+          data: {
+            routineId: createdRoutine.id,
+            exerciseId: existingEx.id,
+            dayNumber: day.dayNumber,
+            sets: ex.sets || 4,
+            reps: String(ex.reps || '10-12'),
+            restSeconds: ex.restSeconds || 60,
+            notes: ex.notes || null,
+          },
+        });
+      }
+    }
+
+    // Desactivar rutinas previas y activar la nueva
+    await prisma.memberRoutine.updateMany({
+      where: { memberId: member.id },
+      data: { active: false },
+    });
+
+    await prisma.memberRoutine.create({
+      data: {
+        memberId: member.id,
+        routineId: createdRoutine.id,
+        active: true,
+      },
+    });
+
+    const fullRoutine = await prisma.routine.findUnique({
+      where: { id: createdRoutine.id },
+      include: {
+        exercises: {
+          include: { exercise: true },
+          orderBy: { dayNumber: 'asc' },
+        },
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: '¡Diagnóstico y Onboarding 360° completado con éxito por Google Gemini!',
+      data: {
+        diagnostic: savedDiagnostic,
+        nutrition: {
+          ...savedNutrition,
+          meals: JSON.parse(savedNutrition.mealsJson),
+          extra: JSON.parse(savedNutrition.trainerNotes || '{}'),
+        },
+        routine: fullRoutine,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error en onboarding 360:', error);
+    res.status(500).json({ success: false, message: 'Error procesando onboarding 360', error: error.message });
   }
 };

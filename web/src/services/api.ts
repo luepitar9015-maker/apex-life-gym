@@ -239,10 +239,19 @@ export interface MealItem {
   items: string[];
 }
 
+export interface NutritionSupplement {
+  name: string;
+  dosage: string;
+  timing: string;
+  benefit: string;
+  warning?: string;
+}
+
 export interface NutritionPlan {
   id: string;
   memberId: string;
   title: string;
+  maintenanceCalories?: number;
   targetCalories: number;
   proteinGrams: number;
   carbsGrams: number;
@@ -250,6 +259,7 @@ export interface NutritionPlan {
   goal: string;
   mealsJson: string;
   meals?: MealItem[];
+  supplements?: NutritionSupplement[];
   trainerNotes?: string | null;
   generatedByAI: boolean;
   reviewedByTrainer: boolean;
@@ -632,6 +642,37 @@ export const api = {
   async updateRoutineByTrainer(id: string, data: Partial<Routine>) {
     return request<{ success: boolean; message: string; data: Routine }>(`/ai/routine/${id}`, {
       method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async completeOnboarding360(data: {
+    memberId: string;
+    photoBase64?: string;
+    weight: number;
+    height: number;
+    age: number;
+    gender: string;
+    targetGoal: string;
+    trainingDays: number[];
+    location: string;
+    trainingExperience: string;
+    diseases?: string;
+    injuries?: string;
+    disabilities?: string;
+    likedFoods?: string[];
+    dislikedFoods?: string[];
+  }) {
+    return request<{
+      success: boolean;
+      message: string;
+      data: {
+        diagnostic: HealthDiagnostic;
+        nutrition: NutritionPlan & { extra?: any };
+        routine: Routine;
+      };
+    }>('/ai/onboarding-360', {
+      method: 'POST',
       body: JSON.stringify(data),
     });
   },

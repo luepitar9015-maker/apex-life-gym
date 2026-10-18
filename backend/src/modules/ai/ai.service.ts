@@ -65,7 +65,7 @@ export interface HealthDiagnosticAIData {
 
 // Función auxiliar de llamada a Google Gemini con fallback de modelos
 async function callGemini(parts: any[]): Promise<string> {
-  const models = ['gemini-3.8-flash', 'gemini-2.5-flash'];
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   let lastError: any = null;
 
   for (const model of models) {
@@ -113,15 +113,15 @@ export const analyzeHealthDiagnosticAI = async (params: {
   injuries?: string;
   disabilities?: string;
   trainingExperience?: string;
-  photoBase64?: string; // imagen en base64 si el usuario subió una foto o escaneó
+  photoBase64?: string; // imagen en base64 en memoria RAM volátil
 }): Promise<HealthDiagnosticAIData> => {
   // Cálculo base de IMC
   const heightM = params.height > 3 ? params.height / 100 : params.height;
   const rawBmi = params.weight / (heightM * heightM);
   const bmi = parseFloat(rawBmi.toFixed(1));
 
-  const promptText = `Actúa como un Médico Deportivo y Fisiólogo de Alto Rendimiento.
-Realiza un DIAGNÓSTICO INTEGRAL DEPORTIVO del siguiente afiliado:
+  const promptText = `Actúa como un Médico Deportivo de Élite, Fisiólogo y Especialista en Biomecánica y Posturología.
+Realiza un DIAGNÓSTICO INTEGRAL DEPORTIVO Y POSTURAL del siguiente atleta:
 - Nombre: ${params.memberName}
 - Género: ${params.gender}
 - Edad: ${params.age || 26} años
@@ -133,33 +133,36 @@ Realiza un DIAGNÓSTICO INTEGRAL DEPORTIVO del siguiente afiliado:
 - Discapacidades o restricciones motoras: ${params.disabilities || 'Ninguna'}
 - Nivel de experiencia en entrenamiento: ${params.trainingExperience || 'Principiante'}
 
-Si hay una imagen corporal adjunta, evalúa la simetría muscular, biotipo aparente y estima el porcentaje de grasa corporal.
-Si no hay imagen, realiza la estimación antropométrica clínica más rigurosa posible.
+AVISO DE PRIVACIDAD: Esta imagen se procesa en memoria volátil efímera y no será almacenada en disco ni base de datos.
+${params.photoBase64 ? 'Hay una foto corporal adjunta. Evalúa detalladamente la silueta corporal, distribución de tejido adiposo y magro, alineación de hombros, nivel pélvico, curvatura de la columna y somatotipo visible.' : 'No hay foto adjunta, realiza la estimación antropométrica clínica más rigurosa basada en biometría.'}
 
 ES CRÍTICO:
-1. Identificar ejercicios PROHIBIDOS específicamente para no agravar sus lesiones (ej. Si tiene lesión lumbar: prohibido peso muerto pesado o sentadilla libre; si tiene lesión de hombro: prohibido press militar tras nuca).
-2. Considerar sus enfermedades (ej. Hipertensión: evitar maniobra de Valsalva prolongada; Diabetes: controlar hipoglucemias).
+1. Identificar ejercicios PROHIBIDOS específicamente para no agravar sus lesiones (ej. Si tiene lesión lumbar: prohibido peso muerto con barra libre o sentadilla frontal pesada; si tiene lesión de rodilla: prohibida prensa con rango extremo o extensiones bruscas).
+2. Considerar sus enfermedades (ej. Hipertensión: evitar maniobra de Valsalva prolongada; Asma: regular intervalos de alta intensidad).
+3. Entregar recomendaciones biomecánicas y de postura claras.
 
-Responde ÚNICAMENTE con un objeto JSON sin markdown exterior con esta estructura:
+Responde ÚNICAMENTE con un objeto JSON sin markdown exterior con esta estructura exacta:
 {
-  "bodyFatPercentage": 19.5,
-  "muscleMassKg": 58.2,
+  "bodyFatPercentage": 18.5,
+  "muscleMassKg": 61.2,
   "bmi": ${bmi},
   "biotype": "Mesomorfo",
-  "aiClinicalSummary": "Diagnóstico claro y profesional del atleta, estado físico y precauciones.",
+  "aiClinicalSummary": "Diagnóstico claro y profesional del atleta, estado físico, balance postural y precauciones.",
   "prohibitedExercises": "Lista explícita de ejercicios y movimientos que NO debe realizar por riesgo de lesión.",
   "recommendedActions": "Estrategia biomecánica recomendada para lograr su objetivo de forma segura."
 }`;
 
   const requestParts: any[] = [];
 
-  // Si se envió foto en base64
+  // Si se envió foto en base64 (procesamiento efímero en memoria)
   if (params.photoBase64) {
-    const cleanBase64 = params.photoBase64.replace(/^data:image\/\w+;base64,/, '');
+    const mimeMatch = params.photoBase64.match(/^data:(image\/[a-zA-Z0-9+.-]+);base64,/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const cleanBase64 = params.photoBase64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
     requestParts.push({
       inlineData: {
         data: cleanBase64,
-        mimeType: 'image/jpeg',
+        mimeType,
       },
     });
   }

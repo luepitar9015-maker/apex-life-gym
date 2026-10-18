@@ -13,6 +13,7 @@ import { RoutinesView } from './views/RoutinesView';
 import { SuperAdminView } from './views/SuperAdminView';
 import { AffiliatePortalView } from './views/AffiliatePortalView';
 import { NutritionView } from './views/NutritionView';
+import { MobileScanView } from './views/MobileScanView';
 
 // Módulos Auxiliares de Administración
 import Membresias from './pages/Membresias';
@@ -85,6 +86,15 @@ export const App: React.FC = () => {
     localStorage.removeItem('apex_token');
     localStorage.removeItem('apex_user');
   };
+
+  // Si se accede mediante escaneo QR desde el celular (sesión de escaneo público/efímero)
+  const isMobileScanSession =
+    typeof window !== 'undefined' &&
+    (window.location.search.includes('scanSession=') || window.location.search.includes('view=scan-ia'));
+
+  if (isMobileScanSession) {
+    return <MobileScanView onExit={() => { window.location.href = '/'; }} />;
+  }
 
   // Si no está autenticado, muestra la pantalla de inicio limpia y profesional
   if (!isAuthenticated) {

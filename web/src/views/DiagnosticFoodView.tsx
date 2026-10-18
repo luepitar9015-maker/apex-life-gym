@@ -23,9 +23,14 @@ import {
   Save,
   RefreshCw,
   Utensils,
-  ChevronDown
+  ChevronDown,
+  QrCode,
+  Smartphone,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { api, Member, HealthDiagnostic, FoodItem, NutritionPlan, MealItem } from '../services/api';
+import { BodyScanCameraModal } from '../components/BodyScanCameraModal';
 
 interface DiagnosticFoodViewProps {
   currentUser?: any;
@@ -70,6 +75,8 @@ export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [analyzingDiagnostic, setAnalyzingDiagnostic] = useState(false);
   const [generatingDietWithFoods, setGeneratingDietWithFoods] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [cameraModalDefaultMode, setCameraModalDefaultMode] = useState<'AUTO' | 'PC_QR' | 'DIRECT_CAMERA'>('AUTO');
 
   useEffect(() => {
     loadInitialData();
@@ -698,43 +705,97 @@ export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
               </div>
 
               {/* Escaneo de Fotografía Corporal para Visión IA */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                  <Camera size={15} className="text-blue-600" />
-                  <span>Foto Frontal o Perfil para Escaneo Visual IA (Opcional)</span>
-                </label>
-                <div className="p-4 rounded-2xl border-2 border-dashed border-gray-200 text-center bg-gray-50/50">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                    <Camera size={15} className="text-blue-600" />
+                    <span>Escaneo Corporal Inteligente (Foto & Biometría IA)</span>
+                  </label>
+                  <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <Lock size={10} /> Privacidad Garantizada (RAM)
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/20 text-center space-y-3">
                   {photoPreview ? (
                     <div className="flex flex-col items-center gap-2">
-                      <img
-                        src={photoPreview}
-                        alt="Foto corporal"
-                        className="max-h-36 rounded-xl object-contain shadow-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setPhotoPreview(null)}
-                        className="text-xs font-bold text-red-600 hover:underline"
-                      >
-                        Remover foto
-                      </button>
+                      <div className="relative">
+                        <img
+                          src={photoPreview}
+                          alt="Foto corporal"
+                          className="max-h-44 rounded-xl object-contain shadow-md border-2 border-blue-500/40"
+                        />
+                        <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-extrabold flex items-center gap-1 shadow-xs">
+                          <CheckCircle2 size={11} /> Lista para IA
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCameraModalDefaultMode('DIRECT_CAMERA');
+                            setShowCameraModal(true);
+                          }}
+                          className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                          <RefreshCw size={12} /> Tomar otra foto
+                        </button>
+                        <span className="text-gray-300">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoPreview(null)}
+                          className="text-xs font-bold text-red-600 hover:underline"
+                        >
+                          Remover foto
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <div>
-                      <Upload size={24} className="mx-auto text-gray-400 mb-1" />
-                      <p className="text-xs text-gray-500 font-medium mb-1">
-                        Cargar imagen del socio para análisis postural y somatotipo
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCameraModalDefaultMode('DIRECT_CAMERA');
+                            setShowCameraModal(true);
+                          }}
+                          className="p-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+                        >
+                          <Camera size={16} />
+                          <span>Abrir Cámara Asistida (Silueta)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCameraModalDefaultMode('PC_QR');
+                            setShowCameraModal(true);
+                          }}
+                          className="p-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm border border-cyan-500/30 transition-all"
+                        >
+                          <QrCode size={16} />
+                          <span>📱 Pasar QR al Celular del Socio</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                        <span>o subir archivo:</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="text-xs text-gray-500 cursor-pointer file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+                        />
+                      </div>
+
+                      <p className="text-[11px] text-gray-400 italic">
+                        🔒 La foto no se almacena en el servidor. Se procesa en memoria volátil de la IA y se destruye inmediatamente.
                       </p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        className="text-xs text-gray-500 cursor-pointer"
-                      />
                     </div>
                   )}
                 </div>
               </div>
+
 
               {/* Botón de Ejecutar Diagnóstico IA */}
               <button
@@ -1076,6 +1137,22 @@ export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* MODAL DE CÁMARA GUÍA & CÓDIGO QR PC / MÓVIL */}
+      <BodyScanCameraModal
+        isOpen={showCameraModal}
+        onClose={() => setShowCameraModal(false)}
+        member={selectedMember}
+        defaultMode={cameraModalDefaultMode}
+        onScanComplete={(newDiag) => {
+          setDiagnostic(newDiag);
+          if (newDiag.bodyFatPercentage) setBodyFat(newDiag.bodyFatPercentage);
+          if (newDiag.biotype && ['ECTOMORFO', 'MESOMORFO', 'ENDOMORFO'].includes(newDiag.biotype.toUpperCase())) {
+            setBiotype(newDiag.biotype.toUpperCase() as any);
+          }
+          setShowCameraModal(false);
+        }}
+      />
     </div>
   );
 };

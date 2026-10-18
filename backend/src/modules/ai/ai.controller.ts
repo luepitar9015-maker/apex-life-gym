@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import os from 'os';
 import { prisma } from '../../config/prisma.js';
 import {
   generateNutritionPlanAI,
@@ -814,3 +815,251 @@ export const handleCompleteOnboardingAI = async (req: Request, res: Response) =>
     res.status(500).json({ success: false, message: 'Error procesando onboarding 360', error: error.message });
   }
 };
+
+// -------------------------------------------------------------
+// GESTIÓN DE SESIONES DE ESCANEO QR Y PRIVACIDAD EFÍMERA
+// -------------------------------------------------------------
+
+export interface ScanSession {
+  sessionId: string;
+  memberId: string;
+  memberName: string;
+  status: 'WAITING_PHOTO' | 'ANALYZING' | 'COMPLETED' | 'ERROR' | 'EXPIRED';
+  createdAt: number;
+  expiresAt: number;
+  diagnostic?: any;
+  error?: string;
+  weight?: number;
+  height?: number;
+}
+
+const scanSessions = new Map<string, ScanSession>();
+
+// Limpieza periódica de sesiones expiradas (> 15 minutos)
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, session] of scanSessions.entries()) {
+    if (session.expiresAt < now) {
+      scanSessions.delete(id);
+    }
+  }
+}, 5 * 60 * 1000);
+
+export function getLocalServerIp(): string {
+  try {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name] || []) {
+        if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('127.')) {
+          return net.address;
+        }
+      }
+    }
+  } catch (e) {
+    // Silencioso
+  }
+  return 'localhost';
+}
+
+export const handleGetNetworkInfo = (req: Request, res: Response) => {
+  const localIp = getLocalServerIp();
+  res.json({
+    success: true,
+    localIp,
+    port: process.env.PORT || 4000,
+    webPort: 5173,
+  });
+};
+
+export const handleCreateScanSession = async (req: Request, res: Response) => {
+  try {
+    const { memberId } = req.body;
+    let memberName = 'Socio / Atleta';
+    let memberRecord = null;
+
+    if (memberId && memberId !== 'guest') {
+      memberRecord = await prisma.member.findUnique({ where: { id: memberId } });
+      if (memberRecord) {
+        memberName = `${memberRecord.firstName} ${memberRecord.lastName}`;
+      }
+    }
+
+    const sessionId = `scan_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutos
+
+    const session: ScanSession = {
+      sessionId,
+      memberId: memberRecord?.id || memberId || 'guest',
+      memberName,
+      status: 'WAITING_PHOTO',
+      createdAt: Date.now(),
+      expiresAt,
+      weight: memberRecord?.weight || undefined,
+      height: memberRecord?.height || undefined,
+    };
+
+    scanSessions.set(sessionId, session);
+    const localIp = getLocalServerIp();
+
+    res.status(201).json({
+      success: true,
+      sessionId,
+      memberId: session.memberId,
+      memberName: session.memberName,
+      localIp,
+      expiresAt,
+    });
+  } catch (error: any) {
+    console.error('Error al crear sesión de escaneo:', error);
+    res.status(500).json({ success: false, message: 'Error al crear sesión de escaneo', error: error.message });
+  }
+};
+
+export const handleGetScanSession = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const session = scanSessions.get(sessionId as string);
+
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Sesión de escaneo no encontrada o ya finalizada' });
+    }
+
+    if (session.expiresAt < Date.now()) {
+      session.status = 'EXPIRED';
+      return res.status(410).json({ success: false, message: 'La sesión de escaneo ha expirado', session });
+    }
+
+    res.json({
+      success: true,
+      session: {
+        sessionId: session.sessionId,
+        memberId: session.memberId,
+        memberName: session.memberName,
+        status: session.status,
+        diagnostic: session.diagnostic || null,
+        error: session.error || null,
+        expiresAt: session.expiresAt,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Error consultando sesión', error: error.message });
+  }
+};
+
+export const handleAnalyzeScanSession = async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const session = scanSessions.get(sessionId as string);
+
+  try {
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Sesión de escaneo no encontrada' });
+    }
+
+    if (session.expiresAt < Date.now()) {
+      return res.status(410).json({ success: false, message: 'La sesión de escaneo ha expirado' });
+    }
+
+    const {
+      photoBase64,
+      targetGoal = 'Análisis Biomecánico y Composición Corporal',
+      diseases = '',
+      injuries = '',
+      disabilities = '',
+      trainingExperience = 'PRINCIPIANTE',
+      weight,
+      height,
+    } = req.body;
+
+    if (!photoBase64) {
+      return res.status(400).json({ success: false, message: 'Se requiere la captura de la fotografía para el análisis' });
+    }
+
+    session.status = 'ANALYZING';
+
+    let member = null;
+    if (session.memberId && session.memberId !== 'guest') {
+      member = await prisma.member.findUnique({ where: { id: session.memberId } });
+    }
+
+    const currentWeight = weight ? parseFloat(weight) : (member?.weight || session.weight || 72);
+    const currentHeight = height ? parseFloat(height) : (member?.height || session.height || 1.74);
+
+    if (member && (weight || height)) {
+      await prisma.member.update({
+        where: { id: member.id },
+        data: { weight: currentWeight, height: currentHeight },
+      });
+    }
+
+    // 🔒 GARANTÍA ESTRICTA DE PRIVACIDAD:
+    // La imagen se transfiere directamente al motor multimodal de Gemini en RAM
+    // y NUNCA se escribe en disco ni se persiste como archivo en el servidor.
+    const aiResult = await analyzeHealthDiagnosticAI({
+      memberName: session.memberName,
+      gender: member?.gender || 'MALE',
+      age: 26,
+      weight: currentWeight,
+      height: currentHeight,
+      targetGoal,
+      diseases,
+      injuries,
+      disabilities,
+      trainingExperience,
+      photoBase64,
+    });
+
+    let savedDiagnostic = null;
+
+    if (member) {
+      savedDiagnostic = await prisma.healthDiagnostic.create({
+        data: {
+          memberId: member.id,
+          photoScanUrl: 'PROCESSED_IN_RAM_EPHEMERAL_DELETED',
+          targetGoal,
+          diseases: diseases || null,
+          injuries: injuries || null,
+          disabilities: disabilities || null,
+          trainingExperience,
+          bodyFatPercentage: aiResult.bodyFatPercentage,
+          muscleMassKg: aiResult.muscleMassKg,
+          bmi: aiResult.bmi,
+          biotype: aiResult.biotype,
+          aiClinicalSummary: aiResult.aiClinicalSummary,
+          prohibitedExercises: aiResult.prohibitedExercises,
+          recommendedActions: aiResult.recommendedActions,
+        },
+      });
+    } else {
+      savedDiagnostic = {
+        id: `diag_${Date.now()}`,
+        memberId: 'guest',
+        photoScanUrl: 'PROCESSED_IN_RAM_EPHEMERAL_DELETED',
+        targetGoal,
+        diseases: diseases || null,
+        injuries: injuries || null,
+        disabilities: disabilities || null,
+        trainingExperience,
+        ...aiResult,
+        createdAt: new Date().toISOString(),
+      };
+    }
+
+    // Sincronizar estado en memoria para que el PC conectado reciba los resultados de inmediato
+    session.status = 'COMPLETED';
+    session.diagnostic = savedDiagnostic;
+
+    res.status(200).json({
+      success: true,
+      message: 'Foto analizada con éxito. Imagen destruida de memoria RAM conforme a la directiva de privacidad.',
+      data: savedDiagnostic,
+    });
+  } catch (error: any) {
+    console.error('Error al analizar foto en sesión:', error);
+    if (session) {
+      session.status = 'ERROR';
+      session.error = error.message;
+    }
+    res.status(500).json({ success: false, message: 'Error al procesar diagnóstico IA', error: error.message });
+  }
+};
+

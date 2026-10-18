@@ -579,6 +579,81 @@ export const api = {
   },
 
   // -------------------------------------------------------------
+  // Sesiones de Escaneo Corporal IA (PC <-> Celular QR en Tiempo Real)
+  // -------------------------------------------------------------
+  async getNetworkInfo(): Promise<{ localIp: string; port: number; webPort: number }> {
+    return request<{ success: boolean; localIp: string; port: number; webPort: number }>('/ai/network-info');
+  },
+
+  async createScanSession(data: { memberId?: string }): Promise<{
+    sessionId: string;
+    memberId: string;
+    memberName: string;
+    localIp: string;
+    expiresAt: number;
+  }> {
+    return request<{
+      success: boolean;
+      sessionId: string;
+      memberId: string;
+      memberName: string;
+      localIp: string;
+      expiresAt: number;
+    }>('/ai/scan-session', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async getScanSession(sessionId: string): Promise<{
+    sessionId: string;
+    memberId: string;
+    memberName: string;
+    status: 'WAITING_PHOTO' | 'ANALYZING' | 'COMPLETED' | 'ERROR' | 'EXPIRED';
+    diagnostic?: HealthDiagnostic | null;
+    error?: string | null;
+    expiresAt: number;
+  }> {
+    const res = await request<{
+      success: boolean;
+      session: {
+        sessionId: string;
+        memberId: string;
+        memberName: string;
+        status: 'WAITING_PHOTO' | 'ANALYZING' | 'COMPLETED' | 'ERROR' | 'EXPIRED';
+        diagnostic?: HealthDiagnostic | null;
+        error?: string | null;
+        expiresAt: number;
+      };
+    }>(`/ai/scan-session/${sessionId}`);
+    return res.session;
+  },
+
+  async analyzeScanSession(
+    sessionId: string,
+    data: {
+      photoBase64: string;
+      weight?: number;
+      height?: number;
+      targetGoal?: string;
+      diseases?: string;
+      injuries?: string;
+      disabilities?: string;
+      trainingExperience?: string;
+    }
+  ): Promise<HealthDiagnostic> {
+    const res = await request<{ success: boolean; message: string; data: HealthDiagnostic }>(
+      `/ai/scan-session/${sessionId}/analyze`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return res.data;
+  },
+
+
+  // -------------------------------------------------------------
   // Catálogo de Alimentos & Preferencias
   // -------------------------------------------------------------
   async getFoodsCatalog(): Promise<FoodItem[]> {

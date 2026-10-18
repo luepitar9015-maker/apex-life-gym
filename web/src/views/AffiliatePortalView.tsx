@@ -37,6 +37,7 @@ import {
   VideoOff,
 } from 'lucide-react';
 import { api, Member, Routine, NutritionPlan, MealItem, HealthDiagnostic, FoodItem, DAYS_OF_WEEK, getDayName, getTodayDayNumber } from '../services/api';
+import { BodyScanCameraModal } from '../components/BodyScanCameraModal';
 
 // Generador de alertas sonoras nativas Web Audio API para el cronómetro del socio
 const playBeep = (freq = 880, duration = 0.25) => {
@@ -145,6 +146,8 @@ export const AffiliatePortalView: React.FC = () => {
   const [foodSearchTerm, setFoodSearchTerm] = useState('');
 
   // Cámara Directa & Celular
+  const [showBodyScanModal, setShowBodyScanModal] = useState(false);
+  const [bodyScanModalMode, setBodyScanModalMode] = useState<'AUTO' | 'PC_QR' | 'DIRECT_CAMERA'>('AUTO');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
@@ -620,30 +623,57 @@ export const AffiliatePortalView: React.FC = () => {
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                setOnboardingStep(1);
-                setShowOnboardingModal(true);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: '#06b6d4',
-                color: '#ffffff',
-                border: 'none',
-                padding: '0.75rem 1.4rem',
-                borderRadius: '10px',
-                fontWeight: 800,
-                fontSize: '0.88rem',
-                cursor: 'pointer',
-                boxShadow: '0 0 20px rgba(6, 182, 212, 0.4)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <Zap size={18} />
-              <span>Iniciar Diagnóstico 360°</span>
-            </button>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  setBodyScanModalMode('AUTO');
+                  setShowBodyScanModal(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: '#0f172a',
+                  color: '#06b6d4',
+                  border: '1px solid rgba(6, 182, 212, 0.4)',
+                  padding: '0.75rem 1.3rem',
+                  borderRadius: '10px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 15px rgba(6, 182, 212, 0.2)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Camera size={18} />
+                <span>📸 Escaneo IA & QR</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setOnboardingStep(1);
+                  setShowOnboardingModal(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: '#06b6d4',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '0.75rem 1.4rem',
+                  borderRadius: '10px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 20px rgba(6, 182, 212, 0.4)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Zap size={18} />
+                <span>Iniciar Diagnóstico 360°</span>
+              </button>
+            </div>
           </div>
 
           {/* MODAL DEL ASISTENTE BIOMÉTRICO 360° */}
@@ -948,9 +978,13 @@ export const AffiliatePortalView: React.FC = () => {
                           )}
 
                           {/* Botón Principal: Abrir Cámara del Teléfono */}
+                          {/* Botón Principal: Escáner Asistido con Silueta y Timer */}
                           <button
                             type="button"
-                            onClick={triggerNativePhoneCamera}
+                            onClick={() => {
+                              setShowBodyScanModal(true);
+                              setBodyScanModalMode('DIRECT_CAMERA');
+                            }}
                             style={{
                               width: '100%',
                               display: 'flex',
@@ -969,32 +1003,53 @@ export const AffiliatePortalView: React.FC = () => {
                             }}
                           >
                             <Camera size={20} />
-                            <span>📱 Tomar Foto con el Celular</span>
+                            <span>📸 Abrir Escáner Asistido (Silueta & Timer)</span>
                           </button>
 
-                          {/* Botón Secundario: Cámara en Pantalla */}
+                          {/* Botón Secundario: Código QR para Celular */}
                           <button
                             type="button"
-                            onClick={startCamera}
+                            onClick={() => {
+                              setShowBodyScanModal(true);
+                              setBodyScanModalMode('PC_QR');
+                            }}
                             style={{
                               width: '100%',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '6px',
-                              backgroundColor: 'rgba(255,255,255,0.05)',
-                              color: '#e2e8f0',
-                              border: '1px solid rgba(255,255,255,0.12)',
-                              padding: '0.65rem 1rem',
+                              gap: '8px',
+                              backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                              color: '#38bdf8',
+                              border: '1px solid rgba(6, 182, 212, 0.3)',
+                              padding: '0.75rem 1rem',
                               borderRadius: '10px',
                               fontWeight: 700,
-                              fontSize: '0.82rem',
+                              fontSize: '0.84rem',
                               cursor: 'pointer',
                             }}
                           >
-                            <Video size={16} color="#06b6d4" />
-                            <span>Activar Cámara en Pantalla</span>
+                            <QrCode size={18} />
+                            <span>📱 Escanear con Celular (Código QR)</span>
                           </button>
+
+                          {/* Aviso de Privacidad Garantizada */}
+                          <div style={{
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                            fontSize: '0.75rem',
+                            color: '#10b981',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            width: '100%',
+                            boxSizing: 'border-box'
+                          }}>
+                            <ShieldCheck size={14} style={{ flexShrink: 0 }} />
+                            <span>🔒 Fotos efímeras en RAM: No se almacenan en el servidor.</span>
+                          </div>
 
                           {/* Subir de Galería como Alternativa */}
                           <label
@@ -3076,6 +3131,21 @@ export const AffiliatePortalView: React.FC = () => {
           )}
         </>
       )}
+
+      {/* MODAL DE ESCANEO CORPORAL IA & CÓDIGO QR MÓVIL */}
+      <BodyScanCameraModal
+        isOpen={showBodyScanModal}
+        onClose={() => setShowBodyScanModal(false)}
+        member={currentMember}
+        defaultMode={bodyScanModalMode}
+        onScanComplete={(newDiag) => {
+          setDiagnostic(newDiag);
+          if (currentMember?.id) {
+            handleSelectMember(currentMember.id);
+          }
+          setShowBodyScanModal(false);
+        }}
+      />
     </div>
   );
 };

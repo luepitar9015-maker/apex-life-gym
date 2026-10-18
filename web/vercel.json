@@ -3,8 +3,8 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "http://80.241.212.9/api/$1"
+      "source": "/api/:path*",
+      "destination": "http://80.241.212.9/api/:path*"
     },
     {
       "source": "/(.*)",

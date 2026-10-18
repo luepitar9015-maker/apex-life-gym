@@ -168,7 +168,48 @@ export const createMember = async (req: Request, res: Response) => {
       });
     }
 
-    res.status(201).json({ success: true, message: 'Socio registrado exitosamente', data: member });
+    // 1. Asignar automáticamente una rutina base de bienvenida para que su APK tenga contenido
+    const defaultRoutine = await prisma.routine.findFirst({
+      orderBy: { createdAt: 'asc' },
+    });
+    if (defaultRoutine) {
+      await prisma.memberRoutine.create({
+        data: {
+          memberId: member.id,
+          routineId: defaultRoutine.id,
+          active: true,
+        },
+      });
+    }
+
+    // 2. Inicializar ficha antropométrica / diagnóstico en el perfil del socio
+    const heightMeters = member.height ? (member.height > 3 ? member.height / 100 : member.height) : 1.75;
+    const initialWeight = member.weight || 70;
+    const initialBmi = parseFloat((initialWeight / (heightMeters * heightMeters)).toFixed(1));
+
+    await prisma.healthDiagnostic.create({
+      data: {
+        memberId: member.id,
+        targetGoal: 'Acondicionamiento Físico y Salud',
+        bmi: initialBmi,
+        trainingExperience: 'PRINCIPIANTE',
+        recommendedActions: 'Plan de inicio y adaptación motora. Tu entrenador en sala evaluará tu progreso.',
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Socio registrado y cuenta de acceso móvil APK activada con éxito',
+      data: member,
+      apkAccess: {
+        username: member.documentNumber,
+        initialPassword: member.documentNumber,
+        memberCode: member.code,
+        fullName: `${member.firstName} ${member.lastName}`,
+        planName: selectedPlan ? selectedPlan.name : 'Sin plan activo',
+        status: member.status,
+      },
+    });
   } catch (error: any) {
     console.error('Error al crear socio:', error);
     res.status(500).json({ success: false, message: 'Error al registrar socio', error: error.message });

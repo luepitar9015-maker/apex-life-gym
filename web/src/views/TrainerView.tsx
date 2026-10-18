@@ -17,22 +17,36 @@ import {
   Building2,
   Check,
   Edit3,
+  Scale,
+  AlertTriangle,
+  HeartPulse,
+  Activity,
+  UserCheck,
 } from 'lucide-react';
-import { api, Member, Routine, Exercise, NutritionPlan, MealItem } from '../services/api';
+import { api, Member, Routine, Exercise, NutritionPlan, MealItem, CheckInRecord, HealthDiagnostic } from '../services/api';
 
 export const TrainerView: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [todayCheckIns, setTodayCheckIns] = useState<CheckInRecord[]>([]);
+  const [athleteFilter, setAthleteFilter] = useState<'ALL' | 'IN_GYM'>('ALL');
+
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedRoutineId, setSelectedRoutineId] = useState('');
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'ROUTINE' | 'NUTRITION'>('ROUTINE');
+  const [activeTab, setActiveTab] = useState<'ROUTINE' | 'DIAGNOSTIC' | 'NUTRITION'>('ROUTINE');
 
   // Datos específicos del socio seleccionado
   const [currentRoutine, setCurrentRoutine] = useState<Routine | null>(null);
   const [currentNutrition, setCurrentNutrition] = useState<NutritionPlan | null>(null);
+  const [currentDiagnostic, setCurrentDiagnostic] = useState<HealthDiagnostic | null>(null);
   const [loadingMemberData, setLoadingMemberData] = useState(false);
+
+  // Estados de Evaluación Antropométrica en Sala
+  const [evalWeight, setEvalWeight] = useState('');
+  const [savingEvaluation, setSavingEvaluation] = useState(false);
+  const [evalSuccess, setEvalSuccess] = useState(false);
 
   // Estados de Edición de Rutina por Entrenador
   const [editableRoutine, setEditableRoutine] = useState<any>(null);
@@ -62,14 +76,16 @@ export const TrainerView: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [mList, rList, eList] = await Promise.all([
+      const [mList, rList, eList, cList] = await Promise.all([
         api.getMembers({ status: 'ACTIVE' }),
         api.getRoutines(),
         api.getExercises(),
+        api.getTodayCheckIns(),
       ]);
       setMembers(mList);
       setRoutines(rList);
       setExercises(eList);
+      setTodayCheckIns(cList || []);
       if (mList.length > 0) {
         selectAthlete(mList[0]);
       }
@@ -81,6 +97,7 @@ export const TrainerView: React.FC = () => {
 
   const selectAthlete = async (member: Member) => {
     setSelectedMember(member);
+    setEvalWeight(member.weight ? String(member.weight) : '');
     setLoadingMemberData(true);
     try {
       // 1. Cargar detalle completo del socio para obtener su rutina asignada
@@ -103,10 +120,47 @@ export const TrainerView: React.FC = () => {
       } else {
         setEditableNutrition(null);
       }
+
+      // 3. Cargar Diagnóstico Antropométrico & Lesiones
+      const diag = await api.getMemberDiagnostic(member.id);
+      setCurrentDiagnostic(diag);
     } catch (err) {
       console.error('Error cargando datos del atleta:', err);
     } finally {
       setLoadingMemberData(false);
+    }
+  };
+
+  // Guardar Evaluación Antropométrica por el Entrenador
+  const handleSaveEvaluation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMember || !evalWeight) return;
+    try {
+      setSavingEvaluation(true);
+      const numericWeight = parseFloat(evalWeight);
+      await api.updateMember(selectedMember.id, { weight: numericWeight });
+      await api.generateHealthDiagnosticAI({
+        memberId: selectedMember.id,
+        weight: numericWeight,
+        height: selectedMember.height || 1.75,
+        targetGoal: currentDiagnostic?.targetGoal || 'Acondicionamiento y Ganancia Muscular',
+        injuries: currentDiagnostic?.injuries || undefined,
+        diseases: currentDiagnostic?.diseases || undefined,
+      });
+
+      // Recargar datos
+      const updatedMember = await api.getMemberById(selectedMember.id);
+      setSelectedMember(updatedMember);
+      const updatedDiag = await api.getMemberDiagnostic(selectedMember.id);
+      setCurrentDiagnostic(updatedDiag);
+
+      setEvalSuccess(true);
+      setTimeout(() => setEvalSuccess(false), 3000);
+      alert('✅ Evaluación antropométrica guardada con éxito en la ficha del atleta.');
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar evaluación');
+    } finally {
+      setSavingEvaluation(false);
     }
   };
 
@@ -233,12 +287,26 @@ export const TrainerView: React.FC = () => {
     }
   };
 
-  const filteredMembers = members.filter(
-    (m) =>
+  // Mapear socios que tienen Check-In activo hoy en sala
+  const todayInGymMap = new Map<string, CheckInRecord>();
+  todayCheckIns.forEach((ci) => {
+    if (ci.status === 'GRANTED' && !ci.checkOutTime) {
+      todayInGymMap.set(ci.memberId, ci);
+    }
+  });
+
+  const filteredMembers = members.filter((m) => {
+    const matchesSearch =
       m.firstName.toLowerCase().includes(search.toLowerCase()) ||
       m.lastName.toLowerCase().includes(search.toLowerCase()) ||
-      m.documentNumber.includes(search)
-  );
+      m.documentNumber.includes(search);
+
+    if (!matchesSearch) return false;
+    if (athleteFilter === 'IN_GYM') {
+      return todayInGymMap.has(m.id);
+    }
+    return true;
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
@@ -284,7 +352,7 @@ export const TrainerView: React.FC = () => {
               </span>
             </div>
             <p style={{ fontSize: '0.84rem', color: '#94a3b8', margin: '3px 0 0 0' }}>
-              Prescripción biomecánica, cálculo de macros con IA y edición directa de rutinas/dietas para atletas.
+              Supervisión de atletas en sala, evolución física, ajuste de cargas en tiempo real y dietas IA.
             </p>
           </div>
         </div>
@@ -339,16 +407,81 @@ export const TrainerView: React.FC = () => {
       <div className="responsive-trainer-grid">
         {/* Atletas a cargo */}
         <div className="glass-card">
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Users size={18} color="#06b6d4" />
-            <span>Atletas a Cargo</span>
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={18} color="#06b6d4" />
+              <span>Atletas</span>
+            </h3>
+            {todayInGymMap.size > 0 && (
+              <span style={{
+                fontSize: '0.72rem',
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                color: '#10b981',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                fontWeight: 800,
+              }}>
+                🟢 {todayInGymMap.size} en sala
+              </span>
+            )}
+          </div>
+
+          {/* Selector de Filtro: En Sala Hoy vs Todos */}
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => setAthleteFilter('IN_GYM')}
+              style={{
+                flex: 1,
+                padding: '0.45rem',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: athleteFilter === 'IN_GYM' ? '#10b981' : 'rgba(255, 255, 255, 0.05)',
+                color: athleteFilter === 'IN_GYM' ? '#ffffff' : '#94a3b8',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <UserCheck size={14} />
+              <span>En Sala ({todayInGymMap.size})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAthleteFilter('ALL')}
+              style={{
+                flex: 1,
+                padding: '0.45rem',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: athleteFilter === 'ALL' ? '#06b6d4' : 'rgba(255, 255, 255, 0.05)',
+                color: athleteFilter === 'ALL' ? '#ffffff' : '#94a3b8',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Users size={14} />
+              <span>Todos ({members.length})</span>
+            </button>
+          </div>
 
           <div style={{ position: 'relative', marginBottom: '1rem' }}>
             <Search size={16} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
-              placeholder="Buscar por nombre..."
+              placeholder="Buscar por nombre o doc..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -367,6 +500,8 @@ export const TrainerView: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '550px', overflowY: 'auto' }}>
             {filteredMembers.map((m) => {
               const isSelected = selectedMember?.id === m.id;
+              const inGymRecord = todayInGymMap.get(m.id);
+
               return (
                 <button
                   key={m.id}
@@ -385,14 +520,26 @@ export const TrainerView: React.FC = () => {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.88rem' }}>
-                      {m.firstName} {m.lastName}
+                    <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{m.firstName} {m.lastName}</span>
+                      {inGymRecord && (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          backgroundColor: '#10b981',
+                          color: '#ffffff',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          fontWeight: 800,
+                        }}>
+                          SALA
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
                       {m.code} • {m.currentPlan?.name || 'Membresía'}
                     </div>
                   </div>
-                  <span style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 600 }}>
+                  <span style={{ fontSize: '0.74rem', color: inGymRecord ? '#10b981' : '#64748b', fontWeight: 600 }}>
                     {m.weight ? `${m.weight} kg` : 'Sin peso'}
                   </span>
                 </button>
@@ -407,10 +554,40 @@ export const TrainerView: React.FC = () => {
             {/* Encabezado del Atleta con Tabs */}
             <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
-                <span style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700, textTransform: 'uppercase' }}>
-                  EXPEDIENTE DEPORTIVO & FISIOLÓGICO
-                </span>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', margin: '2px 0 0 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700, textTransform: 'uppercase' }}>
+                    EXPEDIENTE DEPORTIVO & FISIOLÓGICO
+                  </span>
+                  {todayInGymMap.has(selectedMember.id) ? (
+                    <span style={{
+                      backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                      color: '#10b981',
+                      border: '1px solid #10b981',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}>
+                      🟢 EN SALA AHORA (Hoy)
+                    </span>
+                  ) : (
+                    <span style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      color: '#94a3b8',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                    }}>
+                      ⚪ Fuera de sala
+                    </span>
+                  )}
+                </div>
+
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', margin: '4px 0 0 0' }}>
                   {selectedMember.firstName} {selectedMember.lastName}
                 </h3>
                 <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '2px 0 0 0' }}>
@@ -422,13 +599,14 @@ export const TrainerView: React.FC = () => {
                 </p>
               </div>
 
-              {/* Selector de Pestaña: Rutina vs Nutrición */}
+              {/* Selector de 3 Pestañas: Rutina vs Diagnóstico vs Nutrición */}
               <div style={{
                 display: 'flex',
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 padding: '4px',
                 borderRadius: '10px',
                 gap: '4px',
+                flexWrap: 'wrap',
               }}>
                 <button
                   type="button"
@@ -437,7 +615,7 @@ export const TrainerView: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    padding: '0.5rem 1rem',
+                    padding: '0.5rem 0.85rem',
                     borderRadius: '8px',
                     border: 'none',
                     backgroundColor: activeTab === 'ROUTINE' ? '#10b981' : 'transparent',
@@ -448,7 +626,28 @@ export const TrainerView: React.FC = () => {
                   }}
                 >
                   <Dumbbell size={16} />
-                  <span>Rutina & Ejercicios</span>
+                  <span>Rutina & Cargas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('DIAGNOSTIC')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '0.5rem 0.85rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: activeTab === 'DIAGNOSTIC' ? '#8b5cf6' : 'transparent',
+                    color: activeTab === 'DIAGNOSTIC' ? '#ffffff' : '#94a3b8',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Scale size={16} />
+                  <span>Diagnóstico & Evolución</span>
                 </button>
 
                 <button
@@ -458,7 +657,7 @@ export const TrainerView: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    padding: '0.5rem 1rem',
+                    padding: '0.5rem 0.85rem',
                     borderRadius: '8px',
                     border: 'none',
                     backgroundColor: activeTab === 'NUTRITION' ? '#06b6d4' : 'transparent',
@@ -469,7 +668,7 @@ export const TrainerView: React.FC = () => {
                   }}
                 >
                   <Salad size={16} />
-                  <span>Nutrición & Dieta IA</span>
+                  <span>Nutrición IA</span>
                 </button>
               </div>
             </div>
@@ -870,7 +1069,159 @@ export const TrainerView: React.FC = () => {
               </div>
             )}
 
-            {/* TAB 2: NUTRICIÓN & DIETA IA */}
+            {/* TAB 2: DIAGNÓSTICO FÍSICO & EVOLUCIÓN ANTROPOMÉTRICA */}
+            {activeTab === 'DIAGNOSTIC' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* Evaluación Rápida en Sala de Entrenamiento */}
+                <div className="glass-card" style={{
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(16, 185, 129, 0.05) 100%)',
+                  border: '1px solid rgba(139, 92, 246, 0.25)',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div>
+                      <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Scale size={20} color="#8b5cf6" />
+                        <span>Control Antropométrico en Sala de Entrenamiento</span>
+                      </h4>
+                      <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '2px 0 0 0' }}>
+                        Pesa o mide al alumno en sala. La actualización se refleja inmediatamente en la APK móvil del socio.
+                      </p>
+                    </div>
+
+                    {evalSuccess && (
+                      <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 700, backgroundColor: 'rgba(16, 185, 129, 0.2)', padding: '4px 10px', borderRadius: '6px' }}>
+                        ✅ ¡Evaluación guardada y sincronizada con la APK del atleta!
+                      </span>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSaveEvaluation} style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label style={{ fontSize: '0.82rem', color: '#cbd5e1', fontWeight: 600 }}>Peso actual en báscula:</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={evalWeight}
+                        onChange={(e) => setEvalWeight(e.target.value)}
+                        placeholder="Ej: 75.2"
+                        style={{
+                          width: '110px',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: '8px',
+                          backgroundColor: '#1e293b',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          color: '#ffffff',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                        }}
+                      />
+                      <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>kg</span>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={savingEvaluation}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: '#8b5cf6',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '0.55rem 1.25rem',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 0 15px rgba(139, 92, 246, 0.35)',
+                      }}
+                    >
+                      <Save size={15} />
+                      <span>{savingEvaluation ? 'Guardando...' : 'Guardar y Sincronizar en APK'}</span>
+                    </button>
+                  </form>
+                </div>
+
+                {/* Composición Fisiológica */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.85rem' }}>
+                  <div className="glass-card" style={{ padding: '1rem', borderLeft: '4px solid #10b981' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Índice de Masa Corporal (IMC)</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>
+                      {currentDiagnostic?.bmi || (selectedMember.weight && selectedMember.height ? (selectedMember.weight / (selectedMember.height * selectedMember.height)).toFixed(1) : '22.8')}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
+                      {currentDiagnostic?.bmi ? (currentDiagnostic.bmi < 25 ? 'Normal / Saludable' : 'Sobrepeso') : 'Saludable'}
+                    </div>
+                  </div>
+
+                  <div className="glass-card" style={{ padding: '1rem', borderLeft: '4px solid #06b6d4' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>% Grasa Corporal</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#06b6d4', marginTop: '4px' }}>
+                      {currentDiagnostic?.bodyFatPercentage ? `${currentDiagnostic.bodyFatPercentage}%` : '18.0%'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Estimación Antropométrica</div>
+                  </div>
+
+                  <div className="glass-card" style={{ padding: '1rem', borderLeft: '4px solid #f59e0b' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Masa Muscular Estimada</div>
+                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b', marginTop: '4px' }}>
+                      {currentDiagnostic?.muscleMassKg ? `${currentDiagnostic.muscleMassKg} kg` : `${Math.round((selectedMember.weight || 70) * 0.42)} kg`}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Masa magra activa</div>
+                  </div>
+
+                  <div className="glass-card" style={{ padding: '1rem', borderLeft: '4px solid #8b5cf6' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Biotipo / Somatotipo</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#8b5cf6', marginTop: '6px' }}>
+                      {currentDiagnostic?.biotype || 'Mesomorfo'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Morfología muscular</div>
+                  </div>
+                </div>
+
+                {/* Alerta de Seguridad y Ejercicios Contraindicados */}
+                {currentDiagnostic?.prohibitedExercises && (
+                  <div style={{
+                    padding: '1rem 1.25rem',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                  }}>
+                    <AlertTriangle size={24} color="#ef4444" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <h4 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#ef4444', margin: 0 }}>
+                        ⚠️ Restricción Biomecánica - No Prescribir Estos Ejercicios al Atleta:
+                      </h4>
+                      <p style={{ fontSize: '0.85rem', color: '#f8fafc', margin: '4px 0 0 0' }}>
+                        {currentDiagnostic.prohibitedExercises}
+                      </p>
+                      {currentDiagnostic.injuries && (
+                        <p style={{ fontSize: '0.78rem', color: '#ef4444', margin: '4px 0 0 0', fontWeight: 600 }}>
+                          Lesiones / Antecedentes: {currentDiagnostic.injuries}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Resumen Clínico IA */}
+                <div className="glass-card">
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.5rem' }}>
+                    Resumen Clínico & Plan de Adaptación Fisiológica (Google Gemini)
+                  </h4>
+                  <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: '1.5', margin: 0 }}>
+                    {currentDiagnostic?.aiClinicalSummary ||
+                      currentDiagnostic?.recommendedActions ||
+                      'Atleta en óptimas condiciones para progresión de cargas. Realizar 10 min de movilidad articular y supervisar técnica en ejercicios compuestos.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: NUTRICIÓN & DIETA IA */}
             {activeTab === 'NUTRITION' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {/* Generador de Nutrición IA (Gemini 2.5 Flash) */}

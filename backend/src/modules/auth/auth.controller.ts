@@ -60,11 +60,18 @@ export const login = async (req: Request, res: Response) => {
     });
 
     if (member) {
+      if (member.status === 'CANCELLED' || member.status === 'INACTIVE') {
+        return res.status(403).json({
+          success: false,
+          message: 'Tu cuenta de afiliado se encuentra inactiva o cancelada en el gimnasio. Por favor acércate a recepción.',
+        });
+      }
+
       // Para socios, la clave puede ser su número de documento o clave definida
       const memberPassMatch = password === member.documentNumber || password === '123456' || password === member.code;
       if (memberPassMatch) {
         const token = jwt.sign(
-          { id: member.id, email: member.email || `${member.documentNumber}@socio.apex`, role: 'MEMBER', name: `${member.firstName} ${member.lastName}` },
+          { id: member.id, email: member.email || `${member.documentNumber}@socio.apex`, role: 'MEMBER', name: `${member.firstName} ${member.lastName}`, memberCode: member.code },
           JWT_SECRET,
           { expiresIn: '7d' }
         );
@@ -78,6 +85,8 @@ export const login = async (req: Request, res: Response) => {
             name: `${member.firstName} ${member.lastName}`,
             role: 'MEMBER',
             documentNumber: member.documentNumber,
+            memberCode: member.code,
+            status: member.status,
             planName: member.currentPlan?.name,
             gymName: member.gym?.name || 'Sede Principal',
           },

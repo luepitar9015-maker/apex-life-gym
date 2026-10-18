@@ -303,12 +303,12 @@ export const api = {
     return res.data;
   },
 
-  async createMember(data: any): Promise<Member> {
-    const res = await request<{ success: boolean; data: Member; message: string }>('/members', {
+  async createMember(data: any): Promise<{ success: boolean; data: Member; apkAccess?: any; message: string }> {
+    const res = await request<{ success: boolean; data: Member; apkAccess?: any; message: string }>('/members', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return res.data;
+    return res;
   },
 
   async updateMember(id: string, data: any): Promise<Member> {

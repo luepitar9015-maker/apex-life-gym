@@ -17,6 +17,10 @@ import {
   FileText,
   Printer,
   Sparkles,
+  Smartphone,
+  Send,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { api, Member, MembershipPlan } from '../services/api';
 
@@ -36,7 +40,19 @@ export const MembersView: React.FC<MembersViewProps> = ({ onNavigate, selectedMe
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
+  const [showApkModal, setShowApkModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+
+  // Datos para Modal de Onboarding APK
+  const [createdApkInfo, setCreatedApkInfo] = useState<{
+    fullName: string;
+    username: string;
+    initialPassword: string;
+    memberCode: string;
+    planName: string;
+    phone?: string;
+  } | null>(null);
+  const [copiedPass, setCopiedPass] = useState(false);
 
   // Form Nuevo Socio
   const [newForm, setNewForm] = useState({
@@ -58,6 +74,27 @@ export const MembersView: React.FC<MembersViewProps> = ({ onNavigate, selectedMe
   // Form Renovación
   const [renewPlanId, setRenewPlanId] = useState('');
   const [renewMethod, setRenewMethod] = useState('CASH');
+
+  const sendWhatsAppApkCredentials = (phone?: string, name?: string, doc?: string, plan?: string) => {
+    const rawPhone = phone || '';
+    const cleanPhone = rawPhone.replace(/\D/g, '');
+    const phoneTarget = cleanPhone.length === 10 ? `57${cleanPhone}` : cleanPhone;
+    const msg =
+      `🏋️‍♂️ *¡HOLA ${name ? name.toUpperCase() : 'SOCIO'}! BIENVENIDO A APEX LIFE GYM* 🏋️‍♂️\n\n` +
+      `Tu afiliación ha sido confirmada con éxito. Ya tienes activo tu usuario para la *APK Móvil Oficial*:\n\n` +
+      `📱 *Usuario (Documento):* ${doc}\n` +
+      `🔑 *Contraseña Inicial:* ${doc}\n` +
+      `📋 *Plan Asignado:* ${plan || 'Membresía Activa'}\n\n` +
+      `📲 *DESDE TU APK PUEDES:*\n` +
+      `• Ver tu Carnet Digital con Código QR para entrar al torniquete del gym.\n` +
+      `• Seguir tu Rutina de Entrenamiento diaria y registrar tus series/pesos.\n` +
+      `• Consultar y actualizar tu Diagnóstico Físico (IMC, Grasa, Medidas).\n` +
+      `• Conectarte en tiempo real con tu Entrenador en Sala cada vez que llegues.\n\n` +
+      `¡Muchos éxitos y bienvenido a la familia APEX! 💪🔥`;
+
+    const url = phoneTarget ? `https://wa.me/${phoneTarget}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
 
   const loadMembers = async () => {
     try {
@@ -107,9 +144,28 @@ export const MembersView: React.FC<MembersViewProps> = ({ onNavigate, selectedMe
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.createMember(newForm);
-      alert('Socio registrado exitosamente con membresía activa');
+      const res = await api.createMember(newForm);
+      const apk = res.apkAccess || {
+        fullName: `${newForm.firstName} ${newForm.lastName}`,
+        username: newForm.documentNumber,
+        initialPassword: newForm.documentNumber,
+        memberCode: res.data?.code || 'GYM-NUEVO',
+        planName: plans.find((p) => p.id === newForm.planId)?.name || 'Membresía Activa',
+        phone: newForm.phone,
+      };
+
+      setCreatedApkInfo({
+        fullName: apk.fullName || `${newForm.firstName} ${newForm.lastName}`,
+        username: apk.username || newForm.documentNumber,
+        initialPassword: apk.initialPassword || newForm.documentNumber,
+        memberCode: apk.memberCode || res.data?.code || 'GYM-SOCIO',
+        planName: apk.planName || plans.find((p) => p.id === newForm.planId)?.name || 'Membresía Activa',
+        phone: newForm.phone,
+      });
+
       setShowNewModal(false);
+      setShowApkModal(true);
+
       setNewForm({
         firstName: '',
         lastName: '',
@@ -344,29 +400,61 @@ export const MembersView: React.FC<MembersViewProps> = ({ onNavigate, selectedMe
                       </td>
 
                       <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                        <button
-                          onClick={async () => {
-                            const full = await api.getMemberById(m.id);
-                            setSelectedMember(full);
-                            setShowDetailModal(true);
-                          }}
-                          style={{
-                            backgroundColor: 'rgba(6, 182, 212, 0.12)',
-                            border: '1px solid rgba(6, 182, 212, 0.25)',
-                            color: '#06b6d4',
-                            padding: '0.45rem 0.9rem',
-                            borderRadius: '8px',
-                            fontWeight: 600,
-                            fontSize: '0.8rem',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                          }}
-                        >
-                          <QrCode size={14} />
-                          <span>Ver Ficha</span>
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              sendWhatsAppApkCredentials(
+                                m.phone || undefined,
+                                `${m.firstName} ${m.lastName}`,
+                                m.documentNumber,
+                                m.currentPlan?.name || 'Membresía Activa'
+                              );
+                            }}
+                            title="Enviar accesos a la APK Móvil por WhatsApp"
+                            style={{
+                              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                              border: '1px solid rgba(16, 185, 129, 0.3)',
+                              color: '#10b981',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <Smartphone size={14} />
+                            <span>APK</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const full = await api.getMemberById(m.id);
+                              setSelectedMember(full);
+                              setShowDetailModal(true);
+                            }}
+                            style={{
+                              backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                              border: '1px solid rgba(6, 182, 212, 0.25)',
+                              color: '#06b6d4',
+                              padding: '0.45rem 0.9rem',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                            }}
+                          >
+                            <QrCode size={14} />
+                            <span>Ver Ficha</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -584,6 +672,95 @@ export const MembersView: React.FC<MembersViewProps> = ({ onNavigate, selectedMe
                     ? (selectedMember.weight / (selectedMember.height * selectedMember.height)).toFixed(1)
                     : '--'}
                 </div>
+              </div>
+            </div>
+
+            {/* Tarjeta de Acceso y Gestión de la APK Móvil del Socio */}
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1.15rem',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(6, 182, 212, 0.08)',
+              border: '1px solid rgba(6, 182, 212, 0.25)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Smartphone size={20} color="#06b6d4" />
+                  <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#f8fafc' }}>
+                    Acceso a la APK Móvil del Socio
+                  </span>
+                  <span style={{
+                    fontSize: '0.72rem',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    backgroundColor: selectedMember.status === 'ACTIVE' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    color: selectedMember.status === 'ACTIVE' ? '#10b981' : '#ef4444',
+                    fontWeight: 700,
+                  }}>
+                    {selectedMember.status === 'ACTIVE' ? '🟢 Habilitado' : '🔴 Inactivo'}
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                  Usuario / Clave: <strong style={{ color: '#06b6d4' }}>{selectedMember.documentNumber}</strong> • Código: <strong style={{ color: '#f1f5f9' }}>{selectedMember.code}</strong>
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => sendWhatsAppApkCredentials(
+                    selectedMember.phone || undefined,
+                    `${selectedMember.firstName} ${selectedMember.lastName}`,
+                    selectedMember.documentNumber,
+                    selectedMember.currentPlan?.name || 'Membresía Activa'
+                  )}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: '#10b981',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '0.55rem 0.95rem',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 10px rgba(16, 185, 129, 0.3)',
+                  }}
+                >
+                  <Send size={14} />
+                  <span>Enviar APK por WhatsApp</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    onNavigate('Diagnóstico IA & Biometría');
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    color: '#f8fafc',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    padding: '0.55rem 0.95rem',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Sparkles size={14} color="#06b6d4" />
+                  <span>Diagnóstico & Evolución</span>
+                </button>
               </div>
             </div>
 
@@ -966,6 +1143,233 @@ export const MembersView: React.FC<MembersViewProps> = ({ onNavigate, selectedMe
                 Confirmar Renovación y Recibo
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL OFICIAL: AFILIACIÓN EXITOSA & CREDENCIALES APK MÓVIL */}
+      {showApkModal && createdApkInfo && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 120,
+          padding: '1.25rem',
+        }}>
+          <div className="glass-card" style={{
+            width: '100%',
+            maxWidth: '540px',
+            padding: '2.25rem',
+            position: 'relative',
+            backgroundColor: '#090d16',
+            border: '2px solid rgba(16, 185, 129, 0.45)',
+            boxShadow: '0 0 45px rgba(16, 185, 129, 0.3)',
+            borderRadius: '20px',
+          }}>
+            <button
+              onClick={() => setShowApkModal(false)}
+              style={{
+                position: 'absolute',
+                right: '1.25rem',
+                top: '1.25rem',
+                background: 'none',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={22} />
+            </button>
+
+            {/* Encabezado con Icono Vibrante */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '16px',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 20px rgba(16, 185, 129, 0.3)',
+              }}>
+                <Smartphone size={30} color="#10b981" />
+              </div>
+              <div>
+                <span style={{ fontSize: '0.72rem', letterSpacing: '0.1em', color: '#10b981', fontWeight: 800, textTransform: 'uppercase' }}>
+                  ONBOARDING INMEDIATO • APEX LIFE GYM
+                </span>
+                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#f8fafc', margin: '2px 0 0 0' }}>
+                  ¡Socio Afiliado & Usuario APK Activado!
+                </h3>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.84rem', color: '#94a3b8', lineHeight: '1.5', margin: '0 0 1.25rem 0' }}>
+              El socio ha quedado afiliado al gimnasio y su cuenta para la <strong style={{ color: '#f1f5f9' }}>APK móvil</strong> se ha generado al instante. Cuenta con su rutina base cargada y su ficha de evolución para entrenar y sincronizarse con el entrenador en sala.
+            </p>
+
+            {/* Tarjeta de Credenciales */}
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '14px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              marginBottom: '1.5rem',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.65rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Nombre del Socio:</span>
+                <strong style={{ fontSize: '0.92rem', color: '#f8fafc' }}>
+                  {createdApkInfo.fullName}
+                </strong>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📱 Usuario APK (Doc):</span>
+                <strong style={{ fontSize: '1.05rem', color: '#06b6d4', letterSpacing: '0.04em' }}>
+                  {createdApkInfo.username}
+                </strong>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>🔑 Clave Inicial:</span>
+                <strong style={{ fontSize: '1.05rem', color: '#10b981', letterSpacing: '0.04em' }}>
+                  {createdApkInfo.initialPassword}
+                </strong>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📋 Membresía:</span>
+                <span style={{ fontSize: '0.84rem', color: '#f1f5f9', fontWeight: 700 }}>
+                  {createdApkInfo.planName}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>🏋️ Rutina Base:</span>
+                <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 700 }}>
+                  Acondicionamiento Físico (Asignada ✅)
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>📊 Diagnóstico Físico:</span>
+                <span style={{ fontSize: '0.78rem', color: '#06b6d4', fontWeight: 700 }}>
+                  Ficha Antropométrica Inicial (Lista ✅)
+                </span>
+              </div>
+            </div>
+
+            {/* Botones de Acción */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => sendWhatsAppApkCredentials(
+                  createdApkInfo.phone,
+                  createdApkInfo.fullName,
+                  createdApkInfo.username,
+                  createdApkInfo.planName
+                )}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#10b981',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '0.9rem',
+                  borderRadius: '12px',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)',
+                }}
+              >
+                <Send size={18} />
+                <span>📲 Enviar Accesos a la APK por WhatsApp</span>
+              </button>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const credentialsText = `Usuario APK: ${createdApkInfo.username} | Clave: ${createdApkInfo.initialPassword}`;
+                    navigator.clipboard.writeText(credentialsText);
+                    setCopiedPass(true);
+                    setTimeout(() => setCopiedPass(false), 2500);
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    color: '#f8fafc',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    padding: '0.7rem',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  {copiedPass ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
+                  <span>{copiedPass ? '¡Copiado!' : 'Copiar Credenciales'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowApkModal(false);
+                    onNavigate('Mi Portal & Carnet');
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                    color: '#06b6d4',
+                    border: '1px solid rgba(6, 182, 212, 0.25)',
+                    padding: '0.7rem',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <QrCode size={16} />
+                  <span>Ver en Portal APK</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowApkModal(false)}
+                style={{
+                  backgroundColor: 'transparent',
+                  color: '#94a3b8',
+                  border: 'none',
+                  padding: '0.5rem',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  marginTop: '4px',
+                }}
+              >
+                Cerrar ventana
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -390,25 +390,34 @@ export const generateRoutineAI = async (params: {
   const prohibitedNotice = params.prohibitedExercises ? `\nEJERCICIOS PROHIBIDOS POR LESIÓN: ${params.prohibitedExercises}` : '';
 
   const prompt = `Actúa como un Entrenador Personal de Élite y Biomecánico Deportivo.
-Crea una rutina de entrenamiento de ${params.daysPerWeek} días para el atleta ${params.memberName}:
+Crea una rutina de entrenamiento estructurada POR LOS DÍAS DE LA SEMANA (Lunes a Domingo) para el atleta ${params.memberName}:
 - Objetivo: ${params.goal} (HYPERTROPHY, FAT_LOSS, STRENGTH, ENDURANCE)
 - Nivel: ${params.level}
 - Ubicación: ${isHome ? 'EN CASA (Sin máquinas, usando peso corporal, calistenia, bandas y elementos del hogar)' : 'EN GIMNASIO (Con máquinas, poleas, mancuernas y barras)'}
+- Días de entrenamiento a la semana: ${params.daysPerWeek} días
 ${prohibitedNotice}
+
+REGLA OBLIGATORIA:
+Las rutinas se deben distribuir explícitamente por los DÍAS DE LA SEMANA (1: Lunes, 2: Martes, 3: Miércoles, 4: Jueves, 5: Viernes, 6: Sábado, 7: Domingo):
+- Si entrena 3 días: usa Lunes (1), Miércoles (3), Viernes (5).
+- Si entrena 4 días: usa Lunes (1), Martes (2), Jueves (4), Viernes (5).
+- Si entrena 5 días: usa Lunes (1), Martes (2), Miércoles (3), Jueves (4), Viernes (5).
+- Si entrena 6 días: usa Lunes (1), Martes (2), Miércoles (3), Jueves (4), Viernes (5), Sábado (6).
+- Cada día DEBE incluir en dayTitle el nombre del día de la semana y el grupo muscular (ej: "Lunes: Pecho y Tríceps", "Martes: Espalda y Bíceps", "Jueves: Pierna y Glúteo").
 
 Responde ÚNICAMENTE con un JSON válido (sin markdown exterior):
 {
-  "name": "Rutina ${isHome ? 'en Casa' : 'Gimnasio'} - ${params.goal}",
-  "description": "Descripción biomecánica de la rutina",
+  "name": "Rutina Semanal ${isHome ? 'en Casa' : 'Gimnasio'} - ${params.goal}",
+  "description": "Distribución semanal de entrenamiento biomecánico",
   "goal": "${params.goal}",
   "difficulty": "${params.level}",
   "location": "${params.location}",
   "daysPerWeek": ${params.daysPerWeek},
-  "aiNotes": "Recomendaciones técnicas del entrenador",
+  "aiNotes": "Recomendaciones técnicas del entrenador para cada día de la semana",
   "days": [
     {
       "dayNumber": 1,
-      "dayTitle": "Día 1: Torso / Empuje",
+      "dayTitle": "Lunes: Pectoral y Tríceps",
       "exercises": [
         {
           "exerciseName": "${isHome ? 'Flexiones de Pecho (Push-ups)' : 'Press de Banca Plano'}",
@@ -431,17 +440,17 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown exterior):
     console.error('Fallback a rutina biomecánica local:', error.message);
 
     return {
-      name: `Rutina ${isHome ? 'Funcional en Casa' : 'Musculación en Gym'} (${params.daysPerWeek} Días)`,
-      description: `Programa de entrenamiento biomecánico para ${params.goal} en ${isHome ? 'casa con calistenia' : 'gimnasio con sobrecarga progresiva'}.`,
+      name: `Rutina Semanal ${isHome ? 'en Casa' : 'en Gimnasio'} (${params.daysPerWeek} Días)`,
+      description: `Programa de entrenamiento biomecánico estructurado por días de la semana para ${params.goal}.`,
       goal: params.goal,
       difficulty: params.level,
       location: params.location,
       daysPerWeek: params.daysPerWeek,
-      aiNotes: `Calentar 8 minutos antes de iniciar. Respetar los tiempos de descanso entre series.`,
+      aiNotes: `Calentar 8 minutos antes de iniciar cada sesión. Respetar los días de descanso para óptima recuperación muscular.`,
       days: [
         {
           dayNumber: 1,
-          dayTitle: 'Día 1: Tren Superior (Empuje y Pecho)',
+          dayTitle: 'Lunes: Pecho, Hombro y Tríceps (Empuje)',
           exercises: [
             {
               exerciseName: isHome ? 'Flexiones de Pecho (Push-ups)' : 'Press de Banca Plano con Barra',
@@ -471,7 +480,37 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown exterior):
         },
         {
           dayNumber: 2,
-          dayTitle: 'Día 2: Pierna y Cadena Posterior',
+          dayTitle: 'Martes: Espalda y Bíceps (Tracción)',
+          exercises: [
+            {
+              exerciseName: isHome ? 'Dominadas o Remo con Toalla' : 'Jalón al Pecho en Polea Alta',
+              muscleGroup: 'BACK',
+              sets: 4,
+              reps: '10-12',
+              restSeconds: 75,
+              notes: 'Retracción escapular al final',
+            },
+            {
+              exerciseName: isHome ? 'Remo Unilateral con Botella/Mochila' : 'Remo en Polea Baja (Gironda)',
+              muscleGroup: 'BACK',
+              sets: 3,
+              reps: '12',
+              restSeconds: 60,
+              notes: 'Espalda neutra',
+            },
+            {
+              exerciseName: isHome ? 'Curl de Bíceps con Mochila' : 'Curl de Bíceps con Barra Z',
+              muscleGroup: 'ARMS',
+              sets: 3,
+              reps: '12',
+              restSeconds: 45,
+              notes: 'Codos pegados al torso',
+            },
+          ],
+        },
+        {
+          dayNumber: 4,
+          dayTitle: 'Jueves: Pierna, Cuádriceps y Glúteo',
           exercises: [
             {
               exerciseName: isHome ? 'Sentadillas con Salto (Jump Squats)' : 'Prensa de Piernas 45 Grados',
@@ -496,6 +535,36 @@ Responde ÚNICAMENTE con un JSON válido (sin markdown exterior):
               reps: '20',
               restSeconds: 45,
               notes: 'Pausa isométrica de 2s arriba',
+            },
+          ],
+        },
+        {
+          dayNumber: 5,
+          dayTitle: 'Viernes: Hombros, Trapecio y Core Abdominal',
+          exercises: [
+            {
+              exerciseName: isHome ? 'Pike Push-ups para Deltoides' : 'Press Militar con Mancuernas',
+              muscleGroup: 'SHOULDERS',
+              sets: 4,
+              reps: '10-12',
+              restSeconds: 75,
+              notes: 'Buena estabilidad escapular',
+            },
+            {
+              exerciseName: isHome ? 'Elevaciones Laterales con Peso' : 'Elevaciones Laterales en Polea',
+              muscleGroup: 'SHOULDERS',
+              sets: 4,
+              reps: '15',
+              restSeconds: 45,
+              notes: 'Codos ligeramente flexionados',
+            },
+            {
+              exerciseName: isHome ? 'Plancha Abdominal Frontal' : 'Crunch Abdominal en Polea Alta',
+              muscleGroup: 'CORE',
+              sets: 4,
+              reps: '20',
+              restSeconds: 45,
+              notes: 'Activación del transverso',
             },
           ],
         },

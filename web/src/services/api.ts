@@ -268,7 +268,7 @@ export interface Routine {
   aiNotes?: string;
   exercises: Array<{
     id: string;
-    dayNumber: number;
+    dayNumber: number; // 1: Lunes, 2: Martes, 3: Miércoles, 4: Jueves, 5: Viernes, 6: Sábado, 7: Domingo
     sets: number;
     reps: string;
     restSeconds: number;
@@ -276,6 +276,37 @@ export interface Routine {
     exercise: Exercise;
   }>;
 }
+
+export interface WeekDay {
+  id: number;
+  name: string;
+  short: string;
+}
+
+export const DAYS_OF_WEEK: WeekDay[] = [
+  { id: 1, name: 'Lunes', short: 'LUN' },
+  { id: 2, name: 'Martes', short: 'MAR' },
+  { id: 3, name: 'Miércoles', short: 'MIÉ' },
+  { id: 4, name: 'Jueves', short: 'JUE' },
+  { id: 5, name: 'Viernes', short: 'VIE' },
+  { id: 6, name: 'Sábado', short: 'SÁB' },
+  { id: 7, name: 'Domingo', short: 'DOM' },
+];
+
+export const getDayName = (dayNumber: number): string => {
+  const found = DAYS_OF_WEEK.find((d) => d.id === dayNumber);
+  return found ? found.name : `Día ${dayNumber}`;
+};
+
+export const getDayShortName = (dayNumber: number): string => {
+  const found = DAYS_OF_WEEK.find((d) => d.id === dayNumber);
+  return found ? found.short : `D${dayNumber}`;
+};
+
+export const getTodayDayNumber = (): number => {
+  const day = new Date().getDay(); // 0 is Sunday, 1 is Monday...
+  return day === 0 ? 7 : day;
+};
 
 export interface GymSettings {
   id: string;

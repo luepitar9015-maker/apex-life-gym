@@ -23,7 +23,7 @@ import {
   Activity,
   UserCheck,
 } from 'lucide-react';
-import { api, Member, Routine, Exercise, NutritionPlan, MealItem, CheckInRecord, HealthDiagnostic } from '../services/api';
+import { api, Member, Routine, Exercise, NutritionPlan, MealItem, CheckInRecord, HealthDiagnostic, DAYS_OF_WEEK, getDayName, getTodayDayNumber } from '../services/api';
 
 export const TrainerView: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
@@ -31,6 +31,7 @@ export const TrainerView: React.FC = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [todayCheckIns, setTodayCheckIns] = useState<CheckInRecord[]>([]);
   const [athleteFilter, setAthleteFilter] = useState<'ALL' | 'IN_GYM'>('ALL');
+  const [trainerDayFilter, setTrainerDayFilter] = useState<number | 'ALL'>('ALL');
 
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedRoutineId, setSelectedRoutineId] = useState('');
@@ -897,143 +898,310 @@ export const TrainerView: React.FC = () => {
 
                     {/* Lista Editable de Ejercicios */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
-                          Ejercicios Prescritos ({editableRoutine.exercises?.length || 0})
-                        </h4>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                          El entrenador puede modificar series, repeticiones y descanso por serie en tiempo real.
-                        </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div>
+                          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                            Ejercicios Prescritos ({editableRoutine.exercises?.length || 0})
+                          </h4>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            Modifica el día de la semana (Lunes a Domingo), series, repeticiones y tiempos de descanso.
+                          </span>
+                        </div>
+
+                        {/* Indicador de Entrenamiento de HOY */}
+                        <div style={{
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                          border: '1px solid rgba(6, 182, 212, 0.3)',
+                          fontSize: '0.78rem',
+                          color: '#06b6d4',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}>
+                          <span>HOY ({getDayName(getTodayDayNumber())}):</span>
+                          <span style={{ color: '#ffffff' }}>
+                            {(editableRoutine.exercises?.filter((ex: any) => ex.dayNumber === getTodayDayNumber()).length || 0) > 0
+                              ? `${editableRoutine.exercises.filter((ex: any) => ex.dayNumber === getTodayDayNumber()).length} ejercicios`
+                              : 'Descanso programado'}
+                          </span>
+                        </div>
                       </div>
 
+                      {/* Selector de Días de la Semana para el Entrenador */}
+                      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setTrainerDayFilter('ALL')}
+                          style={{
+                            padding: '0.4rem 0.8rem',
+                            borderRadius: '8px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            border: 'none',
+                            cursor: 'pointer',
+                            backgroundColor: trainerDayFilter === 'ALL' ? '#10b981' : 'rgba(255,255,255,0.06)',
+                            color: trainerDayFilter === 'ALL' ? '#ffffff' : '#94a3b8',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Semana Completa ({editableRoutine.exercises?.length || 0})
+                        </button>
+                        {DAYS_OF_WEEK.map((d) => {
+                          const count = editableRoutine.exercises?.filter((ex: any) => ex.dayNumber === d.id).length || 0;
+                          const isToday = d.id === getTodayDayNumber();
+                          const isSelected = trainerDayFilter === d.id;
+
+                          return (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => setTrainerDayFilter(d.id)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '0.4rem 0.8rem',
+                                borderRadius: '8px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                border: isSelected
+                                  ? '1px solid #10b981'
+                                  : isToday
+                                  ? '1px solid rgba(6, 182, 212, 0.6)'
+                                  : '1px solid rgba(255,255,255,0.08)',
+                                backgroundColor: isSelected
+                                  ? '#10b981'
+                                  : isToday
+                                  ? 'rgba(6, 182, 212, 0.12)'
+                                  : 'rgba(255,255,255,0.03)',
+                                color: isSelected ? '#ffffff' : isToday ? '#06b6d4' : '#cbd5e1',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <span>{d.name}</span>
+                              <span style={{
+                                fontSize: '0.68rem',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                backgroundColor: isSelected ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.1)',
+                              }}>
+                                {count}
+                              </span>
+                              {isToday && (
+                                <span style={{
+                                  fontSize: '0.6rem',
+                                  padding: '1px 4px',
+                                  borderRadius: '3px',
+                                  backgroundColor: isSelected ? '#ffffff' : '#06b6d4',
+                                  color: isSelected ? '#10b981' : '#ffffff',
+                                  fontWeight: 800,
+                                }}>
+                                  HOY
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Lista de Ejercicios */}
                       <div className="table-responsive" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                        {editableRoutine.exercises?.map((item: any, idx: number) => (
-                          <div
-                            key={item.id || idx}
-                            style={{
-                              minWidth: '540px',
-                              padding: '0.85rem 1rem',
-                              borderRadius: '10px',
-                              backgroundColor: 'rgba(255,255,255,0.02)',
-                              border: '1px solid rgba(255,255,255,0.06)',
-                              display: 'grid',
-                              gridTemplateColumns: '2fr 80px 100px 90px 2fr',
-                              gap: '0.75rem',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <div>
-                              <div style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700 }}>
-                                DÍA {item.dayNumber} • {item.exercise?.muscleGroup || 'MÚSCULO'}
+                        {(() => {
+                          const displayed = editableRoutine.exercises?.filter((item: any) => {
+                            if (trainerDayFilter === 'ALL') return true;
+                            return item.dayNumber === trainerDayFilter;
+                          }) || [];
+
+                          if (displayed.length === 0) {
+                            return (
+                              <div style={{
+                                padding: '2rem 1rem',
+                                textAlign: 'center',
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                borderRadius: '10px',
+                                border: '1px dashed rgba(255, 255, 255, 0.1)',
+                                color: '#94a3b8',
+                                fontSize: '0.85rem',
+                              }}>
+                                No hay ejercicios asignados para {trainerDayFilter !== 'ALL' ? getDayName(trainerDayFilter) : 'este filtro'}. (Día de descanso para el atleta)
                               </div>
-                              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f1f5f9' }}>
-                                {item.exercise?.name || 'Ejercicio'}
+                            );
+                          }
+
+                          return displayed.map((item: any) => {
+                            const realIdx = editableRoutine.exercises.findIndex((ex: any) => (ex.id ? ex.id === item.id : ex === item));
+
+                            return (
+                              <div
+                                key={item.id || realIdx}
+                                style={{
+                                  minWidth: '580px',
+                                  padding: '0.85rem 1rem',
+                                  borderRadius: '10px',
+                                  backgroundColor: 'rgba(255,255,255,0.02)',
+                                  border: '1px solid rgba(255,255,255,0.06)',
+                                  display: 'grid',
+                                  gridTemplateColumns: '2.2fr 80px 100px 90px 2fr',
+                                  gap: '0.75rem',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                    {/* Selector de Día de la Semana para el Ejercicio */}
+                                    <select
+                                      value={item.dayNumber || 1}
+                                      onChange={(e) => {
+                                        const updated = [...editableRoutine.exercises];
+                                        const newDay = parseInt(e.target.value);
+                                        if (realIdx >= 0) {
+                                          updated[realIdx].dayNumber = newDay;
+                                          setEditableRoutine({ ...editableRoutine, exercises: updated });
+                                        }
+                                      }}
+                                      style={{
+                                        backgroundColor: '#0f172a',
+                                        border: '1px solid rgba(6, 182, 212, 0.4)',
+                                        color: '#06b6d4',
+                                        fontSize: '0.74rem',
+                                        fontWeight: 700,
+                                        borderRadius: '6px',
+                                        padding: '2px 6px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      {DAYS_OF_WEEK.map((d) => (
+                                        <option key={d.id} value={d.id}>
+                                          {d.name} {d.id === getTodayDayNumber() ? '• HOY' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
+                                      • {item.exercise?.muscleGroup || 'MÚSCULO'}
+                                    </span>
+                                  </div>
+                                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f1f5f9' }}>
+                                    {item.exercise?.name || 'Ejercicio'}
+                                  </div>
+                                </div>
+
+                                {/* Series */}
+                                <div>
+                                  <label style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Series</label>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={10}
+                                    value={item.sets}
+                                    onChange={(e) => {
+                                      const updated = [...editableRoutine.exercises];
+                                      if (realIdx >= 0) {
+                                        updated[realIdx].sets = e.target.value;
+                                        setEditableRoutine({ ...editableRoutine, exercises: updated });
+                                      }
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.4rem',
+                                      borderRadius: '6px',
+                                      backgroundColor: '#1e293b',
+                                      border: '1px solid rgba(255,255,255,0.1)',
+                                      color: '#10b981',
+                                      fontWeight: 700,
+                                      fontSize: '0.85rem',
+                                      textAlign: 'center',
+                                    }}
+                                  />
+                                </div>
+
+                                {/* Reps */}
+                                <div>
+                                  <label style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Reps</label>
+                                  <input
+                                    type="text"
+                                    value={item.reps}
+                                    onChange={(e) => {
+                                      const updated = [...editableRoutine.exercises];
+                                      if (realIdx >= 0) {
+                                        updated[realIdx].reps = e.target.value;
+                                        setEditableRoutine({ ...editableRoutine, exercises: updated });
+                                      }
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.4rem',
+                                      borderRadius: '6px',
+                                      backgroundColor: '#1e293b',
+                                      border: '1px solid rgba(255,255,255,0.1)',
+                                      color: '#ffffff',
+                                      fontWeight: 700,
+                                      fontSize: '0.85rem',
+                                      textAlign: 'center',
+                                    }}
+                                  />
+                                </div>
+
+                                {/* Descanso */}
+                                <div>
+                                  <label style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Pausa (seg)</label>
+                                  <input
+                                    type="number"
+                                    step={10}
+                                    value={item.restSeconds}
+                                    onChange={(e) => {
+                                      const updated = [...editableRoutine.exercises];
+                                      if (realIdx >= 0) {
+                                        updated[realIdx].restSeconds = e.target.value;
+                                        setEditableRoutine({ ...editableRoutine, exercises: updated });
+                                      }
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.4rem',
+                                      borderRadius: '6px',
+                                      backgroundColor: '#1e293b',
+                                      border: '1px solid rgba(255,255,255,0.1)',
+                                      color: '#06b6d4',
+                                      fontWeight: 700,
+                                      fontSize: '0.85rem',
+                                      textAlign: 'center',
+                                    }}
+                                  />
+                                </div>
+
+                                {/* Notas del Ejercicio */}
+                                <div>
+                                  <label style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Nota técnica / Cadencia</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Ej: RPE 8, tempo 3-0-1-0"
+                                    value={item.notes || ''}
+                                    onChange={(e) => {
+                                      const updated = [...editableRoutine.exercises];
+                                      if (realIdx >= 0) {
+                                        updated[realIdx].notes = e.target.value;
+                                        setEditableRoutine({ ...editableRoutine, exercises: updated });
+                                      }
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '0.4rem 0.6rem',
+                                      borderRadius: '6px',
+                                      backgroundColor: '#1e293b',
+                                      border: '1px solid rgba(255,255,255,0.1)',
+                                      color: '#94a3b8',
+                                      fontSize: '0.82rem',
+                                    }}
+                                  />
+                                </div>
                               </div>
-                            </div>
-
-                            {/* Series */}
-                            <div>
-                              <label style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Series</label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                value={item.sets}
-                                onChange={(e) => {
-                                  const updated = [...editableRoutine.exercises];
-                                  updated[idx].sets = e.target.value;
-                                  setEditableRoutine({ ...editableRoutine, exercises: updated });
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.4rem',
-                                  borderRadius: '6px',
-                                  backgroundColor: '#1e293b',
-                                  border: '1px solid rgba(255,255,255,0.1)',
-                                  color: '#10b981',
-                                  fontWeight: 700,
-                                  fontSize: '0.85rem',
-                                  textAlign: 'center',
-                                }}
-                              />
-                            </div>
-
-                            {/* Reps */}
-                            <div>
-                              <label style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Reps</label>
-                              <input
-                                type="text"
-                                value={item.reps}
-                                onChange={(e) => {
-                                  const updated = [...editableRoutine.exercises];
-                                  updated[idx].reps = e.target.value;
-                                  setEditableRoutine({ ...editableRoutine, exercises: updated });
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.4rem',
-                                  borderRadius: '6px',
-                                  backgroundColor: '#1e293b',
-                                  border: '1px solid rgba(255,255,255,0.1)',
-                                  color: '#ffffff',
-                                  fontWeight: 700,
-                                  fontSize: '0.85rem',
-                                  textAlign: 'center',
-                                }}
-                              />
-                            </div>
-
-                            {/* Descanso */}
-                            <div>
-                              <label style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Pausa (seg)</label>
-                              <input
-                                type="number"
-                                step={10}
-                                value={item.restSeconds}
-                                onChange={(e) => {
-                                  const updated = [...editableRoutine.exercises];
-                                  updated[idx].restSeconds = e.target.value;
-                                  setEditableRoutine({ ...editableRoutine, exercises: updated });
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.4rem',
-                                  borderRadius: '6px',
-                                  backgroundColor: '#1e293b',
-                                  border: '1px solid rgba(255,255,255,0.1)',
-                                  color: '#06b6d4',
-                                  fontWeight: 700,
-                                  fontSize: '0.85rem',
-                                  textAlign: 'center',
-                                }}
-                              />
-                            </div>
-
-                            {/* Notas del Ejercicio */}
-                            <div>
-                              <label style={{ fontSize: '0.68rem', color: '#64748b', display: 'block' }}>Nota técnica / Cadencia</label>
-                              <input
-                                type="text"
-                                placeholder="Ej: RPE 8, tempo 3-0-1-0"
-                                value={item.notes || ''}
-                                onChange={(e) => {
-                                  const updated = [...editableRoutine.exercises];
-                                  updated[idx].notes = e.target.value;
-                                  setEditableRoutine({ ...editableRoutine, exercises: updated });
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '0.4rem 0.6rem',
-                                  borderRadius: '6px',
-                                  backgroundColor: '#1e293b',
-                                  border: '1px solid rgba(255,255,255,0.1)',
-                                  color: '#94a3b8',
-                                  fontSize: '0.82rem',
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ))}
+                            );
+                          });
+                        })()}
                       </div>
                     </div>
                   </div>

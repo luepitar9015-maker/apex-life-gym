@@ -15,7 +15,7 @@ import {
   Building,
   X,
 } from 'lucide-react';
-import { api, Routine, Exercise, Member } from '../services/api';
+import { api, Routine, Exercise, Member, getDayName } from '../services/api';
 
 export const RoutinesView: React.FC = () => {
   const [tab, setTab] = useState<'ROUTINES' | 'EXERCISES'>('ROUTINES');
@@ -373,8 +373,15 @@ export const RoutinesView: React.FC = () => {
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700 }}>
-                        Día {item.dayNumber}
+                      <span style={{
+                        fontSize: '0.72rem',
+                        color: '#06b6d4',
+                        fontWeight: 700,
+                        backgroundColor: 'rgba(6, 182, 212, 0.12)',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                      }}>
+                        {getDayName(item.dayNumber)}
                       </span>
                       <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Clock size={12} /> {item.restSeconds}s pausa

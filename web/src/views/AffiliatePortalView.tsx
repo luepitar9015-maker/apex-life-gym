@@ -24,7 +24,7 @@ import {
   Smartphone,
   ShieldCheck,
 } from 'lucide-react';
-import { api, Member, Routine, NutritionPlan, MealItem, HealthDiagnostic } from '../services/api';
+import { api, Member, Routine, NutritionPlan, MealItem, HealthDiagnostic, DAYS_OF_WEEK, getDayName, getTodayDayNumber } from '../services/api';
 
 // Generador de alertas sonoras nativas Web Audio API para el cronómetro del socio
 const playBeep = (freq = 880, duration = 0.25) => {
@@ -55,6 +55,9 @@ export const AffiliatePortalView: React.FC = () => {
   const [diagnostic, setDiagnostic] = useState<HealthDiagnostic | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'CARNET' | 'ROUTINE' | 'DIAGNOSTIC' | 'NUTRITION'>('CARNET');
+
+  // Filtro de día de la semana (por defecto HOY: Lunes = 1 .. Domingo = 7)
+  const [selectedWeekDay, setSelectedWeekDay] = useState<number | 'ALL'>(() => getTodayDayNumber());
 
   // Estados de la APK: Seguimiento de Rutina
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>(() => {
@@ -605,104 +608,259 @@ export const AffiliatePortalView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Lista de Ejercicios Interactiva */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.85rem' }}>
-                  {routine?.exercises && routine.exercises.length > 0 ? (
-                    routine.exercises.map((item) => {
-                      const isDone = completedExercises[item.id] || false;
-                      const userLoad = exerciseLoads[item.id] || '';
+                {/* Selector de Días de la Semana */}
+                <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '1.25rem' }}>
+                  <button
+                    onClick={() => setSelectedWeekDay('ALL')}
+                    style={{
+                      padding: '0.45rem 0.9rem',
+                      borderRadius: '8px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      backgroundColor: selectedWeekDay === 'ALL' ? '#10b981' : 'rgba(255,255,255,0.06)',
+                      color: selectedWeekDay === 'ALL' ? '#ffffff' : '#94a3b8',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    Semana Completa
+                  </button>
+                  {DAYS_OF_WEEK.map((d) => {
+                    const isToday = d.id === getTodayDayNumber();
+                    const isSelected = selectedWeekDay === d.id;
+                    const dayExercises = routine?.exercises?.filter((ex) => ex.dayNumber === d.id) || [];
+                    const hasExercises = dayExercises.length > 0;
 
-                      return (
-                        <div
-                          key={item.id}
+                    return (
+                      <button
+                        key={d.id}
+                        onClick={() => setSelectedWeekDay(d.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '0.45rem 0.85rem',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          border: isSelected
+                            ? '1px solid #10b981'
+                            : isToday
+                            ? '1px solid rgba(6, 182, 212, 0.6)'
+                            : '1px solid rgba(255, 255, 255, 0.08)',
+                          backgroundColor: isSelected
+                            ? '#10b981'
+                            : isToday
+                            ? 'rgba(6, 182, 212, 0.12)'
+                            : 'rgba(255, 255, 255, 0.03)',
+                          color: isSelected ? '#ffffff' : isToday ? '#06b6d4' : '#cbd5e1',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <span>{d.name}</span>
+                        {isToday && (
+                          <span style={{
+                            fontSize: '0.62rem',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            backgroundColor: isSelected ? 'rgba(0,0,0,0.3)' : '#06b6d4',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                          }}>
+                            HOY
+                          </span>
+                        )}
+                        {hasExercises && !isToday && (
+                          <span style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            backgroundColor: isSelected ? '#ffffff' : '#10b981',
+                          }} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Lista de Ejercicios Interactiva */}
+                {(() => {
+                  const filteredExercises = routine?.exercises
+                    ? routine.exercises.filter((item) => {
+                        if (selectedWeekDay === 'ALL') return true;
+                        return item.dayNumber === selectedWeekDay;
+                      })
+                    : [];
+
+                  if (filteredExercises.length === 0 && selectedWeekDay !== 'ALL') {
+                    return (
+                      <div style={{
+                        padding: '2.5rem 1.5rem',
+                        textAlign: 'center',
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        borderRadius: '16px',
+                        border: '1px dashed rgba(255, 255, 255, 0.12)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                      }}>
+                        <div style={{
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#10b981',
+                        }}>
+                          <Flame size={28} />
+                        </div>
+                        <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                          Día de Descanso y Recuperación Activa ({getDayName(selectedWeekDay)})
+                        </h4>
+                        <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '480px', margin: 0 }}>
+                          No tienes sesiones de pesas programadas para {getDayName(selectedWeekDay).toLowerCase()}. Aprovecha para descansar tus fibras musculares, hidratarte con electrolitos y realizar caminata suave o estiramientos.
+                        </p>
+                        <button
+                          onClick={() => setSelectedWeekDay('ALL')}
                           style={{
-                            padding: '1.1rem',
-                            borderRadius: '12px',
-                            backgroundColor: isDone ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                            border: isDone ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.06)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.5rem',
-                            transition: 'all 0.15s ease',
+                            marginTop: '0.5rem',
+                            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            color: '#f1f5f9',
+                            padding: '0.45rem 1rem',
+                            borderRadius: '8px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
                           }}
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700 }}>
-                              Día {item.dayNumber} • {item.exercise.muscleGroup}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                              {item.restSeconds}s descanso
-                            </span>
-                          </div>
+                          Ver Toda la Rutina Semanal
+                        </button>
+                      </div>
+                    );
+                  }
 
-                          <div style={{
-                            fontSize: '1rem',
-                            fontWeight: 700,
-                            color: isDone ? '#10b981' : '#f1f5f9',
-                            textDecoration: isDone ? 'line-through' : 'none',
-                          }}>
-                            {item.exercise.name}
-                          </div>
+                  if (filteredExercises.length === 0) {
+                    return (
+                      <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Tu entrenador en sala estará asignando tus ejercicios específicos.</p>
+                    );
+                  }
 
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                            <span style={{ color: '#94a3b8' }}>Series: <strong style={{ color: '#10b981' }}>{item.sets}</strong></span>
-                            <span style={{ color: '#94a3b8' }}>Reps: <strong style={{ color: '#10b981' }}>{item.reps}</strong></span>
-                          </div>
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.85rem' }}>
+                      {filteredExercises.map((item) => {
+                        const isDone = completedExercises[item.id] || false;
+                        const userLoad = exerciseLoads[item.id] || '';
 
-                          {/* Campo de Registro de Cargas (Kilos/Libras) */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Carga hoy:</span>
-                            <input
-                              type="text"
-                              placeholder="Ej: 50 kg"
-                              value={userLoad}
-                              onChange={(e) => handleSaveLoad(item.id, e.target.value)}
-                              style={{
-                                width: '90px',
-                                padding: '0.3rem 0.5rem',
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                color: '#f8fafc',
-                                fontSize: '0.78rem',
-                                outline: 'none',
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => toggleExerciseComplete(item.id)}
-                              style={{
-                                marginLeft: 'auto',
-                                backgroundColor: isDone ? '#10b981' : 'rgba(255, 255, 255, 0.06)',
-                                color: isDone ? '#ffffff' : '#94a3b8',
-                                border: isDone ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
-                                padding: '0.35rem 0.75rem',
-                                borderRadius: '6px',
-                                fontWeight: 700,
-                                fontSize: '0.75rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                              }}
-                            >
-                              {isDone ? <Check size={14} /> : null}
-                              <span>{isDone ? '¡Hecho!' : 'Marcar'}</span>
-                            </button>
-                          </div>
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: '1.1rem',
+                              borderRadius: '12px',
+                              backgroundColor: isDone ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                              border: isDone ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.06)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  padding: '2px 7px',
+                                  borderRadius: '4px',
+                                  backgroundColor: 'rgba(6, 182, 212, 0.15)',
+                                  color: '#06b6d4',
+                                  fontWeight: 800,
+                                }}>
+                                  {getDayName(item.dayNumber)}
+                                </span>
+                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
+                                  • {item.exercise.muscleGroup}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                                {item.restSeconds}s descanso
+                              </span>
+                            </div>
 
-                          {item.notes && (
-                            <span style={{ fontSize: '0.74rem', color: '#64748b', fontStyle: 'italic', marginTop: '2px' }}>
-                              Nota: {item.notes}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p style={{ color: '#64748b', fontSize: '0.85rem' }}>Tu entrenador en sala estará asignando tus ejercicios específicos.</p>
-                  )}
-                </div>
+                            <div style={{
+                              fontSize: '1rem',
+                              fontWeight: 700,
+                              color: isDone ? '#10b981' : '#f1f5f9',
+                              textDecoration: isDone ? 'line-through' : 'none',
+                            }}>
+                              {item.exercise.name}
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                              <span style={{ color: '#94a3b8' }}>Series: <strong style={{ color: '#10b981' }}>{item.sets}</strong></span>
+                              <span style={{ color: '#94a3b8' }}>Reps: <strong style={{ color: '#10b981' }}>{item.reps}</strong></span>
+                            </div>
+
+                            {/* Campo de Registro de Cargas (Kilos/Libras) */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Carga hoy:</span>
+                              <input
+                                type="text"
+                                placeholder="Ej: 50 kg"
+                                value={userLoad}
+                                onChange={(e) => handleSaveLoad(item.id, e.target.value)}
+                                style={{
+                                  width: '90px',
+                                  padding: '0.3rem 0.5rem',
+                                  borderRadius: '6px',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                                  color: '#f8fafc',
+                                  fontSize: '0.78rem',
+                                  outline: 'none',
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => toggleExerciseComplete(item.id)}
+                                style={{
+                                  marginLeft: 'auto',
+                                  backgroundColor: isDone ? '#10b981' : 'rgba(255, 255, 255, 0.06)',
+                                  color: isDone ? '#ffffff' : '#94a3b8',
+                                  border: isDone ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
+                                  padding: '0.35rem 0.75rem',
+                                  borderRadius: '6px',
+                                  fontWeight: 700,
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                              >
+                                {isDone ? <Check size={14} /> : null}
+                                <span>{isDone ? '¡Hecho!' : 'Marcar'}</span>
+                              </button>
+                            </div>
+
+                            {item.notes && (
+                              <span style={{ fontSize: '0.74rem', color: '#64748b', fontStyle: 'italic', marginTop: '2px' }}>
+                                Nota: {item.notes}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

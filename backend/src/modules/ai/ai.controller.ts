@@ -472,6 +472,7 @@ export const updateRoutineByTrainer = async (req: Request, res: Response) => {
           await prisma.routineExercise.update({
             where: { id: ex.id },
             data: {
+              dayNumber: ex.dayNumber ? parseInt(ex.dayNumber) : undefined,
               sets: ex.sets ? parseInt(ex.sets) : undefined,
               reps: ex.reps ? String(ex.reps) : undefined,
               restSeconds: ex.restSeconds ? parseInt(ex.restSeconds) : undefined,

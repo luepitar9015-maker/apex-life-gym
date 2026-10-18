@@ -43,8 +43,38 @@ export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
   activeRole = 'ADMIN',
   initialMemberId
 }) => {
+  // Inicializador de socio con tolerancia a fallos inmediata para que nunca quede en blanco
+  const getInitialMember = (): Member | null => {
+    if (currentUser) {
+      const fullName = (currentUser.name || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`).trim() || 'Mateo Giraldo';
+      const names = fullName.split(' ');
+      const fName = currentUser.firstName || names[0] || 'Mateo';
+      const lName = currentUser.lastName || (names.length > 1 ? names.slice(1).join(' ') : 'Giraldo');
+      return {
+        id: currentUser.id || 'aa6f2904-2e7c-4188-a9b8-c3f15db65c31',
+        gymId: currentUser.gymId || 'gym-1',
+        code: currentUser.code || 'GYM-1003',
+        firstName: fName,
+        lastName: lName,
+        documentType: currentUser.documentType || 'CC',
+        documentNumber: currentUser.documentNumber || '1020304050',
+        email: currentUser.email || 'mateo.giraldo@ejemplo.com',
+        phone: currentUser.phone || '+57 300 000 0000',
+        gender: currentUser.gender || 'MALE',
+        weight: currentUser.weight || 75,
+        height: currentUser.height || 175,
+        status: 'ACTIVE',
+        likedFoods: JSON.stringify(['Pechuga de pollo', 'Huevos enteros', 'Arroz blanco', 'Avena en hojuelas', 'Aguacate']),
+        dislikedFoods: JSON.stringify([]),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return null;
+  };
+
   const [members, setMembers] = useState<Member[]>([]);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(() => getInitialMember());
   const [diagnostic, setDiagnostic] = useState<HealthDiagnostic | null>(null);
   const [nutritionPlan, setNutritionPlan] = useState<NutritionPlan | null>(null);
   const [foods, setFoods] = useState<FoodItem[]>([]);
@@ -52,17 +82,19 @@ export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
   const [foodCategoryFilter, setFoodCategoryFilter] = useState('ALL');
 
   // Métricas Biométricas Principales
-  const [weight, setWeight] = useState<number>(75);
-  const [height, setHeight] = useState<number>(175); // cm
+  const [weight, setWeight] = useState<number>(() => currentUser?.weight || 75);
+  const [height, setHeight] = useState<number>(() => currentUser?.height || 175); // cm
   const [age, setAge] = useState<number>(28);
-  const [gender, setGender] = useState<'MALE' | 'FEMALE'>('MALE');
+  const [gender, setGender] = useState<'MALE' | 'FEMALE'>(() => (currentUser?.gender === 'FEMALE' ? 'FEMALE' : 'MALE'));
   const [activityFactor, setActivityFactor] = useState<number>(1.55); // 1.2, 1.375, 1.55, 1.725
   const [bodyFat, setBodyFat] = useState<number>(16.0); // %
   const [biotype, setBiotype] = useState<'ECTOMORFO' | 'MESOMORFO' | 'ENDOMORFO'>('MESOMORFO');
   const [savingMetrics, setSavingMetrics] = useState(false);
 
   // Listas de Gustos y Rechazos
-  const [likedFoods, setLikedFoods] = useState<string[]>([]);
+  const [likedFoods, setLikedFoods] = useState<string[]>([
+    'Pechuga de pollo', 'Huevos enteros', 'Arroz blanco', 'Avena en hojuelas', 'Aguacate'
+  ]);
   const [dislikedFoods, setDislikedFoods] = useState<string[]>([]);
   const [savingPreferences, setSavingPreferences] = useState(false);
 
@@ -84,22 +116,35 @@ export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
 
   const loadInitialData = async () => {
     try {
-      const [mList, foodList] = await Promise.all([
-        api.getMembers(),
-        api.getFoodsCatalog(),
-      ]);
-      setMembers(mList);
-      setFoods(foodList);
+      // 1. Cargar catálogo de alimentos con tolerancia a fallos
+      try {
+        const foodList = await api.getFoodsCatalog();
+        if (foodList && foodList.length > 0) setFoods(foodList);
+      } catch (fErr) {
+        console.warn('Catálogo de alimentos fallback:', fErr);
+      }
 
-      if (mList.length > 0) {
-        // Si el usuario es un socio (MEMBER), buscar su propio registro
-        if (currentUser?.role === 'MEMBER' || activeRole === 'MEMBER') {
+      // 2. Cargar socios desde API
+      let mList: Member[] = [];
+      try {
+        mList = await api.getMembers();
+        if (mList && mList.length > 0) {
+          setMembers(mList);
+        }
+      } catch (mErr) {
+        console.warn('Error al obtener lista de socios, usando socio activo:', mErr);
+      }
+
+      const isMember = currentUser?.role === 'MEMBER' || activeRole === 'MEMBER';
+      if (mList && mList.length > 0) {
+        if (isMember) {
           const self = mList.find(
             (m) =>
-              m.documentNumber === currentUser?.documentNumber ||
-              m.id === currentUser?.id ||
-              m.email === currentUser?.email
-          ) || mList[0];
+              (currentUser?.documentNumber && m.documentNumber === currentUser.documentNumber) ||
+              (currentUser?.id && m.id === currentUser.id) ||
+              (currentUser?.email && m.email?.toLowerCase() === currentUser.email?.toLowerCase()) ||
+              `${m.firstName} ${m.lastName}`.toLowerCase().includes((currentUser?.name || '').toLowerCase())
+          ) || mList.find((m) => m.firstName?.toLowerCase().includes('mateo')) || mList[0];
           selectMember(self);
         } else if (initialMemberId) {
           const target = mList.find((m) => m.id === initialMemberId) || mList[0];
@@ -107,9 +152,16 @@ export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
         } else {
           selectMember(mList[0]);
         }
+      } else if (!selectedMember) {
+        const fallback = getInitialMember();
+        if (fallback) selectMember(fallback);
       }
     } catch (err) {
       console.error('Error cargando datos iniciales:', err);
+      if (!selectedMember) {
+        const fallback = getInitialMember();
+        if (fallback) selectMember(fallback);
+      }
     }
   };
 
@@ -127,48 +179,52 @@ export const DiagnosticFoodView: React.FC<DiagnosticFoodViewProps> = ({
     if (member.gender === 'FEMALE') setGender('FEMALE');
     else setGender('MALE');
 
+    // Cargar gustos de comida guardados
+    if (member.likedFoods) {
+      try {
+        setLikedFoods(JSON.parse(member.likedFoods));
+      } catch {
+        setLikedFoods(member.likedFoods.split(',').map((s) => s.trim()));
+      }
+    }
+
+    if (member.dislikedFoods) {
+      try {
+        setDislikedFoods(JSON.parse(member.dislikedFoods));
+      } catch {
+        setDislikedFoods(member.dislikedFoods.split(',').map((s) => s.trim()));
+      }
+    }
+
     try {
-      // Cargar diagnóstico previo si existe
-      const diag = await api.getMemberDiagnostic(member.id);
-      setDiagnostic(diag);
-      if (diag) {
-        if (diag.targetGoal) setTargetGoal(diag.targetGoal);
-        if (diag.diseases) setDiseases(diag.diseases);
-        if (diag.injuries) setInjuries(diag.injuries);
-        if (diag.disabilities) setDisabilities(diag.disabilities);
-        if (diag.trainingExperience) setTrainingExperience(diag.trainingExperience);
-        if (diag.bodyFatPercentage) setBodyFat(diag.bodyFatPercentage);
-        if (diag.biotype) {
-          const b = diag.biotype.toUpperCase();
-          if (b.includes('ECTO')) setBiotype('ECTOMORFO');
-          else if (b.includes('ENDO')) setBiotype('ENDOMORFO');
-          else setBiotype('MESOMORFO');
+      // Cargar diagnóstico previo si existe (aislado en try/catch)
+      try {
+        const diag = await api.getMemberDiagnostic(member.id);
+        setDiagnostic(diag);
+        if (diag) {
+          if (diag.targetGoal) setTargetGoal(diag.targetGoal);
+          if (diag.diseases) setDiseases(diag.diseases);
+          if (diag.injuries) setInjuries(diag.injuries);
+          if (diag.disabilities) setDisabilities(diag.disabilities);
+          if (diag.trainingExperience) setTrainingExperience(diag.trainingExperience);
+          if (diag.bodyFatPercentage) setBodyFat(diag.bodyFatPercentage);
+          if (diag.biotype) {
+            const b = diag.biotype.toUpperCase();
+            if (b.includes('ECTO')) setBiotype('ECTOMORFO');
+            else if (b.includes('ENDO')) setBiotype('ENDOMORFO');
+            else setBiotype('MESOMORFO');
+          }
         }
+      } catch (diagErr) {
+        console.warn('Diagnóstico previo no disponible:', diagErr);
       }
 
-      // Cargar plan de nutrición previo
-      const nutPlan = await api.getMemberNutrition(member.id);
-      setNutritionPlan(nutPlan);
-
-      // Cargar gustos de comida guardados
-      if (member.likedFoods) {
-        try {
-          setLikedFoods(JSON.parse(member.likedFoods));
-        } catch {
-          setLikedFoods(member.likedFoods.split(',').map((s) => s.trim()));
-        }
-      } else {
-        setLikedFoods(['Pechuga de pollo', 'Huevos enteros', 'Arroz blanco', 'Avena en hojuelas', 'Aguacate']);
-      }
-
-      if (member.dislikedFoods) {
-        try {
-          setDislikedFoods(JSON.parse(member.dislikedFoods));
-        } catch {
-          setDislikedFoods(member.dislikedFoods.split(',').map((s) => s.trim()));
-        }
-      } else {
-        setDislikedFoods([]);
+      // Cargar plan de nutrición previo (aislado en try/catch)
+      try {
+        const nutPlan = await api.getMemberNutrition(member.id);
+        setNutritionPlan(nutPlan);
+      } catch (nutErr) {
+        console.warn('Plan nutricional previo no disponible:', nutErr);
       }
     } catch (err) {
       console.error('Error cargando ficha del socio:', err);

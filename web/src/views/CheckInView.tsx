@@ -10,6 +10,8 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
+  MessageCircle,
+  Volume2,
 } from 'lucide-react';
 import { api, CheckInRecord, AccessVerificationResult } from '../services/api';
 
@@ -17,6 +19,52 @@ interface CheckInViewProps {
   onNavigate: (view: string) => void;
   onSelectMemberForRenewal?: (memberId: string) => void;
 }
+
+// Generador de audio sintetizado con Web Audio API (Sin depender de archivos externos)
+const playAudioFeedback = (type: 'granted' | 'denied') => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'granted') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } else {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      osc.frequency.setValueAtTime(180, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    }
+  } catch {
+    // Silencio si el navegador restringe audio sin interacción
+  }
+};
+
+const sendWhatsAppRenewal = (phone?: string, name?: string) => {
+  if (!phone) {
+    alert('El socio no tiene un teléfono celular registrado en su ficha.');
+    return;
+  }
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const formattedPhone = cleanPhone.startsWith('57') ? cleanPhone : `57${cleanPhone}`;
+  const message = encodeURIComponent(
+    `¡Hola ${name || 'estimado socio'}! Te saludamos de tu gimnasio APEX GYM. Te recordamos que tu membresía se encuentra vencida. Puedes renovar ahora en recepción o transferir para seguir entrenando sin pausa. ¡Te esperamos!`
+  );
+  window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
+};
 
 export const CheckInView: React.FC<CheckInViewProps> = ({ onNavigate, onSelectMemberForRenewal }) => {
   const [identifier, setIdentifier] = useState('');
@@ -54,15 +102,20 @@ export const CheckInView: React.FC<CheckInViewProps> = ({ onNavigate, onSelectMe
       const result = await api.verifyAccess(val.trim());
       setVerification(result);
 
-      // Si tiene acceso concedido y no está dentro, registramos automáticamente el ingreso
-      if (result.granted && !result.alreadyInGym) {
-        await api.registerEntry(result.member.id, selectedZone);
-        setActionMessage({ text: `¡Bienvenido ${result.member.fullName}! Entrada registrada en sala.`, type: 'success' });
-        loadTodayData();
-      } else if (result.alreadyInGym) {
-        setActionMessage({ text: `${result.member.fullName} ya tiene un ingreso activo en sala hoy.`, type: 'error' });
+      if (result.granted) {
+        playAudioFeedback('granted');
+        if (!result.alreadyInGym) {
+          await api.registerEntry(result.member.id, selectedZone);
+          setActionMessage({ text: `¡Bienvenido ${result.member.fullName}! Entrada registrada en sala.`, type: 'success' });
+          loadTodayData();
+        } else {
+          setActionMessage({ text: `${result.member.fullName} ya tiene un ingreso activo en sala hoy.`, type: 'error' });
+        }
+      } else {
+        playAudioFeedback('denied');
       }
     } catch (err: any) {
+      playAudioFeedback('denied');
       setVerification({
         success: false,
         granted: false,
@@ -373,30 +426,54 @@ export const CheckInView: React.FC<CheckInViewProps> = ({ onNavigate, onSelectMe
               {/* Action Buttons based on status */}
               <div style={{ display: 'flex', gap: '0.75rem', width: '100%', maxWidth: '340px' }}>
                 {!verification.granted && (
-                  <button
-                    onClick={() => {
-                      if (onSelectMemberForRenewal) onSelectMemberForRenewal(verification.member.id);
-                      onNavigate('members');
-                    }}
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#f59e0b',
-                      color: '#000000',
-                      border: 'none',
-                      padding: '0.65rem 1rem',
-                      borderRadius: '10px',
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <span>Renovar en Caja</span>
-                    <ArrowRight size={16} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                    <button
+                      onClick={() => {
+                        if (onSelectMemberForRenewal) onSelectMemberForRenewal(verification.member.id);
+                        onNavigate('members');
+                      }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#f59e0b',
+                        color: '#000000',
+                        border: 'none',
+                        padding: '0.65rem 0.75rem',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span>Renovar en Caja</span>
+                      <ArrowRight size={14} />
+                    </button>
+
+                    <button
+                      onClick={() => sendWhatsAppRenewal(undefined, verification.member.fullName)}
+                      style={{
+                        backgroundColor: '#25D366',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '0.65rem 0.75rem',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                      title="Enviar recordatorio y medio de pago por WhatsApp"
+                    >
+                      <MessageCircle size={15} />
+                      <span>WhatsApp</span>
+                    </button>
+                  </div>
                 )}
 
                 {verification.granted && verification.alreadyInGym && (

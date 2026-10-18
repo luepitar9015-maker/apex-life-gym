@@ -31,8 +31,12 @@ import {
   Info,
   Target,
   ChevronLeft,
+  Search,
+  RefreshCw,
+  Video,
+  VideoOff,
 } from 'lucide-react';
-import { api, Member, Routine, NutritionPlan, MealItem, HealthDiagnostic, DAYS_OF_WEEK, getDayName, getTodayDayNumber } from '../services/api';
+import { api, Member, Routine, NutritionPlan, MealItem, HealthDiagnostic, FoodItem, DAYS_OF_WEEK, getDayName, getTodayDayNumber } from '../services/api';
 
 // Generador de alertas sonoras nativas Web Audio API para el cronómetro del socio
 const playBeep = (freq = 880, duration = 0.25) => {
@@ -135,6 +139,18 @@ export const AffiliatePortalView: React.FC = () => {
   const [processing360, setProcessing360] = useState(false);
   const [results360, setResults360] = useState<any | null>(null);
 
+  // Catálogo Completo de Alimentos
+  const [foodsCatalog, setFoodsCatalog] = useState<FoodItem[]>([]);
+  const [foodCategoryFilter, setFoodCategoryFilter] = useState<string>('ALL');
+  const [foodSearchTerm, setFoodSearchTerm] = useState('');
+
+  // Cámara Directa & Celular
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = React.useRef<MediaStream | null>(null);
+  const nativeCameraInputRef = React.useRef<HTMLInputElement | null>(null);
+
   // Identificar usuario activo desde sesión
   const currentUser = (() => {
     try {
@@ -169,6 +185,16 @@ export const AffiliatePortalView: React.FC = () => {
           targetId = activeMember.id;
         }
         await handleSelectMember(targetId);
+      }
+
+      // Cargar catálogo maestro de alimentos clasificados
+      try {
+        const catalog = await api.getFoodsCatalog();
+        if (catalog && catalog.length > 0) {
+          setFoodsCatalog(catalog);
+        }
+      } catch (fErr) {
+        console.warn('No se pudo cargar catálogo de alimentos:', fErr);
       }
     } catch (err) {
       console.error('Error cargando portal afiliado:', err);
@@ -232,8 +258,74 @@ export const AffiliatePortalView: React.FC = () => {
       const b64 = uploadEvent.target?.result as string;
       setPhotoPreview(b64);
       setPhotoBase64(b64);
+      stopCamera();
     };
     reader.readAsDataURL(file);
+  };
+
+  // Manejo de Cámara Directa y Celular
+  const startCamera = async () => {
+    setCameraError(null);
+    setIsCameraActive(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err: any) {
+      console.error('Error accediendo a cámara:', err);
+      setCameraError('No se pudo acceder a la cámara del navegador. Usa el botón "Abrir Cámara del Celular" para capturar la foto directamente.');
+      setIsCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    setPhotoPreview(dataUrl);
+    setPhotoBase64(dataUrl);
+    stopCamera();
+  };
+
+  const triggerNativePhoneCamera = () => {
+    nativeCameraInputRef.current?.click();
+  };
+
+  // Selección rápida de básicos fitness
+  const handleSelectBasicHealthyFoods = () => {
+    const basics = [
+      'Pechuga de Pollo',
+      'Huevos Enteros',
+      'Arroz Blanco',
+      'Avena en Hojuelas',
+      'Aguacate Hass',
+      'Plátano / Banano',
+      'Espinacas Frescas',
+      'Yogur Griego Sin Azúcar',
+      'Atún en Agua',
+      'Papa Cocida',
+    ];
+    setObLikedFoods((prev) => Array.from(new Set([...prev, ...basics])));
   };
 
   const toggleObInjury = (item: string) => {
@@ -591,7 +683,10 @@ export const AffiliatePortalView: React.FC = () => {
                     </h3>
                   </div>
                   <button
-                    onClick={() => setShowOnboardingModal(false)}
+                    onClick={() => {
+                      stopCamera();
+                      setShowOnboardingModal(false);
+                    }}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -639,115 +734,331 @@ export const AffiliatePortalView: React.FC = () => {
                   ))}
                 </div>
 
-                {/* PASO 1: FOTO CORPORAL & ESCANEO VISUAL MULTIMODAL */}
+                {/* PASO 1: FOTO CORPORAL - CÁMARA DIRECTA MÓVIL & EN VIVO */}
                 {onboardingStep === 1 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{
                       padding: '1rem',
                       borderRadius: '12px',
                       backgroundColor: 'rgba(6, 182, 212, 0.08)',
-                      border: '1px solid rgba(6, 182, 212, 0.2)',
+                      border: '1px solid rgba(6, 182, 212, 0.25)',
                     }}>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#f8fafc', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Camera size={18} color="#06b6d4" />
-                        <span>Escaneo Visual Corporal Frontal con Gemini Multimodal</span>
-                      </h4>
-                      <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
-                        Sube o toma una foto de cuerpo completo o torso. La IA evaluará simetría, postura y estimará tu somatotipo (% grasa y masa muscular).
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Camera size={22} color="#06b6d4" />
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                          Foto Corporal para Diagnóstico Visual IA
+                        </h4>
+                      </div>
+                      <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+                        Tómate una foto de cuerpo completo o torso. La IA estimará tu somatotipo, postura y % de grasa corporal.
                       </p>
                     </div>
 
+                    {/* Inputs de Cámara Nativos Ocultos */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      ref={nativeCameraInputRef}
+                      style={{ display: 'none' }}
+                      onChange={handlePhotoUpload}
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id="gym-gallery-file-input"
+                      style={{ display: 'none' }}
+                      onChange={handlePhotoUpload}
+                    />
+
+                    {/* Contenedor de Visor / Previsualización */}
                     <div style={{
+                      border: '2px dashed rgba(6, 182, 212, 0.3)',
+                      borderRadius: '16px',
+                      padding: '1.5rem',
+                      backgroundColor: 'rgba(255,255,255,0.01)',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      border: '2px dashed rgba(6, 182, 212, 0.3)',
-                      borderRadius: '16px',
-                      padding: '1.75rem',
-                      backgroundColor: 'rgba(255,255,255,0.01)',
-                      position: 'relative',
+                      minHeight: '260px',
                     }}>
+                      {/* Estado 1: Foto Ya Capturada */}
                       {photoPreview ? (
-                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            color: '#10b981',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                          }}>
+                            <CheckCircle2 size={14} /> Foto Lista para el Análisis IA
+                          </div>
                           <img
                             src={photoPreview}
-                            alt="Previsualización Corporal"
+                            alt="Foto Corporal"
                             style={{
-                              maxHeight: '260px',
+                              maxHeight: '280px',
+                              maxWidth: '100%',
                               borderRadius: '12px',
                               border: '2px solid #06b6d4',
-                              boxShadow: '0 0 20px rgba(6, 182, 212, 0.3)',
+                              boxShadow: '0 0 25px rgba(6, 182, 212, 0.25)',
                             }}
                           />
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={triggerNativePhoneCamera}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                backgroundColor: 'rgba(6, 182, 212, 0.15)',
+                                color: '#06b6d4',
+                                border: '1px solid rgba(6, 182, 212, 0.3)',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <RefreshCw size={14} /> Tomar Otra Foto
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPhotoPreview(null);
+                                setPhotoBase64(null);
+                              }}
+                              style={{
+                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      ) : isCameraActive ? (
+                        /* Estado 2: Cámara en Vivo Activa */
+                        <div style={{ width: '100%', maxWidth: '380px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ position: 'relative', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '2px solid #06b6d4' }}>
+                            <video
+                              ref={videoRef}
+                              autoPlay
+                              playsInline
+                              muted
+                              style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', display: 'block' }}
+                            />
+                            <div style={{
+                              position: 'absolute',
+                              inset: 0,
+                              border: '2px dashed rgba(255,255,255,0.4)',
+                              borderRadius: '12px',
+                              pointerEvents: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}>
+                              <span style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#ffffff', padding: '3px 8px', borderRadius: '4px', fontSize: '0.72rem' }}>
+                                Encuadra tu cuerpo
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '10px', width: '100%', justifyContent: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={capturePhoto}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                backgroundColor: '#10b981',
+                                color: '#ffffff',
+                                border: 'none',
+                                padding: '0.7rem 1.5rem',
+                                borderRadius: '10px',
+                                fontWeight: 800,
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)',
+                              }}
+                            >
+                              <Camera size={18} /> 📸 Capturar Foto Ahora
+                            </button>
+                            <button
+                              type="button"
+                              onClick={stopCamera}
+                              style={{
+                                backgroundColor: 'rgba(255,255,255,0.1)',
+                                color: '#94a3b8',
+                                border: 'none',
+                                padding: '0.7rem 1rem',
+                                borderRadius: '10px',
+                                fontWeight: 700,
+                                fontSize: '0.82rem',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Estado 3: Sin Foto - Botones Claros y Directos */
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', width: '100%', maxWidth: '340px' }}>
+                          <div style={{
+                            width: '64px',
+                            height: '64px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(6, 182, 212, 0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}>
+                            <Camera size={32} color="#06b6d4" />
+                          </div>
+
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ color: '#f8fafc', fontWeight: 800, fontSize: '1rem' }}>
+                              ¿Cómo deseas tomar tu foto?
+                            </div>
+                            <div style={{ color: '#64748b', fontSize: '0.76rem', marginTop: '2px' }}>
+                              Sin complicaciones: ábrela directamente con la cámara
+                            </div>
+                          </div>
+
+                          {cameraError && (
+                            <div style={{ fontSize: '0.75rem', color: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', padding: '6px 10px', borderRadius: '6px', textAlign: 'center' }}>
+                              {cameraError}
+                            </div>
+                          )}
+
+                          {/* Botón Principal: Abrir Cámara del Teléfono */}
                           <button
-                            onClick={() => {
-                              setPhotoPreview(null);
-                              setPhotoBase64(null);
-                            }}
+                            type="button"
+                            onClick={triggerNativePhoneCamera}
                             style={{
-                              marginTop: '0.75rem',
-                              backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                              color: '#ef4444',
-                              border: '1px solid #ef4444',
-                              padding: '4px 10px',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              backgroundColor: '#06b6d4',
+                              color: '#ffffff',
+                              border: 'none',
+                              padding: '0.85rem 1.25rem',
+                              borderRadius: '12px',
+                              fontWeight: 800,
+                              fontSize: '0.92rem',
+                              cursor: 'pointer',
+                              boxShadow: '0 0 16px rgba(6, 182, 212, 0.35)',
+                            }}
+                          >
+                            <Camera size={20} />
+                            <span>📱 Tomar Foto con el Celular</span>
+                          </button>
+
+                          {/* Botón Secundario: Cámara en Pantalla */}
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            style={{
+                              width: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              backgroundColor: 'rgba(255,255,255,0.05)',
+                              color: '#e2e8f0',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              padding: '0.65rem 1rem',
+                              borderRadius: '10px',
                               fontWeight: 700,
+                              fontSize: '0.82rem',
                               cursor: 'pointer',
                             }}
                           >
-                            Eliminar foto
+                            <Video size={16} color="#06b6d4" />
+                            <span>Activar Cámara en Pantalla</span>
                           </button>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload size={36} color="#06b6d4" style={{ marginBottom: '0.5rem' }} />
-                          <p style={{ color: '#f8fafc', fontWeight: 700, fontSize: '0.9rem', margin: 0 }}>
-                            Haz clic para seleccionar foto o tomar con tu cámara
-                          </p>
-                          <p style={{ color: '#64748b', fontSize: '0.75rem', margin: '4px 0 1rem 0' }}>
-                            Formatos soportados: JPG, PNG, WEBP (cifrado en tu sesión)
-                          </p>
-                          <label style={{
-                            backgroundColor: '#06b6d4',
-                            color: '#ffffff',
-                            padding: '0.55rem 1.25rem',
-                            borderRadius: '8px',
-                            fontWeight: 700,
-                            fontSize: '0.82rem',
-                            cursor: 'pointer',
-                          }}>
-                            Subir Foto Corporal
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handlePhotoUpload}
-                              style={{ display: 'none' }}
-                            />
+
+                          {/* Subir de Galería como Alternativa */}
+                          <label
+                            htmlFor="gym-gallery-file-input"
+                            style={{
+                              color: '#94a3b8',
+                              fontSize: '0.78rem',
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <Upload size={13} />
+                            o seleccionar de la galería de fotos
                           </label>
-                        </>
+                        </div>
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        * La foto es opcional. Si no tienes foto, la IA realizará el cálculo biomecánico por medidas antropométricas.
-                      </span>
+                    {/* Botones de Navegación del Paso 1 */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <button
-                        onClick={() => setOnboardingStep(2)}
+                        type="button"
+                        onClick={() => {
+                          stopCamera();
+                          setOnboardingStep(2);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#64748b',
+                          fontSize: '0.8rem',
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Omitir foto y continuar con datos biométricos ➔
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          stopCamera();
+                          setOnboardingStep(2);
+                        }}
                         style={{
                           backgroundColor: '#10b981',
                           color: '#ffffff',
                           border: 'none',
-                          padding: '0.65rem 1.25rem',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
+                          padding: '0.7rem 1.4rem',
+                          borderRadius: '10px',
+                          fontWeight: 800,
+                          fontSize: '0.88rem',
                           cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
                         }}
                       >
-                        Siguiente: Biometría & Salud ➔
+                        <span>Siguiente: Mis Datos & Salud</span>
+                        <ChevronRight size={16} />
                       </button>
                     </div>
                   </div>
@@ -1129,99 +1440,320 @@ export const AffiliatePortalView: React.FC = () => {
                   </div>
                 )}
 
-                {/* PASO 4: ALIMENTOS FAVORITOS & DESPENSA */}
+                {/* PASO 4: ALIMENTOS FAVORITOS POR CATEGORÍAS & DESPENSA */}
                 {onboardingStep === 4 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-                      Preferencias de Alimentación & Despensa
-                    </h4>
-                    <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: 0 }}>
-                      Selecciona los alimentos a los que tienes fácil acceso. Gemini construirá tu plan de nutrición y suplementación basándose exactamente en tus gustos.
-                    </p>
-
-                    {/* Alimentos Favoritos */}
-                    <div>
-                      <label style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
-                        Alimentos que te gustan y tienes disponibles en casa:
-                      </label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {[
-                          'Pechuga de Pollo',
-                          'Huevos',
-                          'Arroz',
-                          'Avena',
-                          'Atún',
-                          'Aguacate',
-                          'Plátano',
-                          'Pescado Blanco',
-                          'Papa / Batata',
-                          'Espinacas',
-                          'Yogur Griego',
-                          'Frutos Secos',
-                          'Carne Magra',
-                        ].map((food) => {
-                          const isSelected = obLikedFoods.includes(food);
-                          return (
-                            <button
-                              key={food}
-                              type="button"
-                              onClick={() => toggleObLikedFood(food)}
-                              style={{
-                                padding: '5px 10px',
-                                borderRadius: '7px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                border: isSelected ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
-                                backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.03)',
-                                color: isSelected ? '#10b981' : '#94a3b8',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {food}
-                            </button>
-                          );
-                        })}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+                    <div style={{
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Salad size={22} color="#10b981" />
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                            ¿Qué alimentos te gustan y tienes disponibles?
+                          </h4>
+                        </div>
+                        <span style={{
+                          backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                          color: '#10b981',
+                          padding: '3px 10px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                        }}>
+                          {obLikedFoods.length} seleccionados
+                        </span>
                       </div>
+                      <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+                        Toca los alimentos que consumes o tienes en casa. Gemini 2.5 Flash armará tus comidas exactamente con tus ingredientes favoritos.
+                      </p>
+                    </div>
 
-                      {/* Añadir alimento custom */}
-                      <form onSubmit={handleAddCustomLikedFood} style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                    {/* Barra de Búsqueda y Botón de Básicos Saludables */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <div style={{
+                        flex: 1,
+                        minWidth: '220px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        backgroundColor: '#1e293b',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderRadius: '10px',
+                        padding: '0.45rem 0.85rem',
+                      }}>
+                        <Search size={16} color="#94a3b8" />
                         <input
                           type="text"
-                          value={obCustomLikedFood}
-                          onChange={(e) => setObCustomLikedFood(e.target.value)}
-                          placeholder="Añadir otro alimento favorito (ej: lentejas, quinua...)"
+                          value={foodSearchTerm}
+                          onChange={(e) => setFoodSearchTerm(e.target.value)}
+                          placeholder="Buscar alimento (ej: pollo, arroz, banano, atún)..."
                           style={{
-                            flex: 1,
-                            padding: '0.45rem 0.75rem',
-                            borderRadius: '6px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(255,255,255,0.12)',
+                            width: '100%',
+                            background: 'none',
+                            border: 'none',
                             color: '#ffffff',
-                            fontSize: '0.78rem',
+                            fontSize: '0.82rem',
+                            outline: 'none',
                           }}
                         />
+                        {foodSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setFoodSearchTerm('')}
+                            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0 }}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSelectBasicHealthyFoods}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          backgroundColor: 'rgba(6, 182, 212, 0.15)',
+                          color: '#06b6d4',
+                          border: '1px solid rgba(6, 182, 212, 0.35)',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '10px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Zap size={14} />
+                        <span>⚡ Básicos Fitness</span>
+                      </button>
+                    </div>
+
+                    {/* Filtro por Categorías */}
+                    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                      {[
+                        { id: 'ALL', label: 'Todos' },
+                        { id: 'PROTEIN', label: '🍗 Proteínas' },
+                        { id: 'CARB', label: '🥔 Carbohidratos' },
+                        { id: 'LEGUME', label: '🫘 Legumbres' },
+                        { id: 'FAT', label: '🥑 Grasas & Semillas' },
+                        { id: 'DAIRY', label: '🥛 Lácteos' },
+                        { id: 'FRUIT', label: '🍎 Frutas' },
+                        { id: 'VEGETABLE', label: '🥦 Verduras' },
+                      ].map((cat) => (
                         <button
-                          type="submit"
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setFoodCategoryFilter(cat.id)}
                           style={{
-                            backgroundColor: '#06b6d4',
-                            color: '#ffffff',
-                            border: 'none',
-                            padding: '0.45rem 0.85rem',
-                            borderRadius: '6px',
-                            fontSize: '0.78rem',
+                            padding: '5px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.75rem',
                             fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                            border: foodCategoryFilter === cat.id ? '1px solid #06b6d4' : '1px solid rgba(255,255,255,0.08)',
+                            backgroundColor: foodCategoryFilter === cat.id ? '#06b6d4' : 'rgba(255,255,255,0.03)',
+                            color: foodCategoryFilter === cat.id ? '#ffffff' : '#94a3b8',
                             cursor: 'pointer',
                           }}
                         >
-                          + Agregar
+                          {cat.label}
                         </button>
-                      </form>
+                      ))}
                     </div>
 
+                    {/* Grilla de Alimentos Clasificados */}
+                    {(() => {
+                      // Fallback amplio en caso de que aún no cargue la BD
+                      const fallbackFoods: { name: string; category: string }[] = [
+                        { name: 'Pechuga de Pollo', category: 'PROTEIN' },
+                        { name: 'Huevos Enteros', category: 'PROTEIN' },
+                        { name: 'Claras de Huevo', category: 'PROTEIN' },
+                        { name: 'Carne Magra de Res', category: 'PROTEIN' },
+                        { name: 'Carne Molida Especial (90/10)', category: 'PROTEIN' },
+                        { name: 'Lomo de Cerdo Magro', category: 'PROTEIN' },
+                        { name: 'Pechuga de Pavo', category: 'PROTEIN' },
+                        { name: 'Atún en Agua', category: 'PROTEIN' },
+                        { name: 'Atún en Aceite de Oliva', category: 'PROTEIN' },
+                        { name: 'Salmón Fresco', category: 'PROTEIN' },
+                        { name: 'Tilapia / Pescado Blanco', category: 'PROTEIN' },
+                        { name: 'Camarones', category: 'PROTEIN' },
+                        { name: 'Tofu Firme', category: 'PROTEIN' },
+                        { name: 'Tempeh', category: 'PROTEIN' },
+                        { name: 'Soja Texturizada', category: 'PROTEIN' },
+                        { name: 'Arroz Blanco', category: 'CARB' },
+                        { name: 'Arroz Integral', category: 'CARB' },
+                        { name: 'Avena en Hojuelas', category: 'CARB' },
+                        { name: 'Papa Cocida', category: 'CARB' },
+                        { name: 'Papa Criolla', category: 'CARB' },
+                        { name: 'Batata / Camote', category: 'CARB' },
+                        { name: 'Yuca Cocida', category: 'CARB' },
+                        { name: 'Plátano Maduro', category: 'CARB' },
+                        { name: 'Plátano Verde', category: 'CARB' },
+                        { name: 'Pasta Integral', category: 'CARB' },
+                        { name: 'Pasta Tradicional', category: 'CARB' },
+                        { name: 'Quinoa Cocida', category: 'CARB' },
+                        { name: 'Arepa de Maíz', category: 'CARB' },
+                        { name: 'Pan Integral 100%', category: 'CARB' },
+                        { name: 'Tortillas de Maíz', category: 'CARB' },
+                        { name: 'Lentejas Cocidas', category: 'LEGUME' },
+                        { name: 'Garbanzos Cocidos', category: 'LEGUME' },
+                        { name: 'Fríjoles Rojos', category: 'LEGUME' },
+                        { name: 'Fríjoles Negros', category: 'LEGUME' },
+                        { name: 'Arvejas / Chícharos', category: 'LEGUME' },
+                        { name: 'Aguacate Hass', category: 'FAT' },
+                        { name: 'Aceite de Oliva Extra Virgen', category: 'FAT' },
+                        { name: 'Almendras', category: 'FAT' },
+                        { name: 'Nueces', category: 'FAT' },
+                        { name: 'Maní / Cacahuates', category: 'FAT' },
+                        { name: 'Mantequilla de Maní Natural', category: 'FAT' },
+                        { name: 'Mantequilla de Almendras', category: 'FAT' },
+                        { name: 'Semillas de Chía', category: 'FAT' },
+                        { name: 'Semillas de Linaza', category: 'FAT' },
+                        { name: 'Aceitunas', category: 'FAT' },
+                        { name: 'Yogur Griego Sin Azúcar', category: 'DAIRY' },
+                        { name: 'Leche Deslactosada / Descremada', category: 'DAIRY' },
+                        { name: 'Bebida de Almendras Sin Azúcar', category: 'DAIRY' },
+                        { name: 'Queso Cottage', category: 'DAIRY' },
+                        { name: 'Queso Cuajada Fresca', category: 'DAIRY' },
+                        { name: 'Queso Ricotta', category: 'DAIRY' },
+                        { name: 'Queso Mozzarella Bajo en Grasa', category: 'DAIRY' },
+                        { name: 'Proteína Whey en Polvo', category: 'DAIRY' },
+                        { name: 'Plátano / Banano', category: 'FRUIT' },
+                        { name: 'Manzana', category: 'FRUIT' },
+                        { name: 'Pera', category: 'FRUIT' },
+                        { name: 'Fresas', category: 'FRUIT' },
+                        { name: 'Arándanos / Frutos Rojos', category: 'FRUIT' },
+                        { name: 'Piña Fresca', category: 'FRUIT' },
+                        { name: 'Papaya', category: 'FRUIT' },
+                        { name: 'Mango', category: 'FRUIT' },
+                        { name: 'Naranja / Mandarina', category: 'FRUIT' },
+                        { name: 'Sandía', category: 'FRUIT' },
+                        { name: 'Melón', category: 'FRUIT' },
+                        { name: 'Kiwi', category: 'FRUIT' },
+                        { name: 'Uvas', category: 'FRUIT' },
+                        { name: 'Espinacas Frescas', category: 'VEGETABLE' },
+                        { name: 'Brócoli al Vapor', category: 'VEGETABLE' },
+                        { name: 'Espárragos', category: 'VEGETABLE' },
+                        { name: 'Zanahoria', category: 'VEGETABLE' },
+                        { name: 'Tomate', category: 'VEGETABLE' },
+                        { name: 'Pepino', category: 'VEGETABLE' },
+                        { name: 'Lechuga / Mezclum Verde', category: 'VEGETABLE' },
+                        { name: 'Calabacín / Zucchini', category: 'VEGETABLE' },
+                        { name: 'Champiñones / Setas', category: 'VEGETABLE' },
+                        { name: 'Coliflor', category: 'VEGETABLE' },
+                        { name: 'Pimientos / Pimentón', category: 'VEGETABLE' },
+                        { name: 'Cebolla', category: 'VEGETABLE' },
+                        { name: 'Habichuelas / Judías Verdes', category: 'VEGETABLE' },
+                      ];
+
+                      const sourceList = foodsCatalog.length > 0 ? foodsCatalog : fallbackFoods;
+                      const filtered = sourceList.filter((f) => {
+                        const matchesCategory = foodCategoryFilter === 'ALL' || f.category === foodCategoryFilter;
+                        const matchesSearch = !foodSearchTerm.trim() || f.name.toLowerCase().includes(foodSearchTerm.toLowerCase());
+                        return matchesCategory && matchesSearch;
+                      });
+
+                      return (
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                          gap: '8px',
+                          maxHeight: '280px',
+                          overflowY: 'auto',
+                          padding: '4px',
+                        }}>
+                          {filtered.map((food) => {
+                            const isSelected = obLikedFoods.includes(food.name);
+                            return (
+                              <button
+                                key={food.name}
+                                type="button"
+                                onClick={() => toggleObLikedFood(food.name)}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '8px 10px',
+                                  borderRadius: '9px',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  textAlign: 'left',
+                                  border: isSelected ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.08)',
+                                  backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.02)',
+                                  color: isSelected ? '#10b981' : '#cbd5e1',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '4px' }}>
+                                  {food.name}
+                                </span>
+                                {isSelected ? (
+                                  <Check size={14} color="#10b981" style={{ flexShrink: 0 }} />
+                                ) : (
+                                  <span style={{ fontSize: '0.65rem', color: '#64748b' }}>+</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                          {filtered.length === 0 && (
+                            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '1rem', color: '#64748b', fontSize: '0.8rem' }}>
+                              No se encontraron alimentos con ese término. Puedes añadirlo abajo.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Añadir Alimento Personalizado */}
+                    <form onSubmit={handleAddCustomLikedFood} style={{ display: 'flex', gap: '6px' }}>
+                      <input
+                        type="text"
+                        value={obCustomLikedFood}
+                        onChange={(e) => setObCustomLikedFood(e.target.value)}
+                        placeholder="¿Otro alimento favorito que no esté en la lista? (ej: arepa de chócolo, quinua...)"
+                        style={{
+                          flex: 1,
+                          padding: '0.55rem 0.85rem',
+                          borderRadius: '8px',
+                          backgroundColor: '#1e293b',
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          color: '#ffffff',
+                          fontSize: '0.8rem',
+                          outline: 'none',
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        style={{
+                          backgroundColor: '#06b6d4',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.55rem 1rem',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        + Añadir
+                      </button>
+                    </form>
+
                     {/* Alimentos Rechazados / Alergias */}
-                    <div>
-                      <label style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
-                        Alimentos que NO te gustan, Alergias o Intolerancias:
+                    <div style={{
+                      padding: '0.85rem 1rem',
+                      borderRadius: '10px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                    }}>
+                      <label style={{ fontSize: '0.78rem', color: '#ef4444', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
+                        Alimentos que NO te gustan o te causan alergia / intolerancia:
                       </label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                         {[
@@ -1230,9 +1762,11 @@ export const AffiliatePortalView: React.FC = () => {
                           'Mariscos',
                           'Cerdo',
                           'Carne Roja',
-                          'Cebolla',
                           'Picante',
+                          'Cebolla',
+                          'Pescado',
                           'Huevo',
+                          'Frutos Secos',
                         ].map((df) => {
                           const isSelected = obDislikedFoods.includes(df);
                           return (
@@ -1241,57 +1775,63 @@ export const AffiliatePortalView: React.FC = () => {
                               type="button"
                               onClick={() => toggleObDislikedFood(df)}
                               style={{
-                                padding: '5px 10px',
+                                padding: '4px 9px',
                                 borderRadius: '7px',
-                                fontSize: '0.75rem',
+                                fontSize: '0.74rem',
                                 fontWeight: 700,
-                                border: isSelected ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
-                                backgroundColor: isSelected ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.03)',
-                                color: isSelected ? '#ef4444' : '#94a3b8',
+                                border: isSelected ? '1.5px solid #ef4444' : '1px solid rgba(255,255,255,0.08)',
+                                backgroundColor: isSelected ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.02)',
+                                color: isSelected ? '#fca5a5' : '#94a3b8',
                                 cursor: 'pointer',
                               }}
                             >
-                              {df}
+                              {isSelected ? `✕ ${df}` : df}
                             </button>
                           );
                         })}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <button
+                        type="button"
                         onClick={() => setOnboardingStep(3)}
                         style={{
                           backgroundColor: 'rgba(255,255,255,0.08)',
                           color: '#f8fafc',
                           border: 'none',
-                          padding: '0.6rem 1.1rem',
+                          padding: '0.65rem 1.2rem',
                           borderRadius: '8px',
                           fontWeight: 700,
                           cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
                         }}
                       >
-                        ⬅ Volver a Días
+                        <ChevronLeft size={16} /> Volver a Días
                       </button>
+
                       <button
+                        type="button"
                         onClick={handleSubmitOnboarding360}
                         style={{
+                          backgroundColor: '#10b981',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.75rem 1.6rem',
+                          borderRadius: '10px',
+                          fontWeight: 800,
+                          fontSize: '0.92rem',
+                          cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
-                          backgroundColor: '#06b6d4',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '0.75rem 1.5rem',
-                          borderRadius: '10px',
-                          fontWeight: 800,
-                          fontSize: '0.9rem',
-                          cursor: 'pointer',
-                          boxShadow: '0 0 25px rgba(6, 182, 212, 0.4)',
+                          boxShadow: '0 0 20px rgba(16, 185, 129, 0.35)',
                         }}
                       >
                         <Sparkles size={18} />
-                        <span>🚀 Procesar Evaluación 360° con IA</span>
+                        <span>¡Generar Mi Plan 360° con IA!</span>
                       </button>
                     </div>
                   </div>

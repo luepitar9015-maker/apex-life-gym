@@ -205,42 +205,118 @@ export const getMemberDiagnostic = async (req: Request, res: Response) => {
 // -------------------------------------------------------------
 export const getFoodsCatalog = async (req: Request, res: Response) => {
   try {
-    let foods = await prisma.foodItem.findMany({ orderBy: { category: 'asc' } });
-    if (foods.length === 0) {
-      // Poblar catálogo de alimentos con macros
+    let foods = await prisma.foodItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] });
+    if (foods.length < 50) {
+      // Catálogo maestro completo de alimentos clasificados por categoría
       const defaultFoods = [
+        // PROTEÍNAS
         { name: 'Pechuga de Pollo', category: 'PROTEIN', calories: 165, protein: 31, carbs: 0, fats: 3.6 },
+        { name: 'Carne Magra de Res', category: 'PROTEIN', calories: 190, protein: 26, carbs: 0, fats: 9 },
+        { name: 'Carne Molida Especial (90/10)', category: 'PROTEIN', calories: 176, protein: 20, carbs: 0, fats: 10 },
+        { name: 'Lomo de Cerdo Magro', category: 'PROTEIN', calories: 143, protein: 26, carbs: 0, fats: 3.5 },
+        { name: 'Pechuga de Pavo', category: 'PROTEIN', calories: 135, protein: 30, carbs: 0, fats: 1 },
+        { name: 'Atún en Agua', category: 'PROTEIN', calories: 116, protein: 26, carbs: 0, fats: 1 },
+        { name: 'Atún en Aceite de Oliva', category: 'PROTEIN', calories: 198, protein: 27, carbs: 0, fats: 10 },
+        { name: 'Salmón Fresco', category: 'PROTEIN', calories: 208, protein: 20, carbs: 0, fats: 13 },
+        { name: 'Tilapia / Pescado Blanco', category: 'PROTEIN', calories: 96, protein: 20, carbs: 0, fats: 1.7 },
+        { name: 'Trucha Fresca', category: 'PROTEIN', calories: 141, protein: 20, carbs: 0, fats: 6 },
+        { name: 'Camarones / Langostinos', category: 'PROTEIN', calories: 99, protein: 24, carbs: 0.2, fats: 0.3 },
         { name: 'Huevos Enteros', category: 'PROTEIN', calories: 143, protein: 13, carbs: 1.1, fats: 9.5 },
         { name: 'Claras de Huevo', category: 'PROTEIN', calories: 52, protein: 11, carbs: 0.7, fats: 0.2 },
-        { name: 'Salmón Fresco', category: 'PROTEIN', calories: 208, protein: 20, carbs: 0, fats: 13 },
-        { name: 'Atún en Agua', category: 'PROTEIN', calories: 116, protein: 26, carbs: 0, fats: 1 },
-        { name: 'Carne Magra de Res', category: 'PROTEIN', calories: 190, protein: 26, carbs: 0, fats: 9 },
         { name: 'Tofu Firme', category: 'PROTEIN', calories: 76, protein: 8, carbs: 1.9, fats: 4.8 },
-        { name: 'Yogur Griego Sin Azúcar', category: 'DAIRY', calories: 59, protein: 10, carbs: 3.6, fats: 0.4 },
-        { name: 'Queso Ricotta / Cuajada', category: 'DAIRY', calories: 174, protein: 11, carbs: 3, fats: 13 },
+        { name: 'Tempeh', category: 'PROTEIN', calories: 193, protein: 19, carbs: 9, fats: 11 },
+        { name: 'Soja Texturizada', category: 'PROTEIN', calories: 336, protein: 50, carbs: 30, fats: 1.2 },
+        { name: 'Edamame', category: 'PROTEIN', calories: 122, protein: 11, carbs: 10, fats: 5 },
+
+        // CARBOHIDRATOS & GRANOS
         { name: 'Arroz Blanco', category: 'CARB', calories: 130, protein: 2.7, carbs: 28, fats: 0.3 },
         { name: 'Arroz Integral', category: 'CARB', calories: 111, protein: 2.6, carbs: 23, fats: 0.9 },
         { name: 'Avena en Hojuelas', category: 'CARB', calories: 389, protein: 16.9, carbs: 66, fats: 6.9 },
-        { name: 'Batata / Camote', category: 'CARB', calories: 86, protein: 1.6, carbs: 20, fats: 0.1 },
         { name: 'Papa Cocida', category: 'CARB', calories: 77, protein: 2, carbs: 17, fats: 0.1 },
+        { name: 'Papa Criolla', category: 'CARB', calories: 86, protein: 2.1, carbs: 19, fats: 0.2 },
+        { name: 'Batata / Camote', category: 'CARB', calories: 86, protein: 1.6, carbs: 20, fats: 0.1 },
+        { name: 'Yuca Cocida', category: 'CARB', calories: 160, protein: 1.4, carbs: 38, fats: 0.3 },
+        { name: 'Plátano Maduro', category: 'CARB', calories: 122, protein: 1.3, carbs: 32, fats: 0.4 },
+        { name: 'Plátano Verde', category: 'CARB', calories: 122, protein: 1.3, carbs: 32, fats: 0.2 },
         { name: 'Quinoa Cocida', category: 'CARB', calories: 120, protein: 4.4, carbs: 21, fats: 1.9 },
+        { name: 'Pasta Tradicional', category: 'CARB', calories: 131, protein: 5, carbs: 25, fats: 1.1 },
+        { name: 'Pasta Integral', category: 'CARB', calories: 124, protein: 5.3, carbs: 26, fats: 0.5 },
+        { name: 'Arepa de Maíz', category: 'CARB', calories: 160, protein: 3.5, carbs: 33, fats: 1.2 },
         { name: 'Pan Integral 100%', category: 'CARB', calories: 247, protein: 13, carbs: 41, fats: 3.4 },
-        { name: 'Plátano / Banano', category: 'FRUIT', calories: 89, protein: 1.1, carbs: 23, fats: 0.3 },
-        { name: 'Manzana', category: 'FRUIT', calories: 52, protein: 0.3, carbs: 14, fats: 0.2 },
-        { name: 'Frutos Rojos (Fresas/Arándanos)', category: 'FRUIT', calories: 57, protein: 0.7, carbs: 14, fats: 0.3 },
+        { name: 'Tortillas de Maíz', category: 'CARB', calories: 218, protein: 5.7, carbs: 45, fats: 2.8 },
+        { name: 'Tortillas Integrales', category: 'CARB', calories: 240, protein: 7, carbs: 42, fats: 4.5 },
+        { name: 'Cuscús', category: 'CARB', calories: 112, protein: 3.8, carbs: 23, fats: 0.2 },
+
+        // LEGUMBRES
+        { name: 'Lentejas Cocidas', category: 'LEGUME', calories: 116, protein: 9, carbs: 20, fats: 0.4 },
+        { name: 'Garbanzos Cocidos', category: 'LEGUME', calories: 164, protein: 8.9, carbs: 27, fats: 2.6 },
+        { name: 'Fríjoles Rojos', category: 'LEGUME', calories: 127, protein: 8.7, carbs: 23, fats: 0.5 },
+        { name: 'Fríjoles Negros', category: 'LEGUME', calories: 132, protein: 8.9, carbs: 24, fats: 0.5 },
+        { name: 'Arvejas / Chícharos', category: 'LEGUME', calories: 81, protein: 5.4, carbs: 14, fats: 0.4 },
+
+        // GRASAS SALUDABLES & SEMILLAS
         { name: 'Aguacate Hass', category: 'FAT', calories: 160, protein: 2, carbs: 8.5, fats: 14.7 },
         { name: 'Aceite de Oliva Extra Virgen', category: 'FAT', calories: 884, protein: 0, carbs: 0, fats: 100 },
         { name: 'Almendras', category: 'FAT', calories: 579, protein: 21, carbs: 22, fats: 49.9 },
         { name: 'Nueces', category: 'FAT', calories: 654, protein: 15, carbs: 14, fats: 65 },
+        { name: 'Maní / Cacahuates', category: 'FAT', calories: 567, protein: 26, carbs: 16, fats: 49 },
+        { name: 'Mantequilla de Maní Natural', category: 'FAT', calories: 588, protein: 25, carbs: 20, fats: 50 },
+        { name: 'Mantequilla de Almendras', category: 'FAT', calories: 614, protein: 21, carbs: 19, fats: 56 },
+        { name: 'Semillas de Chía', category: 'FAT', calories: 486, protein: 17, carbs: 42, fats: 31 },
+        { name: 'Semillas de Linaza', category: 'FAT', calories: 534, protein: 18, carbs: 29, fats: 42 },
+        { name: 'Aceitunas', category: 'FAT', calories: 115, protein: 0.8, carbs: 6, fats: 10.7 },
+        { name: 'Aceite de Coco', category: 'FAT', calories: 862, protein: 0, carbs: 0, fats: 100 },
+
+        // LÁCTEOS & DERIVADOS
+        { name: 'Yogur Griego Sin Azúcar', category: 'DAIRY', calories: 59, protein: 10, carbs: 3.6, fats: 0.4 },
+        { name: 'Leche Deslactosada / Descremada', category: 'DAIRY', calories: 42, protein: 3.4, carbs: 5, fats: 1 },
+        { name: 'Bebida de Almendras Sin Azúcar', category: 'DAIRY', calories: 13, protein: 0.4, carbs: 0.3, fats: 1.1 },
+        { name: 'Queso Cottage', category: 'DAIRY', calories: 98, protein: 11, carbs: 3.4, fats: 4.3 },
+        { name: 'Queso Cuajada Fresca', category: 'DAIRY', calories: 174, protein: 11, carbs: 3, fats: 13 },
+        { name: 'Queso Ricotta', category: 'DAIRY', calories: 138, protein: 11, carbs: 5, fats: 8 },
+        { name: 'Queso Mozzarella Bajo en Grasa', category: 'DAIRY', calories: 254, protein: 24, carbs: 2.8, fats: 16 },
+        { name: 'Proteína Whey en Polvo', category: 'DAIRY', calories: 370, protein: 80, carbs: 4, fats: 3 },
+
+        // FRUTAS
+        { name: 'Plátano / Banano', category: 'FRUIT', calories: 89, protein: 1.1, carbs: 23, fats: 0.3 },
+        { name: 'Manzana', category: 'FRUIT', calories: 52, protein: 0.3, carbs: 14, fats: 0.2 },
+        { name: 'Pera', category: 'FRUIT', calories: 57, protein: 0.4, carbs: 15, fats: 0.1 },
+        { name: 'Fresas', category: 'FRUIT', calories: 32, protein: 0.7, carbs: 7.7, fats: 0.3 },
+        { name: 'Arándanos / Frutos Rojos', category: 'FRUIT', calories: 57, protein: 0.7, carbs: 14, fats: 0.3 },
+        { name: 'Piña Fresca', category: 'FRUIT', calories: 50, protein: 0.5, carbs: 13, fats: 0.1 },
+        { name: 'Papaya', category: 'FRUIT', calories: 43, protein: 0.5, carbs: 11, fats: 0.3 },
+        { name: 'Mango', category: 'FRUIT', calories: 60, protein: 0.8, carbs: 15, fats: 0.4 },
+        { name: 'Naranja / Mandarina', category: 'FRUIT', calories: 47, protein: 0.9, carbs: 12, fats: 0.1 },
+        { name: 'Sandía', category: 'FRUIT', calories: 30, protein: 0.6, carbs: 7.6, fats: 0.2 },
+        { name: 'Melón', category: 'FRUIT', calories: 34, protein: 0.8, carbs: 8.2, fats: 0.2 },
+        { name: 'Kiwi', category: 'FRUIT', calories: 61, protein: 1.1, carbs: 15, fats: 0.5 },
+        { name: 'Uvas', category: 'FRUIT', calories: 67, protein: 0.6, carbs: 17, fats: 0.4 },
+        { name: 'Durazno / Melocotón', category: 'FRUIT', calories: 39, protein: 0.9, carbs: 9.5, fats: 0.3 },
+
+        // VERDURAS & VEGETALES
         { name: 'Espinacas Frescas', category: 'VEGETABLE', calories: 23, protein: 2.9, carbs: 3.6, fats: 0.4 },
         { name: 'Brócoli al Vapor', category: 'VEGETABLE', calories: 34, protein: 2.8, carbs: 7, fats: 0.4 },
         { name: 'Espárragos', category: 'VEGETABLE', calories: 20, protein: 2.2, carbs: 3.9, fats: 0.1 },
+        { name: 'Zanahoria', category: 'VEGETABLE', calories: 41, protein: 0.9, carbs: 10, fats: 0.2 },
+        { name: 'Tomate', category: 'VEGETABLE', calories: 18, protein: 0.9, carbs: 3.9, fats: 0.2 },
+        { name: 'Pepino', category: 'VEGETABLE', calories: 15, protein: 0.7, carbs: 3.6, fats: 0.1 },
+        { name: 'Lechuga / Mezclum Verde', category: 'VEGETABLE', calories: 15, protein: 1.4, carbs: 2.9, fats: 0.2 },
+        { name: 'Calabacín / Zucchini', category: 'VEGETABLE', calories: 17, protein: 1.2, carbs: 3.1, fats: 0.3 },
+        { name: 'Champiñones / Setas', category: 'VEGETABLE', calories: 22, protein: 3.1, carbs: 3.3, fats: 0.3 },
+        { name: 'Coliflor', category: 'VEGETABLE', calories: 25, protein: 1.9, carbs: 5, fats: 0.3 },
+        { name: 'Pimientos / Pimentón', category: 'VEGETABLE', calories: 20, protein: 0.9, carbs: 4.6, fats: 0.2 },
+        { name: 'Cebolla', category: 'VEGETABLE', calories: 40, protein: 1.1, carbs: 9.3, fats: 0.1 },
+        { name: 'Habichuelas / Judías Verdes', category: 'VEGETABLE', calories: 31, protein: 1.8, carbs: 7, fats: 0.2 },
+        { name: 'Remolacha / Betabel', category: 'VEGETABLE', calories: 43, protein: 1.6, carbs: 10, fats: 0.2 },
       ];
 
       for (const item of defaultFoods) {
-        await prisma.foodItem.create({ data: item });
+        const exists = await prisma.foodItem.findFirst({ where: { name: item.name } });
+        if (!exists) {
+          await prisma.foodItem.create({ data: item });
+        }
       }
-      foods = await prisma.foodItem.findMany({ orderBy: { category: 'asc' } });
+      foods = await prisma.foodItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] });
     }
 
     res.json({ success: true, data: foods });

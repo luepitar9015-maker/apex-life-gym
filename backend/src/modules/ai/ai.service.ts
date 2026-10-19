@@ -114,11 +114,33 @@ export const analyzeHealthDiagnosticAI = async (params: {
   disabilities?: string;
   trainingExperience?: string;
   photoBase64?: string; // imagen en base64 en memoria RAM volátil
+  bodyMeasurements?: {
+    neck?: number;
+    chest?: number;
+    waist?: number;
+    hips?: number;
+    arms?: number;
+    thighs?: number;
+    calves?: number;
+  };
+  biotype?: string;
 }): Promise<HealthDiagnosticAIData> => {
   // Cálculo base de IMC
   const heightM = params.height > 3 ? params.height / 100 : params.height;
   const rawBmi = params.weight / (heightM * heightM);
   const bmi = parseFloat(rawBmi.toFixed(1));
+
+  const measuresText = params.bodyMeasurements ? `
+- Medidas antropométricas registradas con cinta (cm):
+  * Cuello: ${params.bodyMeasurements.neck || 'No especificado'} cm
+  * Pecho / Tórax: ${params.bodyMeasurements.chest || 'No especificado'} cm
+  * Cintura (altura ombligo): ${params.bodyMeasurements.waist || 'No especificado'} cm
+  * Cadera / Glúteos: ${params.bodyMeasurements.hips || 'No especificado'} cm
+  * Brazo: ${params.bodyMeasurements.arms || 'No especificado'} cm
+  * Muslo: ${params.bodyMeasurements.thighs || 'No especificado'} cm
+  * Pantorrilla: ${params.bodyMeasurements.calves || 'No especificado'} cm
+- Somatotipo declarado por el atleta: ${params.biotype || 'Evaluar y clasificar'}
+` : (params.biotype ? `\n- Somatotipo declarado: ${params.biotype}\n` : '');
 
   const promptText = `Actúa como un Médico Deportivo de Élite, Fisiólogo y Especialista en Biomecánica y Posturología.
 Realiza un DIAGNÓSTICO INTEGRAL DEPORTIVO Y POSTURAL del siguiente atleta:
@@ -132,9 +154,9 @@ Realiza un DIAGNÓSTICO INTEGRAL DEPORTIVO Y POSTURAL del siguiente atleta:
 - Lesiones previas o activas: ${params.injuries || 'Sin lesiones'}
 - Discapacidades o restricciones motoras: ${params.disabilities || 'Ninguna'}
 - Nivel de experiencia en entrenamiento: ${params.trainingExperience || 'Principiante'}
-
+${measuresText}
 AVISO DE PRIVACIDAD: Esta imagen se procesa en memoria volátil efímera y no será almacenada en disco ni base de datos.
-${params.photoBase64 ? 'Hay una foto corporal adjunta. Evalúa detalladamente la silueta corporal, distribución de tejido adiposo y magro, alineación de hombros, nivel pélvico, curvatura de la columna y somatotipo visible.' : 'No hay foto adjunta, realiza la estimación antropométrica clínica más rigurosa basada en biometría.'}
+${params.photoBase64 ? 'Hay una foto corporal adjunta. Evalúa detalladamente la silueta corporal, distribución de tejido adiposo y magro, alineación de hombros, nivel pélvico, curvatura de la columna y somatotipo visible.' : 'No hay foto adjunta, realiza la estimación antropométrica clínica más rigurosa basada en biometría y medidas proporcionadas.'}
 
 ES CRÍTICO:
 1. Identificar ejercicios PROHIBIDOS específicamente para no agravar sus lesiones (ej. Si tiene lesión lumbar: prohibido peso muerto con barra libre o sentadilla frontal pesada; si tiene lesión de rodilla: prohibida prensa con rango extremo o extensiones bruscas).
@@ -146,7 +168,7 @@ Responde ÚNICAMENTE con un objeto JSON sin markdown exterior con esta estructur
   "bodyFatPercentage": 18.5,
   "muscleMassKg": 61.2,
   "bmi": ${bmi},
-  "biotype": "Mesomorfo",
+  "biotype": "${params.biotype ? params.biotype : 'Mesomorfo'}",
   "aiClinicalSummary": "Diagnóstico claro y profesional del atleta, estado físico, balance postural y precauciones.",
   "prohibitedExercises": "Lista explícita de ejercicios y movimientos que NO debe realizar por riesgo de lesión.",
   "recommendedActions": "Estrategia biomecánica recomendada para lograr su objetivo de forma segura."

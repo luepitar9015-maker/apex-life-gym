@@ -35,6 +35,7 @@ import {
   RefreshCw,
   Video,
   VideoOff,
+  Ruler,
 } from 'lucide-react';
 import { api, Member, Routine, NutritionPlan, MealItem, HealthDiagnostic, FoodItem, DAYS_OF_WEEK, getDayName, getTodayDayNumber } from '../services/api';
 import { BodyScanCameraModal } from '../components/BodyScanCameraModal';
@@ -103,38 +104,53 @@ export const AffiliatePortalView: React.FC = () => {
   const [timerSeconds, setTimerSeconds] = useState(60);
   const [timerRunning, setTimerRunning] = useState(false);
 
-  // Estados del Asistente Biométrico & Onboarding 360° con IA
+  // Estados del Asistente Biométrico & Cuestionario Onboarding 360° con IA
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+  const [onboardingStep, setOnboardingStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
 
-  // Paso 2: Biometría & Salud
+  // Paso 2: Salud & Enfermedades
+  const [obDiseases, setObDiseases] = useState<string[]>([]);
+  const [obCustomHealthNotes, setObCustomHealthNotes] = useState('');
+
+  // Paso 3: Lesiones & Zonas con Dolor
+  const [obInjuries, setObInjuries] = useState<string[]>([]);
+  const [obInjurySeverity, setObInjurySeverity] = useState<'LEVE' | 'MODERADO' | 'SEVERO'>('MODERADO');
+
+  // Paso 4: Alimentos según Categoría
+  const [obLikedFoods, setObLikedFoods] = useState<string[]>([
+    'Pechuga de Pollo',
+    'Huevos Enteros',
+    'Arroz Blanco',
+    'Avena en Hojuelas',
+    'Atún en Agua',
+    'Aguacate Hass',
+  ]);
+  const [obDislikedFoods, setObDislikedFoods] = useState<string[]>([]);
+  const [obCustomLikedFood, setObCustomLikedFood] = useState('');
+
+  // Paso 5: Biotipo (Tipo de Cuerpo), Datos Biométricos, Medidas & Días
+  const [obBiotype, setObBiotype] = useState<'ECTOMORFO' | 'MESOMORFO' | 'ENDOMORFO'>('MESOMORFO');
   const [obWeight, setObWeight] = useState('');
   const [obHeight, setObHeight] = useState('');
   const [obAge, setObAge] = useState('26');
   const [obGender, setObGender] = useState<'MALE' | 'FEMALE'>('MALE');
-  const [obInjuries, setObInjuries] = useState<string[]>([]);
-  const [obDiseases, setObDiseases] = useState<string[]>([]);
-  const [obCustomHealthNotes, setObCustomHealthNotes] = useState('');
 
-  // Paso 3: Entrenamiento & Días
+  // Medidas corporales (cm)
+  const [obNeck, setObNeck] = useState('');
+  const [obChest, setObChest] = useState('');
+  const [obWaist, setObWaist] = useState('');
+  const [obHips, setObHips] = useState('');
+  const [obArms, setObArms] = useState('');
+  const [obThighs, setObThighs] = useState('');
+  const [obCalves, setObCalves] = useState('');
+
+  // Planificación de Entrenamiento
   const [obGoal, setObGoal] = useState('HYPERTROPHY');
   const [obLocation, setObLocation] = useState<'GYM' | 'HOME'>('GYM');
   const [obExperience, setObExperience] = useState('PRINCIPIANTE');
   const [obTrainingDays, setObTrainingDays] = useState<number[]>([1, 2, 4, 5]);
-
-  // Paso 4: Nutrición & Despensa
-  const [obLikedFoods, setObLikedFoods] = useState<string[]>([
-    'Pechuga de Pollo',
-    'Huevos',
-    'Arroz',
-    'Avena',
-    'Atún',
-    'Aguacate',
-  ]);
-  const [obDislikedFoods, setObDislikedFoods] = useState<string[]>([]);
-  const [obCustomLikedFood, setObCustomLikedFood] = useState('');
 
   // Procesamiento y Resultados
   const [processing360, setProcessing360] = useState(false);
@@ -229,6 +245,16 @@ export const AffiliatePortalView: React.FC = () => {
       // 3. Cargar Diagnóstico Antropométrico
       const diag = await api.getMemberDiagnostic(id);
       setDiagnostic(diag);
+
+      // Si el socio no tiene diagnóstico previo o es su primera vez, desplegar automáticamente el Cuestionario Inicial
+      try {
+        const hasCompletedKey = `gym_onboarding_completed_${id}`;
+        const hasCompleted = localStorage.getItem(hasCompletedKey);
+        if (!hasCompleted && !diag) {
+          setShowOnboardingModal(true);
+          setOnboardingStep(1);
+        }
+      } catch {}
 
       // Pre-cargar datos en el asistente biométrico
       if (full.weight) setObWeight(String(full.weight));
@@ -332,15 +358,25 @@ export const AffiliatePortalView: React.FC = () => {
   };
 
   const toggleObInjury = (item: string) => {
-    setObInjuries((prev) =>
-      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
-    );
+    if (item.includes('Ninguna') || item.includes('Sin Lesiones')) {
+      setObInjuries([item]);
+      return;
+    }
+    setObInjuries((prev) => {
+      const filtered = prev.filter((i) => !i.includes('Ninguna') && !i.includes('Sin Lesiones'));
+      return filtered.includes(item) ? filtered.filter((i) => i !== item) : [...filtered, item];
+    });
   };
 
   const toggleObDisease = (item: string) => {
-    setObDiseases((prev) =>
-      prev.includes(item) ? prev.filter((d) => d !== item) : [...prev, item]
-    );
+    if (item.includes('Ninguna')) {
+      setObDiseases([item]);
+      return;
+    }
+    setObDiseases((prev) => {
+      const filtered = prev.filter((d) => !d.includes('Ninguna'));
+      return filtered.includes(item) ? filtered.filter((d) => d !== item) : [...filtered, item];
+    });
   };
 
   const toggleObTrainingDay = (dayId: number) => {
@@ -376,7 +412,7 @@ export const AffiliatePortalView: React.FC = () => {
     if (!currentMember) return;
     try {
       setProcessing360(true);
-      setOnboardingStep(5);
+      setOnboardingStep(6);
 
       const wNum = parseFloat(obWeight) || currentMember.weight || 74;
       const hNum = parseFloat(obHeight) || currentMember.height || 1.75;
@@ -389,7 +425,22 @@ export const AffiliatePortalView: React.FC = () => {
         .filter(Boolean)
         .join(', ');
 
-      const injuriesStr = obInjuries.join(', ');
+      const injuriesStr = [
+        ...obInjuries,
+        obInjurySeverity ? `Intensidad: ${obInjurySeverity}` : '',
+      ]
+        .filter(Boolean)
+        .join(', ');
+
+      const bodyMeasurements = {
+        neck: obNeck ? parseFloat(obNeck) : undefined,
+        chest: obChest ? parseFloat(obChest) : undefined,
+        waist: obWaist ? parseFloat(obWaist) : undefined,
+        hips: obHips ? parseFloat(obHips) : undefined,
+        arms: obArms ? parseFloat(obArms) : undefined,
+        thighs: obThighs ? parseFloat(obThighs) : undefined,
+        calves: obCalves ? parseFloat(obCalves) : undefined,
+      };
 
       const res = await api.completeOnboarding360({
         memberId: currentMember.id,
@@ -399,26 +450,32 @@ export const AffiliatePortalView: React.FC = () => {
         age: ageNum,
         gender: obGender,
         targetGoal: obGoal,
-        trainingDays: obTrainingDays.length > 0 ? obTrainingDays : [1, 3, 5],
+        trainingDays: obTrainingDays.length > 0 ? obTrainingDays : [1, 2, 4, 5],
         location: obLocation,
         trainingExperience: obExperience,
         diseases: diseasesStr || undefined,
         injuries: injuriesStr || undefined,
         likedFoods: obLikedFoods,
         dislikedFoods: obDislikedFoods,
+        biotype: obBiotype,
+        bodyMeasurements,
       });
 
       setResults360(res.data);
       setDiagnostic(res.data.diagnostic);
       setNutrition(res.data.nutrition);
       setRoutine(res.data.routine);
-      setOnboardingStep(6);
+      setOnboardingStep(7);
+
+      try {
+        localStorage.setItem(`gym_onboarding_completed_${currentMember.id}`, 'true');
+      } catch {}
 
       // Sincronizar socio
       await handleSelectMember(currentMember.id);
     } catch (err: any) {
-      alert(`Error al procesar onboarding 360° con IA: ${err.message || err}`);
-      setOnboardingStep(4);
+      alert(`Error al procesar el cuestionario con IA: ${err.message || err}`);
+      setOnboardingStep(5);
     } finally {
       setProcessing360(false);
     }
@@ -729,27 +786,28 @@ export const AffiliatePortalView: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Stepper / Indicador de Progreso */}
-                <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {/* Stepper / Indicador de Progreso Profesional (7 Pasos Guiados) */}
+                <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '6px' }}>
                   {[
-                    { num: 1, label: '1. Foto Corporal' },
-                    { num: 2, label: '2. Salud & Lesiones' },
-                    { num: 3, label: '3. Días & Gym' },
-                    { num: 4, label: '4. Alimentos & Dieta' },
-                    { num: 5, label: '5. Análisis IA' },
-                    { num: 6, label: '6. Resultados 360°' },
+                    { num: 1, label: '1. 📸 Foto' },
+                    { num: 2, label: '2. 🩺 Salud' },
+                    { num: 3, label: '3. ⚠️ Lesión' },
+                    { num: 4, label: '4. 🥗 Alimentos' },
+                    { num: 5, label: '5. 📏 Somatotipo & Medidas' },
+                    { num: 6, label: '6. 🧠 Análisis IA' },
+                    { num: 7, label: '7. 🏆 Rutinas de los Días' },
                   ].map((s) => (
                     <div
                       key={s.num}
                       style={{
-                        padding: '5px 10px',
-                        borderRadius: '6px',
+                        padding: '6px 11px',
+                        borderRadius: '8px',
                         fontSize: '0.72rem',
-                        fontWeight: 700,
+                        fontWeight: 800,
                         backgroundColor: onboardingStep === s.num
                           ? '#06b6d4'
                           : onboardingStep > s.num
-                          ? 'rgba(16, 185, 129, 0.2)'
+                          ? 'rgba(16, 185, 129, 0.25)'
                           : 'rgba(255,255,255,0.04)',
                         color: onboardingStep === s.num
                           ? '#ffffff'
@@ -757,6 +815,8 @@ export const AffiliatePortalView: React.FC = () => {
                           ? '#10b981'
                           : '#64748b',
                         whiteSpace: 'nowrap',
+                        border: onboardingStep === s.num ? '1px solid #38bdf8' : '1px solid transparent',
+                        transition: 'all 0.2s ease',
                       }}
                     >
                       {s.label}
@@ -1088,7 +1148,7 @@ export const AffiliatePortalView: React.FC = () => {
                           cursor: 'pointer',
                         }}
                       >
-                        Omitir foto y continuar con datos biométricos ➔
+                        Omitir foto y continuar con cuestionario de salud ➔
                       </button>
 
                       <button
@@ -1112,384 +1172,286 @@ export const AffiliatePortalView: React.FC = () => {
                           boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
                         }}
                       >
-                        <span>Siguiente: Mis Datos & Salud</span>
+                        <span>Siguiente: Problemas de Salud</span>
                         <ChevronRight size={16} />
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* PASO 2: BIOMETRÍA & FICHA DE SALUD / LESIONES */}
+                {/* PASO 2: PROBLEMAS DE SALUD & ANTECEDENTES MÉDICOS */}
                 {onboardingStep === 2 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-                      Métricas Antropométricas & Ficha Médica
-                    </h4>
-
-                    {/* Inputs de Peso, Talla, Edad, Género */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                          Peso Actual (kg):
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={obWeight}
-                          onChange={(e) => setObWeight(e.target.value)}
-                          placeholder="Ej: 74.5"
-                          style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            borderRadius: '8px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                          }}
-                        />
+                    <div style={{
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <HeartPulse size={22} color="#f59e0b" />
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                          ¿Presentas algún Problema de Salud o Condición Médica?
+                        </h4>
                       </div>
-
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                          Estatura (metros o cm):
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={obHeight}
-                          onChange={(e) => setObHeight(e.target.value)}
-                          placeholder="Ej: 1.75"
-                          style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            borderRadius: '8px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                          }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                          Edad (años):
-                        </label>
-                        <input
-                          type="number"
-                          value={obAge}
-                          onChange={(e) => setObAge(e.target.value)}
-                          placeholder="Ej: 26"
-                          style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            borderRadius: '8px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                          }}
-                        />
-                      </div>
-
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                          Género:
-                        </label>
-                        <select
-                          value={obGender}
-                          onChange={(e) => setObGender(e.target.value as any)}
-                          style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            borderRadius: '8px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <option value="MALE">Masculino</option>
-                          <option value="FEMALE">Femenino</option>
-                        </select>
-                      </div>
+                      <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+                        Tu seguridad cardiovascular y metabólica es lo primero. La IA regulará la intensidad aeróbica, intervalos y precauciones clínicas en tus entrenamientos.
+                      </p>
                     </div>
 
-                    {/* Chips de Lesiones */}
+                    {/* Chips / Tarjetas de Condiciones Médicas */}
                     <div>
-                      <label style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
-                        ⚠️ Lesiones Previas o Zonas con Dolor (La IA excluirá ejercicios riesgosos):
+                      <label style={{ fontSize: '0.82rem', color: '#f59e0b', fontWeight: 800, display: 'block', marginBottom: '8px' }}>
+                        Selecciona las condiciones que apliquen a tu salud actual:
                       </label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px' }}>
                         {[
-                          'Rodilla / Meniscos',
-                          'Lumbar / Espalda Baja',
-                          'Hombro / Manguito Rotador',
-                          'Cervical / Cuello',
-                          'Muñeca / Antebrazo',
-                          'Tobillo',
-                          'Ninguna Lesión',
-                        ].map((inj) => {
-                          const isSelected = obInjuries.includes(inj);
-                          return (
-                            <button
-                              key={inj}
-                              type="button"
-                              onClick={() => toggleObInjury(inj)}
-                              style={{
-                                padding: '5px 10px',
-                                borderRadius: '7px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                border: isSelected ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
-                                backgroundColor: isSelected ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.03)',
-                                color: isSelected ? '#ef4444' : '#94a3b8',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {inj}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Chips de Patologías */}
-                    <div>
-                      <label style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
-                        Condiciones Médicas o de Salud:
-                      </label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {[
-                          'Hipertensión Arterial',
-                          'Diabetes / Resistencia Insulina',
-                          'Asma / Dificultad Respiratoria',
-                          'Problemas Cardíacos',
-                          'Ninguna',
+                          { id: 'Hipertensión Arterial', desc: 'Evitar maniobra de Valsalva e isométricos extremos' },
+                          { id: 'Diabetes / Resistencia a la Insulina', desc: 'Control de glucemia y tiempos de nutrición' },
+                          { id: 'Asma / Afección Respiratoria', desc: 'Pausas activas y monitoreo de frecuencia' },
+                          { id: 'Problemas Cardíacos / Cardiopatía', desc: 'Control de pulsaciones por minuto seguras' },
+                          { id: 'Hipotiroidismo / Tiroides', desc: 'Ajuste metabólico y recuperación energética' },
+                          { id: 'Colesterol / Triglicéridos Altos', desc: 'Prioridad en salud lipídica y cardiovascular' },
+                          { id: 'Vértigo / Presión Baja', desc: 'Evitar cambios bruscos de postura o cabeza invertida' },
+                          { id: 'Ninguna condición (Salud Óptima)', desc: 'Sin restricciones médicas ni patologías' },
                         ].map((dis) => {
-                          const isSelected = obDiseases.includes(dis);
+                          const isSelected = obDiseases.includes(dis.id);
                           return (
                             <button
-                              key={dis}
+                              key={dis.id}
                               type="button"
-                              onClick={() => toggleObDisease(dis)}
+                              onClick={() => toggleObDisease(dis.id)}
                               style={{
-                                padding: '5px 10px',
-                                borderRadius: '7px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                border: isSelected ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.1)',
-                                backgroundColor: isSelected ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.03)',
-                                color: isSelected ? '#f59e0b' : '#94a3b8',
+                                padding: '10px 12px',
+                                borderRadius: '10px',
+                                textAlign: 'left',
+                                border: isSelected ? '1.5px solid #f59e0b' : '1px solid rgba(255,255,255,0.08)',
+                                backgroundColor: isSelected ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.02)',
+                                color: isSelected ? '#ffffff' : '#94a3b8',
                                 cursor: 'pointer',
+                                transition: 'all 0.15s ease',
                               }}
                             >
-                              {dis}
+                              <div style={{ fontWeight: 800, fontSize: '0.82rem', color: isSelected ? '#fbbf24' : '#f8fafc' }}>
+                                {isSelected ? '✓ ' : ''}{dis.id}
+                              </div>
+                              <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '3px', lineHeight: 1.3 }}>
+                                {dis.desc}
+                              </div>
                             </button>
                           );
                         })}
                       </div>
                     </div>
 
-                    {/* Notas médicas abiertas */}
+                    {/* Notas adicionales de salud o medicamentos */}
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                        Detalles adicionales de salud o dolor al entrenar:
+                      <label style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'block', marginBottom: '4px', fontWeight: 600 }}>
+                        ¿Tomas algún medicamento de uso continuo o tienes cirugías previas? (Opcional):
                       </label>
                       <input
                         type="text"
                         value={obCustomHealthNotes}
                         onChange={(e) => setObCustomHealthNotes(e.target.value)}
-                        placeholder="Ej: Cirugía de rodilla hace 2 años, dolor al hacer press tras nuca..."
+                        placeholder="Ej: Tomo Losartán para la presión, cirugía abdominal hace 1 año..."
                         style={{
                           width: '100%',
-                          padding: '0.5rem',
+                          padding: '0.65rem 0.85rem',
                           borderRadius: '8px',
                           backgroundColor: '#1e293b',
                           border: '1px solid rgba(255,255,255,0.15)',
                           color: '#ffffff',
                           fontSize: '0.82rem',
+                          outline: 'none',
                         }}
                       />
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <button
+                        type="button"
                         onClick={() => setOnboardingStep(1)}
                         style={{
                           backgroundColor: 'rgba(255,255,255,0.08)',
                           color: '#f8fafc',
                           border: 'none',
-                          padding: '0.6rem 1.1rem',
+                          padding: '0.65rem 1.2rem',
                           borderRadius: '8px',
                           fontWeight: 700,
                           cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
                         }}
                       >
-                        ⬅ Volver a Foto
+                        <ChevronLeft size={16} /> Volver a Foto
                       </button>
+
                       <button
+                        type="button"
                         onClick={() => setOnboardingStep(3)}
                         style={{
                           backgroundColor: '#10b981',
                           color: '#ffffff',
                           border: 'none',
-                          padding: '0.65rem 1.25rem',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
+                          padding: '0.7rem 1.4rem',
+                          borderRadius: '10px',
+                          fontWeight: 800,
+                          fontSize: '0.88rem',
                           cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
                         }}
                       >
-                        Siguiente: Días & Gimnasio ➔
+                        <span>Siguiente: Lesiones & Zonas con Dolor</span>
+                        <ChevronRight size={16} />
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* PASO 3: DÍAS DE ENTRENAMIENTO & UBICACIÓN */}
+                {/* PASO 3: LESIONES, DOLORES & ARTICULACIONES */}
                 {onboardingStep === 3 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-                      Preferencias de Entrenamiento Semanal
-                    </h4>
+                    <div style={{
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <AlertTriangle size={22} color="#ef4444" />
+                        <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                          ¿Tienes alguna Lesión, Molestia o Cirugía Articular?
+                        </h4>
+                      </div>
+                      <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '6px 0 0 0', lineHeight: 1.4 }}>
+                        Es crucial para tu integridad física. La IA <strong style={{ color: '#ef4444' }}>excluirá y sustituirá de raíz</strong> cualquier ejercicio con cargas axiales o rangos que pongan en peligro estas articulaciones.
+                      </p>
+                    </div>
 
-                    {/* Selector de Días de la Semana Lun a Dom */}
+                    {/* Selector Anatómico de Lesiones */}
                     <div>
-                      <label style={{ fontSize: '0.82rem', color: '#06b6d4', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
-                        ¿Qué días de la semana vas a ir a entrenar? ({obTrainingDays.length} días seleccionados):
+                      <label style={{ fontSize: '0.82rem', color: '#ef4444', fontWeight: 800, display: 'block', marginBottom: '8px' }}>
+                        Toca las zonas corporales donde sientas dolor o tengas lesiones:
                       </label>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '6px' }}>
-                        {DAYS_OF_WEEK.map((d) => {
-                          const isSelected = obTrainingDays.includes(d.id);
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '8px' }}>
+                        {[
+                          { id: 'Rodilla / Meniscos / Ligamentos', label: '🦵 Rodilla / Meniscos' },
+                          { id: 'Lumbar / Espalda Baja / Hernia', label: '⚡ Lumbar / Espalda Baja' },
+                          { id: 'Hombro / Manguito Rotador / Pinzamiento', label: '🦾 Hombro / Manguito' },
+                          { id: 'Cervical / Cuello', label: '🦒 Cervical / Cuello' },
+                          { id: 'Muñeca / Antebrazo / Túnel Carpiano', label: '🖐️ Muñeca / Mano' },
+                          { id: 'Tobillo / Tendón de Aquiles', label: '🦶 Tobillo / Pie' },
+                          { id: 'Codo / Epicondilitis', label: '🎾 Codo de Tenista / Golf' },
+                          { id: 'Cadera / Pubalgia', label: '🩻 Cadera / Pubis' },
+                          { id: 'Sin Lesiones (Articulaciones 100% Sanas)', label: '✅ Sin Lesiones (Sano)' },
+                        ].map((inj) => {
+                          const isSelected = obInjuries.includes(inj.id);
                           return (
                             <button
-                              key={d.id}
+                              key={inj.id}
                               type="button"
-                              onClick={() => toggleObTrainingDay(d.id)}
+                              onClick={() => toggleObInjury(inj.id)}
                               style={{
-                                padding: '0.65rem 0.5rem',
+                                padding: '10px 12px',
                                 borderRadius: '10px',
-                                textAlign: 'center',
-                                border: isSelected ? '1px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
-                                backgroundColor: isSelected ? '#10b981' : 'rgba(255,255,255,0.03)',
-                                color: isSelected ? '#ffffff' : '#94a3b8',
-                                fontWeight: 800,
+                                textAlign: 'left',
+                                border: isSelected ? '1.5px solid #ef4444' : '1px solid rgba(255,255,255,0.08)',
+                                backgroundColor: isSelected ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.02)',
+                                color: isSelected ? '#ffffff' : '#cbd5e1',
+                                fontWeight: 700,
                                 fontSize: '0.82rem',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',
                               }}
                             >
-                              <div>{d.short}</div>
-                              <div style={{ fontSize: '0.68rem', fontWeight: 600, opacity: 0.85 }}>{d.name}</div>
+                              <div>{inj.label}</div>
                             </button>
                           );
                         })}
                       </div>
                     </div>
 
-                    {/* Ubicación y Nivel */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.85rem' }}>
+                    {/* Selector de Nivel de Dolor */}
+                    {obInjuries.length > 0 && !obInjuries.includes('Sin Lesiones (Articulaciones 100% Sanas)') && (
                       <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                          Lugar de Entrenamiento:
+                        <label style={{ fontSize: '0.78rem', color: '#fca5a5', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
+                          Intensidad del dolor o limitación en las zonas marcadas:
                         </label>
-                        <select
-                          value={obLocation}
-                          onChange={(e) => setObLocation(e.target.value as any)}
-                          style={{
-                            width: '100%',
-                            padding: '0.55rem',
-                            borderRadius: '8px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <option value="GYM">🏋️ En Gimnasio (Máquinas, barras y poleas)</option>
-                          <option value="HOME">🏡 En Casa (Calistenia y peso corporal)</option>
-                        </select>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                          {[
+                            { id: 'LEVE', label: '🟢 Leve', desc: 'Molestia sólo con cargas máximas' },
+                            { id: 'MODERADO', label: '🟡 Moderada', desc: 'Dolor en ciertos ángulos de movimiento' },
+                            { id: 'SEVERO', label: '🔴 Fuerte / Rehabilitación', desc: 'Movilidad reducida y dolor constante' },
+                          ].map((sev) => {
+                            const isSelected = obInjurySeverity === sev.id;
+                            return (
+                              <button
+                                key={sev.id}
+                                type="button"
+                                onClick={() => setObInjurySeverity(sev.id as any)}
+                                style={{
+                                  padding: '8px 10px',
+                                  borderRadius: '8px',
+                                  textAlign: 'center',
+                                  border: isSelected ? '1.5px solid #ef4444' : '1px solid rgba(255,255,255,0.08)',
+                                  backgroundColor: isSelected ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.02)',
+                                  color: isSelected ? '#ffffff' : '#94a3b8',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <div style={{ fontSize: '0.82rem', fontWeight: 800 }}>{sev.label}</div>
+                                <div style={{ fontSize: '0.65rem', marginTop: '2px', opacity: 0.85 }}>{sev.desc}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
+                    )}
 
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                          Objetivo Principal:
-                        </label>
-                        <select
-                          value={obGoal}
-                          onChange={(e) => setObGoal(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '0.55rem',
-                            borderRadius: '8px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <option value="HYPERTROPHY">Hipertrofia Muscular (Ganancia limpia)</option>
-                          <option value="FAT_LOSS">Definición y Pérdida de Grasa</option>
-                          <option value="STRENGTH">Fuerza Máxima y Potencia</option>
-                          <option value="ENDURANCE">Resistencia & Funcional</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
-                          Nivel de Experiencia:
-                        </label>
-                        <select
-                          value={obExperience}
-                          onChange={(e) => setObExperience(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '0.55rem',
-                            borderRadius: '8px',
-                            backgroundColor: '#1e293b',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            color: '#ffffff',
-                            fontWeight: 700,
-                          }}
-                        >
-                          <option value="PRINCIPIANTE">Principiante (0 a 6 meses)</option>
-                          <option value="INTERMEDIO">Intermedio (6 meses a 2 años)</option>
-                          <option value="AVANZADO">Avanzado (+2 años constante)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                       <button
+                        type="button"
                         onClick={() => setOnboardingStep(2)}
                         style={{
                           backgroundColor: 'rgba(255,255,255,0.08)',
                           color: '#f8fafc',
                           border: 'none',
-                          padding: '0.6rem 1.1rem',
+                          padding: '0.65rem 1.2rem',
                           borderRadius: '8px',
                           fontWeight: 700,
                           cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
                         }}
                       >
-                        ⬅ Volver a Salud
+                        <ChevronLeft size={16} /> Volver a Salud
                       </button>
+
                       <button
+                        type="button"
                         onClick={() => setOnboardingStep(4)}
                         style={{
                           backgroundColor: '#10b981',
                           color: '#ffffff',
                           border: 'none',
-                          padding: '0.65rem 1.25rem',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
+                          padding: '0.7rem 1.4rem',
+                          borderRadius: '10px',
+                          fontWeight: 800,
+                          fontSize: '0.88rem',
                           cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 0 15px rgba(16, 185, 129, 0.3)',
                         }}
                       >
-                        Siguiente: Alimentos & Despensa ➔
+                        <span>Siguiente: Alimentos por Categoría</span>
+                        <ChevronRight size={16} />
                       </button>
                     </div>
                   </div>
@@ -1864,14 +1826,14 @@ export const AffiliatePortalView: React.FC = () => {
                           gap: '6px',
                         }}
                       >
-                        <ChevronLeft size={16} /> Volver a Días
+                        <ChevronLeft size={16} /> Volver a Lesiones
                       </button>
 
                       <button
                         type="button"
-                        onClick={handleSubmitOnboarding360}
+                        onClick={() => setOnboardingStep(5)}
                         style={{
-                          backgroundColor: '#10b981',
+                          backgroundColor: '#06b6d4',
                           color: '#ffffff',
                           border: 'none',
                           padding: '0.75rem 1.6rem',
@@ -1882,18 +1844,525 @@ export const AffiliatePortalView: React.FC = () => {
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
-                          boxShadow: '0 0 20px rgba(16, 185, 129, 0.35)',
+                          boxShadow: '0 0 20px rgba(6, 182, 212, 0.35)',
                         }}
                       >
-                        <Sparkles size={18} />
-                        <span>¡Generar Mi Plan 360° con IA!</span>
+                        <span>Siguiente: Somatotipo & Medidas</span>
+                        <ChevronRight size={16} />
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* PASO 5: LOADING DE IA GEMINI */}
+                {/* PASO 5: TIPO DE CUERPO (SOMATOTIPO), DATOS BIOMÉTRICOS, MEDIDAS CORPORALES & CONFIGURACIÓN DE DÍAS */}
                 {onboardingStep === 5 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{
+                      padding: '0.9rem 1.2rem',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                      border: '1px solid rgba(139, 92, 246, 0.25)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#c4b5fd', fontWeight: 800, fontSize: '0.92rem' }}>
+                        <Ruler size={18} color="#a78bfa" />
+                        <span>Paso 5 de 7: Tipo de Cuerpo, Medidas & Días de Entrenamiento</span>
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                        Selecciona tu somatotipo predominante, ingresa tus medidas corporales en centímetros con cinta métrica y define tus días disponibles para que la IA arme tu rutina personalizada.
+                      </p>
+                    </div>
+
+                    {/* Selector de Somatotipo (Tipo de Cuerpo) */}
+                    <div>
+                      <label style={{ fontSize: '0.86rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <User size={16} color="#8b5cf6" />
+                        <span>¿Cuál es tu tipo de cuerpo predominante (Somatotipo)?</span>
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                        {[
+                          {
+                            id: 'ECTOMORFO',
+                            title: 'Ectomorfo',
+                            tag: '⚡ Estructura Delgada',
+                            desc: 'Estructura ósea delgada, hombros y caja torácica angostos, metabolismo ultrarrápido y dificultad para ganar peso y volumen muscular.',
+                            aiFocus: 'Enfoque IA: Superávit calórico controlado y series hipertróficas pesadas con descanso completo.',
+                            color: '#38bdf8',
+                          },
+                          {
+                            id: 'MESOMORFO',
+                            title: 'Mesomorfo',
+                            tag: '🛡️ Estructura Atlética',
+                            desc: 'Estructura atlética natural en "V", hombros anchos, cintura estrecha, facilidad natural para ganar músculo y quemar grasa con buen estímulo.',
+                            aiFocus: 'Enfoque IA: Frecuencia 2 híbrida de hipertrofia y balance macronutricional 40-30-30.',
+                            color: '#10b981',
+                          },
+                          {
+                            id: 'ENDOMORFO',
+                            title: 'Endomorfo',
+                            tag: '🔋 Estructura Robusta',
+                            desc: 'Estructura ósea amplia y sólida, metabolismo más lento, gran facilidad para ganar fuerza y volumen pero tendencia a retener grasa corporal.',
+                            aiFocus: 'Enfoque IA: Mayor densidad de entrenamiento, pausas activas y ciclismo de carbohidratos.',
+                            color: '#f59e0b',
+                          },
+                        ].map((st) => {
+                          const isSelected = obBiotype === st.id;
+                          return (
+                            <div
+                              key={st.id}
+                              onClick={() => setObBiotype(st.id as any)}
+                              style={{
+                                padding: '1rem',
+                                borderRadius: '12px',
+                                border: isSelected ? `2px solid ${st.color}` : '1px solid rgba(255,255,255,0.08)',
+                                backgroundColor: isSelected ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '6px',
+                                position: 'relative',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#f8fafc' }}>{st.title}</span>
+                                <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px', backgroundColor: `${st.color}22`, color: st.color, fontWeight: 700 }}>
+                                  {st.tag}
+                                </span>
+                              </div>
+                              <p style={{ fontSize: '0.76rem', color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
+                                {st.desc}
+                              </p>
+                              <div style={{ fontSize: '0.72rem', color: st.color, fontWeight: 600, marginTop: '4px' }}>
+                                {st.aiFocus}
+                              </div>
+                              {isSelected && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '8px',
+                                  right: '8px',
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '50%',
+                                  backgroundColor: st.color,
+                                  color: '#000',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '11px',
+                                  fontWeight: 900,
+                                }}>
+                                  ✓
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Datos Biométricos Generales */}
+                    <div>
+                      <label style={{ fontSize: '0.86rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <Scale size={16} color="#10b981" />
+                        <span>Datos Biométricos Generales</span>
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Estatura (m o cm):</label>
+                          <input
+                            type="text"
+                            value={obHeight}
+                            onChange={(e) => setObHeight(e.target.value)}
+                            placeholder="Ej: 1.75 ó 175"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.05)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              color: '#ffffff',
+                              padding: '0.55rem 0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.85rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Peso Actual (kg):</label>
+                          <input
+                            type="number"
+                            value={obWeight}
+                            onChange={(e) => setObWeight(e.target.value)}
+                            placeholder="Ej: 74"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.05)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              color: '#ffffff',
+                              padding: '0.55rem 0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.85rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Edad (años):</label>
+                          <input
+                            type="number"
+                            value={obAge}
+                            onChange={(e) => setObAge(e.target.value)}
+                            placeholder="Ej: 26"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.05)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              color: '#ffffff',
+                              padding: '0.55rem 0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.85rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Género Biológico:</label>
+                          <select
+                            value={obGender}
+                            onChange={(e) => setObGender(e.target.value as any)}
+                            style={{
+                              width: '100%',
+                              backgroundColor: '#1e293b',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              color: '#ffffff',
+                              padding: '0.55rem 0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.85rem',
+                              outline: 'none',
+                            }}
+                          >
+                            <option value="MALE">Hombre</option>
+                            <option value="FEMALE">Mujer</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Medidas Corporales con Cinta Métrica (en cm) */}
+                    <div style={{
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(255,255,255,0.02)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                        <label style={{ fontSize: '0.86rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                          <Ruler size={16} color="#06b6d4" />
+                          <span>Medidas Corporales con Cinta Métrica (en cm)</span>
+                        </label>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>* Medir relajado sin apretar cinta métrica</span>
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0 0 10px 0' }}>
+                        Introduce las medidas que tengas a mano. Las que dejes vacías serán proyectadas y estimadas por la IA a partir de tu foto corporal y peso.
+                      </p>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem' }}>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Cuello (cm):</label>
+                          <input
+                            type="number"
+                            value={obNeck}
+                            onChange={(e) => setObNeck(e.target.value)}
+                            placeholder="Ej: 38"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '7px',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Pecho / Tórax (cm):</label>
+                          <input
+                            type="number"
+                            value={obChest}
+                            onChange={(e) => setObChest(e.target.value)}
+                            placeholder="Ej: 102"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '7px',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Cintura (ombligo cm):</label>
+                          <input
+                            type="number"
+                            value={obWaist}
+                            onChange={(e) => setObWaist(e.target.value)}
+                            placeholder="Ej: 82"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '7px',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Cadera / Glúteos (cm):</label>
+                          <input
+                            type="number"
+                            value={obHips}
+                            onChange={(e) => setObHips(e.target.value)}
+                            placeholder="Ej: 98"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '7px',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Brazo / Bíceps (cm):</label>
+                          <input
+                            type="number"
+                            value={obArms}
+                            onChange={(e) => setObArms(e.target.value)}
+                            placeholder="Ej: 36"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '7px',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Muslo (cm):</label>
+                          <input
+                            type="number"
+                            value={obThighs}
+                            onChange={(e) => setObThighs(e.target.value)}
+                            placeholder="Ej: 56"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '7px',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Pantorrilla (cm):</label>
+                          <input
+                            type="number"
+                            value={obCalves}
+                            onChange={(e) => setObCalves(e.target.value)}
+                            placeholder="Ej: 37"
+                            style={{
+                              width: '100%',
+                              backgroundColor: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              color: '#ffffff',
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '7px',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Días de Entrenamiento y Preferencias de Rutina */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                        <label style={{ fontSize: '0.86rem', fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                          <Calendar size={16} color="#10b981" />
+                          <span>¿Qué días de la semana vas a entrenar?</span>
+                        </label>
+                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
+                          {obTrainingDays.length} días seleccionados
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+                        {DAYS_OF_WEEK.map((d) => {
+                          const isSelected = obTrainingDays.includes(d.id);
+                          return (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => toggleObTrainingDay(d.id)}
+                              style={{
+                                padding: '8px 4px',
+                                borderRadius: '8px',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                border: isSelected ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.08)',
+                                backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.02)',
+                                color: isSelected ? '#34d399' : '#94a3b8',
+                                cursor: 'pointer',
+                                textAlign: 'center',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              <div>{d.name.slice(0, 3)}</div>
+                              <div style={{ fontSize: '0.65rem', color: isSelected ? '#10b981' : '#64748b', marginTop: '2px' }}>
+                                {isSelected ? 'Activo' : 'Descanso'}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Lugar, Objetivo y Experiencia */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Lugar de Entrenamiento:</label>
+                        <select
+                          value={obLocation}
+                          onChange={(e) => setObLocation(e.target.value as any)}
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#1e293b',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            color: '#ffffff',
+                            padding: '0.55rem 0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="GYM">🏋️‍♂️ Gimnasio Completo (Pesas & Máquinas)</option>
+                          <option value="HOME">🏠 En Casa (Mancuernas / Peso Corporal)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Objetivo Principal:</label>
+                        <select
+                          value={obGoal}
+                          onChange={(e) => setObGoal(e.target.value)}
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#1e293b',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            color: '#ffffff',
+                            padding: '0.55rem 0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="HYPERTROPHY">Ganancia de Masa Muscular (Hipertrofia)</option>
+                          <option value="FAT_LOSS">Pérdida de Grasa y Definición</option>
+                          <option value="STRENGTH">Fuerza y Rendimiento Deportivo</option>
+                          <option value="TONING">Tonificación y Salud Integral</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>Nivel de Experiencia:</label>
+                        <select
+                          value={obExperience}
+                          onChange={(e) => setObExperience(e.target.value)}
+                          style={{
+                            width: '100%',
+                            backgroundColor: '#1e293b',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            color: '#ffffff',
+                            padding: '0.55rem 0.75rem',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="PRINCIPIANTE">Principiante (0 a 6 meses)</option>
+                          <option value="INTERMEDIO">Intermedio (6 meses a 2 años)</option>
+                          <option value="AVANZADO">Avanzado (Más de 2 años)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Botones de Navegación del Paso 5 */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setOnboardingStep(4)}
+                        style={{
+                          backgroundColor: 'rgba(255,255,255,0.08)',
+                          color: '#f8fafc',
+                          border: 'none',
+                          padding: '0.65rem 1.2rem',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <ChevronLeft size={16} /> Volver a Alimentos
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSubmitOnboarding360}
+                        disabled={processing360}
+                        style={{
+                          backgroundColor: '#10b981',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.75rem 1.6rem',
+                          borderRadius: '10px',
+                          fontWeight: 800,
+                          fontSize: '0.92rem',
+                          cursor: processing360 ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          boxShadow: '0 0 25px rgba(16, 185, 129, 0.4)',
+                          opacity: processing360 ? 0.7 : 1,
+                        }}
+                      >
+                        <Sparkles size={18} />
+                        <span>¡Analizar con IA y Armar Mis Rutinas!</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* PASO 6: ANÁLISIS DE LA IA CON GOOGLE GEMINI */}
+                {onboardingStep === 6 && (
                   <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -1901,102 +2370,225 @@ export const AffiliatePortalView: React.FC = () => {
                     justifyContent: 'center',
                     padding: '3rem 1.5rem',
                     textAlign: 'center',
-                    gap: '1rem',
+                    gap: '1.25rem',
                   }}>
                     <div style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '50%',
-                      border: '4px solid rgba(6, 182, 212, 0.2)',
-                      borderTopColor: '#06b6d4',
-                      animation: 'spin 1s linear infinite',
-                    }} />
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
-                      Google Gemini 2.5 Flash Procesando tu Diagnóstico 360°
-                    </h3>
-                    <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '480px', margin: 0 }}>
-                      Analizando foto corporal, calculando somatotipo, formulando balance calórico de mantenimiento vs meta, estructurando guía de suplementos y programando tu rutina semanal por días...
-                    </p>
+                      position: 'relative',
+                      width: '76px',
+                      height: '76px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: '50%',
+                        border: '4px solid rgba(6, 182, 212, 0.2)',
+                        borderTopColor: '#06b6d4',
+                        borderRightColor: '#10b981',
+                        animation: 'spin 1s linear infinite',
+                      }} />
+                      <Sparkles size={28} color="#06b6d4" />
+                    </div>
+
+                    <div>
+                      <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                        Google Gemini 2.5 Flash Procesando tu Diagnóstico 360°
+                      </h3>
+                      <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '520px', margin: '6px auto 0 auto' }}>
+                        Analizando silueta corporal, descartando ejercicios lesivos para tus articulaciones, integrando tus alimentos favoritos y computando tu rutina día por día...
+                      </p>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      width: '100%',
+                      maxWidth: '480px',
+                      textAlign: 'left',
+                      padding: '1rem',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      fontSize: '0.8rem',
+                      color: '#cbd5e1',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#06b6d4' }}>📸</span>
+                        <span>Analizando silueta y pliegues con visión multimodal...</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#10b981' }}>🩺</span>
+                        <span>Verificando patologías y aplicando filtros de seguridad cardiovascular...</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#ef4444' }}>🛡️</span>
+                        <span>Protegiendo articulaciones lesionadas ({obInjuries.length > 0 ? obInjuries.join(', ') : 'zonas limpias'})...</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#f59e0b' }}>🥗</span>
+                        <span>Adaptando plan nutricional a {obLikedFoods.length} alimentos favoritos...</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#8b5cf6' }}>📏</span>
+                        <span>Calibrando medidas antropométricas y somatotipo {obBiotype}...</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#38bdf8' }}>📅</span>
+                        <span>Programando tu rutina de {obTrainingDays.length} días semanales (series, reps y descansos)...</span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {/* PASO 6: RESULTADOS Y ÉXITO 360° */}
-                {onboardingStep === 6 && (
+                {/* PASO 7: RESULTADOS DEL ANÁLISIS DE LA IA & RUTINAS DE LOS DÍAS ACTIVADAS */}
+                {onboardingStep === 7 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{
                       padding: '1.25rem',
                       borderRadius: '14px',
-                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%)',
-                      border: '1px solid #10b981',
+                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(6, 182, 212, 0.18) 100%)',
+                      border: '1.5px solid #10b981',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '12px',
+                      gap: '14px',
                     }}>
-                      <CheckCircle2 size={32} color="#10b981" />
+                      <CheckCircle2 size={36} color="#10b981" />
                       <div>
-                        <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>
-                          ¡Diagnóstico y Plan 360° Completado con Éxito!
+                        <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff', margin: 0 }}>
+                          ¡Diagnóstico 360° y Rutina de los Días Activada con Éxito!
                         </h4>
-                        <p style={{ fontSize: '0.82rem', color: '#cbd5e1', margin: '2px 0 0 0' }}>
-                          Tu plan ha sido sincronizado con la base de datos y tu entrenador en sala ha recibido la notificación de supervisión.
+                        <p style={{ fontSize: '0.82rem', color: '#cbd5e1', margin: '3px 0 0 0' }}>
+                          Google Gemini 2.5 Flash ha calibrado tu plan a partir de tu foto corporal, salud, lesiones y medidas. La rutina día a día ya está programada en tu perfil.
                         </p>
                       </div>
                     </div>
 
-                    {/* Resumen de Métricas */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                    {/* Métricas Principales */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
                       <div className="glass-card" style={{ padding: '0.85rem', borderLeft: '4px solid #06b6d4' }}>
-                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Biotipo / Somatotipo</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#06b6d4', marginTop: '2px' }}>
-                          {diagnostic?.biotype || results360?.diagnostic?.biotype || 'Mesomorfo'}
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Biotipo Confirmado</div>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#06b6d4', marginTop: '2px' }}>
+                          {diagnostic?.biotype || results360?.diagnostic?.biotype || obBiotype}
                         </div>
                       </div>
 
                       <div className="glass-card" style={{ padding: '0.85rem', borderLeft: '4px solid #f59e0b' }}>
                         <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>% Grasa Corporal</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#f59e0b', marginTop: '2px' }}>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f59e0b', marginTop: '2px' }}>
                           {diagnostic?.bodyFatPercentage || results360?.diagnostic?.bodyFatPercentage || 18}%
                         </div>
                       </div>
 
                       <div className="glass-card" style={{ padding: '0.85rem', borderLeft: '4px solid #10b981' }}>
                         <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Masa Muscular Magra</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
                           {diagnostic?.muscleMassKg || results360?.diagnostic?.muscleMassKg || 58} kg
                         </div>
                       </div>
 
                       <div className="glass-card" style={{ padding: '0.85rem', borderLeft: '4px solid #8b5cf6' }}>
                         <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Meta Calórica Diaria</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#8b5cf6', marginTop: '2px' }}>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#8b5cf6', marginTop: '2px' }}>
                           {nutrition?.targetCalories || results360?.nutrition?.targetCalories || 2100} kcal
                         </div>
                       </div>
                     </div>
 
-                    {/* Resumen de Rutina y Suplementación */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem' }}>
-                      <div className="glass-card" style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                          <Dumbbell size={16} color="#10b981" />
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc' }}>Rutina Programada:</span>
+                    {/* Filtro Biomecánico si hubo lesiones */}
+                    {obInjuries.length > 0 && (
+                      <div style={{
+                        padding: '0.85rem 1rem',
+                        borderRadius: '10px',
+                        backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                      }}>
+                        <AlertTriangle size={20} color="#ef4444" />
+                        <div>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fca5a5' }}>
+                            Filtro Biomecánico Activo para Zonas con Lesión:
+                          </span>
+                          <p style={{ fontSize: '0.76rem', color: '#cbd5e1', margin: '2px 0 0 0' }}>
+                            Se han excluido automáticamente ejercicios con sobrecarga axil o impacto en: <strong>{obInjuries.join(', ')}</strong>.
+                          </p>
                         </div>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#10b981' }}>
-                          {routine?.name || results360?.routine?.name || 'Rutina Semanal'}
+                      </div>
+                    )}
+
+                    {/* Rutinas de los Días Estructuradas */}
+                    <div className="glass-card" style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Dumbbell size={18} color="#10b981" />
+                          <h5 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                            {routine?.name || results360?.routine?.name || 'Rutina Semanal de los Días'}
+                          </h5>
                         </div>
-                        <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '4px 0 0 0' }}>
-                          Frecuencia: {routine?.daysPerWeek || results360?.routine?.daysPerWeek || obTrainingDays.length} días a la semana estructurados de Lunes a Domingo.
-                        </p>
+                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
+                          {routine?.daysPerWeek || results360?.routine?.daysPerWeek || obTrainingDays.length} días de entrenamiento programados
+                        </span>
                       </div>
 
-                      <div className="glass-card" style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                          <Pill size={16} color="#8b5cf6" />
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc' }}>Suplementación Clave:</span>
-                        </div>
-                        <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: 0 }}>
-                          Creatina Creapure 5g diarios, Proteína Whey post-entreno, Omega 3 con comidas y Magnesio nocturno.
-                        </p>
+                      {/* Grilla con los días programados y sus ejercicios */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
+                        {DAYS_OF_WEEK.filter((d) => obTrainingDays.includes(d.id)).map((d) => {
+                          const dayExs = (routine?.exercises || results360?.routine?.exercises || []).filter(
+                            (ex: any) => ex.dayNumber === d.id
+                          );
+                          return (
+                            <div
+                              key={d.id}
+                              style={{
+                                padding: '0.75rem',
+                                borderRadius: '10px',
+                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '4px' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#06b6d4' }}>
+                                  {d.name}
+                                </span>
+                                <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                                  {dayExs.length > 0 ? `${dayExs.length} ejercicios` : 'Día programado'}
+                                </span>
+                              </div>
+
+                              {dayExs.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {dayExs.map((exItem: any, idx: number) => (
+                                    <div
+                                      key={idx}
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        fontSize: '0.76rem',
+                                        padding: '3px 0',
+                                      }}
+                                    >
+                                      <span style={{ color: '#f1f5f9', fontWeight: 600 }}>
+                                        {idx + 1}. {exItem.exercise?.name || 'Ejercicio'}
+                                      </span>
+                                      <span style={{ color: '#10b981', fontWeight: 700, fontSize: '0.72rem' }}>
+                                        {exItem.sets}x{exItem.reps} ({exItem.restSeconds}s)
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+                                  Enfoque muscular asignado según tu somatotipo y objetivo.
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -2006,16 +2598,20 @@ export const AffiliatePortalView: React.FC = () => {
                         backgroundColor: '#10b981',
                         color: '#ffffff',
                         border: 'none',
-                        padding: '0.85rem',
-                        borderRadius: '10px',
+                        padding: '0.9rem',
+                        borderRadius: '12px',
                         fontWeight: 800,
-                        fontSize: '0.95rem',
+                        fontSize: '1rem',
                         cursor: 'pointer',
-                        boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)',
+                        boxShadow: '0 0 25px rgba(16, 185, 129, 0.45)',
                         textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
                       }}
                     >
-                      ¡Comenzar a Entrenar y Ver Mi Rutina Completa! 🏋️‍♂️
+                      <span>¡Comenzar Mi Entrenamiento de Hoy y Ver Mi Carnet! 🚀</span>
                     </button>
                   </div>
                 )}

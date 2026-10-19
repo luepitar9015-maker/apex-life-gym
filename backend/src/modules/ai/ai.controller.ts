@@ -624,6 +624,8 @@ export const handleCompleteOnboardingAI = async (req: Request, res: Response) =>
       disabilities = '',
       likedFoods = [],
       dislikedFoods = [],
+      bodyMeasurements,
+      biotype,
     } = req.body;
 
     const member = await prisma.member.findUnique({ where: { id: memberId } });
@@ -659,7 +661,25 @@ export const handleCompleteOnboardingAI = async (req: Request, res: Response) =>
       disabilities,
       trainingExperience,
       photoBase64,
+      bodyMeasurements,
+      biotype,
     });
+
+    // Anexar medidas corporales al resumen si se proporcionaron
+    let measuresSummary = '';
+    if (bodyMeasurements && typeof bodyMeasurements === 'object') {
+      const parts = [];
+      if (bodyMeasurements.neck) parts.push(`Cuello: ${bodyMeasurements.neck}cm`);
+      if (bodyMeasurements.chest) parts.push(`Pecho: ${bodyMeasurements.chest}cm`);
+      if (bodyMeasurements.waist) parts.push(`Cintura: ${bodyMeasurements.waist}cm`);
+      if (bodyMeasurements.hips) parts.push(`Cadera: ${bodyMeasurements.hips}cm`);
+      if (bodyMeasurements.arms) parts.push(`Brazo: ${bodyMeasurements.arms}cm`);
+      if (bodyMeasurements.thighs) parts.push(`Muslo: ${bodyMeasurements.thighs}cm`);
+      if (bodyMeasurements.calves) parts.push(`Pantorrilla: ${bodyMeasurements.calves}cm`);
+      if (parts.length > 0) {
+        measuresSummary = ` | Medidas Corporales Registradas: ${parts.join(', ')}`;
+      }
+    }
 
     const savedDiagnostic = await prisma.healthDiagnostic.create({
       data: {
@@ -673,10 +693,10 @@ export const handleCompleteOnboardingAI = async (req: Request, res: Response) =>
         bodyFatPercentage: diagnosticAI.bodyFatPercentage,
         muscleMassKg: diagnosticAI.muscleMassKg,
         bmi: diagnosticAI.bmi,
-        biotype: diagnosticAI.biotype,
+        biotype: biotype || diagnosticAI.biotype,
         aiClinicalSummary: diagnosticAI.aiClinicalSummary,
         prohibitedExercises: diagnosticAI.prohibitedExercises,
-        recommendedActions: diagnosticAI.recommendedActions,
+        recommendedActions: `${diagnosticAI.recommendedActions}${measuresSummary}`,
       },
     });
 

@@ -738,6 +738,16 @@ export const api = {
     disabilities?: string;
     likedFoods?: string[];
     dislikedFoods?: string[];
+    biotype?: string;
+    bodyMeasurements?: {
+      neck?: number;
+      chest?: number;
+      waist?: number;
+      hips?: number;
+      arms?: number;
+      thighs?: number;
+      calves?: number;
+    };
   }) {
     return request<{
       success: boolean;

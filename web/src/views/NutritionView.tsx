@@ -425,10 +425,10 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
               <Salad size={24} color="#10b981" />
             </div>
             <div>
-              <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+              <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                 Módulo de Nutrición Deportiva & Planes Dietarios IA
               </h1>
-              <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '2px 0 0 0' }}>
+              <p style={{ fontSize: '0.82rem', color: '#475569', margin: '2px 0 0 0' }}>
                 Formulación de dietas hipertróficas/definición, cálculo Mifflin-St Jeor, macronutrientes y dispensario de suplementación.
               </p>
             </div>
@@ -544,17 +544,17 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '0.85rem',
         }}>
-          <div style={{ padding: '1rem', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Atleta Asignado</span>
-            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#f8fafc', marginTop: '2px' }}>
+          <div style={{ padding: '1rem', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Atleta Asignado</span>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
               {selectedMember.firstName} {selectedMember.lastName}
             </div>
             <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Doc: {selectedMember.documentNumber || 'S/D'}</span>
           </div>
 
-          <div style={{ padding: '1rem', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Peso & Estatura</span>
-            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+          <div style={{ padding: '1rem', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Peso & Estatura</span>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#059669', marginTop: '2px' }}>
               {selectedMember.weight || 72} kg <span style={{ color: '#64748b', fontSize: '0.85rem' }}>/ {selectedMember.height || 1.74} m</span>
             </div>
             <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
@@ -562,20 +562,20 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
             </span>
           </div>
 
-          <div style={{ padding: '1rem', borderRadius: '12px', backgroundColor: 'rgba(6, 182, 212, 0.06)', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
-            <span style={{ fontSize: '0.72rem', color: '#06b6d4', fontWeight: 700 }}>TDEE Mantenimiento</span>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#06b6d4', marginTop: '2px' }}>
-              {metabolicStats?.tdee || 2450} <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>kcal/día</span>
+          <div style={{ padding: '1rem', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid rgba(6, 182, 212, 0.3)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <span style={{ fontSize: '0.72rem', color: '#0891b2', fontWeight: 700 }}>TDEE Mantenimiento</span>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0891b2', marginTop: '2px' }}>
+              {metabolicStats?.tdee || 2450} <span style={{ fontSize: '0.78rem', color: '#64748b' }}>kcal/día</span>
             </div>
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>TMB Basal: {metabolicStats?.bmr} kcal</span>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>TMB Basal: {metabolicStats?.bmr} kcal</span>
           </div>
 
-          <div style={{ padding: '1rem', borderRadius: '12px', backgroundColor: 'rgba(139, 92, 246, 0.06)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-            <span style={{ fontSize: '0.72rem', color: '#a78bfa', fontWeight: 700 }}>Biotipo / Somatotipo</span>
-            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#a78bfa', marginTop: '2px' }}>
+          <div style={{ padding: '1rem', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid rgba(139, 92, 246, 0.3)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <span style={{ fontSize: '0.72rem', color: '#7c3aed', fontWeight: 700 }}>Biotipo / Somatotipo</span>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#7c3aed', marginTop: '2px' }}>
               {diagnostic?.biotype || 'Mesomorfo'}
             </div>
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Grasa: {diagnostic?.bodyFatPercentage || 17}%</span>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Grasa: {diagnostic?.bodyFatPercentage || 17}%</span>
           </div>
         </div>
       )}
@@ -1319,63 +1319,72 @@ export const NutritionView: React.FC<NutritionViewProps> = ({
           <div style={{
             borderRadius: '12px',
             overflow: 'hidden',
-            border: '1px solid rgba(255,255,255,0.08)',
-            backgroundColor: 'rgba(255,255,255,0.01)',
+            border: '1px solid #e2e8f0',
+            backgroundColor: '#ffffff',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
           }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ backgroundColor: 'rgba(255,255,255,0.04)', color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Alimento</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Categoría</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Calorías (100g)</th>
-                  <th style={{ padding: '0.75rem 1rem', color: '#10b981' }}>Proteína</th>
-                  <th style={{ padding: '0.75rem 1rem', color: '#06b6d4' }}>Carbohidratos</th>
-                  <th style={{ padding: '0.75rem 1rem', color: '#f59e0b' }}>Grasas</th>
+                <tr style={{ backgroundColor: '#f1f5f9', color: '#334155', borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 800 }}>Alimento</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 800 }}>Categoría</th>
+                  <th style={{ padding: '0.85rem 1rem', fontWeight: 800 }}>Calorías (100g)</th>
+                  <th style={{ padding: '0.85rem 1rem', color: '#059669', fontWeight: 800 }}>Proteína</th>
+                  <th style={{ padding: '0.85rem 1rem', color: '#0891b2', fontWeight: 800 }}>Carbohidratos</th>
+                  <th style={{ padding: '0.85rem 1rem', color: '#d97706', fontWeight: 800 }}>Grasas</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredFoods.map((item, idx) => (
-                  <tr
-                    key={item.id || idx}
-                    style={{
-                      borderBottom: '1px solid rgba(255,255,255,0.04)',
-                      color: '#f8fafc',
-                      backgroundColor: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
-                    }}
-                  >
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700 }}>{item.name}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>
-                      <span style={{
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        backgroundColor:
-                          item.category === 'PROTEIN'
-                            ? 'rgba(16, 185, 129, 0.15)'
-                            : item.category === 'CARB'
-                            ? 'rgba(6, 182, 212, 0.15)'
-                            : item.category === 'FAT'
-                            ? 'rgba(245, 158, 11, 0.15)'
-                            : 'rgba(255,255,255,0.06)',
-                        color:
-                          item.category === 'PROTEIN'
-                            ? '#10b981'
-                            : item.category === 'CARB'
-                            ? '#06b6d4'
-                            : item.category === 'FAT'
-                            ? '#f59e0b'
-                            : '#94a3b8',
-                      }}>
-                        {item.category}
-                      </span>
+                {filteredFoods.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                      No se encontraron alimentos en el catálogo.
                     </td>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 800 }}>{item.calories} kcal</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#10b981', fontWeight: 700 }}>{item.protein}g</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#06b6d4', fontWeight: 700 }}>{item.carbs}g</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#f59e0b', fontWeight: 700 }}>{item.fats}g</td>
                   </tr>
-                ))}
+                ) : (
+                  filteredFoods.map((item, idx) => (
+                    <tr
+                      key={item.id || idx}
+                      style={{
+                        borderBottom: '1px solid #f1f5f9',
+                        color: '#000000',
+                        backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                      }}
+                    >
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#000000' }}>{item.name}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <span style={{
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          backgroundColor:
+                            item.category === 'PROTEIN'
+                              ? 'rgba(16, 185, 129, 0.15)'
+                              : item.category === 'CARB'
+                              ? 'rgba(6, 182, 212, 0.15)'
+                              : item.category === 'FAT'
+                              ? 'rgba(245, 158, 11, 0.15)'
+                              : '#f1f5f9',
+                          color:
+                            item.category === 'PROTEIN'
+                              ? '#059669'
+                              : item.category === 'CARB'
+                              ? '#0891b2'
+                              : item.category === 'FAT'
+                              ? '#d97706'
+                              : '#475569',
+                        }}>
+                          {item.category}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 800, color: '#000000' }}>{item.calories} kcal</td>
+                      <td style={{ padding: '0.75rem 1rem', color: '#059669', fontWeight: 700 }}>{item.protein}g</td>
+                      <td style={{ padding: '0.75rem 1rem', color: '#0891b2', fontWeight: 700 }}>{item.carbs}g</td>
+                      <td style={{ padding: '0.75rem 1rem', color: '#d97706', fontWeight: 700 }}>{item.fats}g</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
